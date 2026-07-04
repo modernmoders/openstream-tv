@@ -4,6 +4,14 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-04 — Phase 3 unit 1: autoplay state machine + cascade (session 5)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` — 113 tests (new ×40: NextEpisode ordering/specials/boundaries ×7, StreamCascade tiers/extraction ×13, AutoplayStateMachine countdown/patience/fallthrough/terminals ×20) | macOS, JDK 17 | PASS (113/113) |
+| §7.1 rules covered: bingeGroup tier-1 early-play; strict tier-2 ordering (addon > resolution > filename pattern > cache flag); 60s patience (no cancel at 59s, play-what-we-have at 60s, manual list only at 60s+zero-playable); 3-attempt open-failure fallthrough; Back is the only user cancel; never a dead screen (every terminal is Finished panel or manual stream list) | JVM tests | PASS |
+| Not yet wired: PlayerViewModel/UI integration, Up Next overlay, fan-out driver — next unit | — | TODO |
+
 ## 2026-07-04 — Phase 2 GATE PASSED: full loop vs owner's real AIOStreams instance (sessions 4–5)
 
 | Check | Environment | Result |
