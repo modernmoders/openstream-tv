@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -84,24 +85,27 @@ class DiscoverViewModel @Inject constructor(
             val extra = if (skip > 0) mapOf("skip" to skip.toString()) else emptyMap()
             catalogRepository.fetch(ref, extra).fold(
                 onSuccess = { page ->
-                    val current = _uiState.value
-                    // Dedupe by id: addons sometimes repeat items across pages,
-                    // and duplicate keys crash lazy grids.
-                    val seen = current.items.mapTo(HashSet()) { it.id }
-                    val fresh = page.filter { seen.add(it.id) }
-                    _uiState.value = current.copy(
-                        items = current.items + fresh,
-                        loading = false,
-                        endReached = fresh.isEmpty(),
-                    )
+                    // Atomic update; dedupe by id — addons repeat items across
+                    // pages, and duplicate keys crash lazy grids.
+                    _uiState.update { current ->
+                        val seen = current.items.mapTo(HashSet()) { it.id }
+                        val fresh = page.filter { seen.add(it.id) }
+                        current.copy(
+                            items = current.items + fresh,
+                            loading = false,
+                            endReached = fresh.isEmpty(),
+                        )
+                    }
                 },
                 onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        loading = false,
-                        // A failed page-2 fetch shouldn't wipe page 1; just stop.
-                        endReached = true,
-                        error = if (skip == 0) e.toChipMessage() else null,
-                    )
+                    _uiState.update { current ->
+                        current.copy(
+                            loading = false,
+                            // A failed page-2 fetch shouldn't wipe page 1.
+                            endReached = true,
+                            error = if (skip == 0) e.toChipMessage() else null,
+                        )
+                    }
                 },
             )
         }

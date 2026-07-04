@@ -48,6 +48,7 @@ class StreamListViewModelTest {
 
     private fun viewModel(type: String, videoId: String) = StreamListViewModel(
         streamRepository,
+        dev.openstream.tv.player.CurrentPlayback(),
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
 

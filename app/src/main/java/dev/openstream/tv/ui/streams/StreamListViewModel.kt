@@ -7,10 +7,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.addon.StreamRepository
+import dev.openstream.tv.addon.toPlayableSource
+import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class StreamListViewModel @Inject constructor(
     private val streamRepository: StreamRepository,
+    private val currentPlayback: CurrentPlayback,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -45,6 +49,17 @@ class StreamListViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
 
+    /**
+     * Stage the stream for the player screen; returns false for sources v1
+     * can't play (the UI shows those as notes, so this is belt-and-braces).
+     */
+    fun stage(stream: Stream): Boolean {
+        val source = stream.toPlayableSource(title.ifBlank { stream.name ?: "Stream" })
+            ?: return false
+        currentPlayback.source = source
+        return true
+    }
+
     init {
         viewModelScope.launch {
             val addons = streamRepository.streamAddons(type, videoId)
@@ -58,11 +73,13 @@ class StreamListViewModel @Inject constructor(
                         onSuccess = { GroupState.Loaded(addon, it) },
                         onFailure = { GroupState.Failed(addon, it.toChipMessage()) },
                     )
-                    _uiState.value = _uiState.value.copy(
-                        groups = _uiState.value.groups.map {
+                    // Atomic: parallel addon completions must not clobber
+                    // each other's group updates
+                    _uiState.update { state ->
+                        state.copy(groups = state.groups.map {
                             if (it.addon.manifestUrl == addon.manifestUrl) newState else it
-                        },
-                    )
+                        })
+                    }
                 }
             }
         }

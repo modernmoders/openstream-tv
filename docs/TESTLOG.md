@@ -4,6 +4,17 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Phase 2: details, stream list, PLAYBACK verified (session 3)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` — 61 tests (new: MetaRepository chain ×3, StreamListViewModel ×3, StreamMapping ×3); suite run 3× consecutively to verify race fix | macOS, JDK 17 | PASS (61/61 ×3) |
+| **Concurrency bug found & fixed:** fan-out ViewModels used non-atomic `_uiState.value = _uiState.value.copy(...)` — parallel completions could drop each other's row updates (one row stuck "Loading" forever). Surfaced as a hanging test. Fix: atomic `update {}` in Home/Search/StreamList/Discover VMs. | JVM tests | FIXED |
+| Details screen: movie (Toy Story 5 — backdrop, facts, cast, View streams) and series ("I Will Find You" — season selector, episode list w/ overviews) | AVD windowed, live internet | PASS |
+| Stream list: honest empty state without stream addons; with local test addon → group + streams, torrent/external as unsupported notes | same | PASS |
+| **PLAYBACK: full chain verified** — local test addon (http://10.0.2.2:8090, debug-only cleartext) → stream click → PlayableSource staging → ExoPlayer → 1080p H.264 plays → ENDED fires → "Playback finished" panel. Error panel verified twice with real failures (403 URL → "server rejected the request"; decoder fail → "device can't decode") | AVD **windowed** | PASS |
+| **Emulator rule discovered:** goldfish H.264 decoder cannot init on a HEADLESS emulator (`-no-window` + swiftshader) — `DecoderInitializationException: c2.goldfish.h264.decoder`. Playback testing requires a windowed emulator (`-gpu auto`, no `-no-window`). Recorded in STATE env rules. | AVD | RULE |
+
 ## 2026-07-05 — Phase 1 COMPLETE: Discover + Search verified; two root causes fixed (session 2)
 
 | Check | Environment | Result |

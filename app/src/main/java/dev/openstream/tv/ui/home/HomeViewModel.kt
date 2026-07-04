@@ -13,6 +13,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -64,11 +65,13 @@ class HomeViewModel @Inject constructor(
                                 onSuccess = { RowState.Loaded(ref, it) },
                                 onFailure = { RowState.Failed(ref, it.toChipMessage()) },
                             )
-                            _uiState.value = _uiState.value.copy(
-                                rows = _uiState.value.rows.map {
+                            // Atomic: parallel completions must not clobber
+                            // each other's row updates
+                            _uiState.update { state ->
+                                state.copy(rows = state.rows.map {
                                     if (it.ref.key == ref.key) newState else it
-                                },
-                            )
+                                })
+                            }
                         }
                     }
                 }

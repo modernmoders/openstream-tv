@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -65,11 +66,13 @@ class SearchViewModel @Inject constructor(
                             onSuccess = { RowState.Loaded(ref, it) },
                             onFailure = { RowState.Failed(ref, it.toChipMessage()) },
                         )
-                    _uiState.value = _uiState.value.copy(
-                        rows = _uiState.value.rows.map {
+                    // Atomic: parallel fetch completions must not overwrite
+                    // each other's row updates (real lost-update, found by test)
+                    _uiState.update { state ->
+                        state.copy(rows = state.rows.map {
                             if (it.ref.key == ref.key) newState else it
-                        },
-                    )
+                        })
+                    }
                 }
             }
         }

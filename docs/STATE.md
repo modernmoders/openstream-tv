@@ -1,38 +1,62 @@
-# STATE — updated 2026-07-05 by session 2
+# STATE — updated 2026-07-05 by session 3
 
 ## Phase
-**Phase 1 — COMPLETE** (tag `phase-1-done`). All §10 Phase 1 boxes ticked.
-Next: Phase 2 — Details, streams, internal playback.
+Phase 2 — Details, streams, internal playback (3 of 5 units done).
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
-- Discover (curated-catalog rail + paginated grid) and Search verified on the
-  emulator against Cinemeta + owner's AIOMetadata. 52/52 tests.
-- Root-caused and fixed two infrastructure gremlins (TESTLOG 2026-07-05):
-  iCloud corrupting builds (build output now in `build.nosync/`, DECISIONS #8)
-  and emulator snapshot clock-drift breaking TLS (cold-boot rule below).
+- Details screen (MetaRepository §4.1.6 chain w/ Cinemeta fallback; movie +
+  series layouts verified on emulator) — commit d6c14f7.
+- Stream list (fan-out §4.1.5, addon-order sacred §4.1.7, unsupported-source
+  notes §4.1.4) — same commit.
+- **Playback engine works end-to-end** (this checkpoint's commit):
+  PlayableSource/SubtitleTrack (§3.2), PlayerEngine + ExoPlayerEngine
+  (headers, subtitle configs, generous buffering, §6.1 plain-language error
+  mapping), CurrentPlayback hand-off, PlayerScreen (PlayerView + Compose
+  overlay, D-pad seek/pause, error panel w/ Retry, end panel).
+  Verified with a local test addon (scratchpad script recreatable from
+  TESTLOG description; serves any /stream/movie/*.json). 61/61 tests.
+- Fixed a real lost-update race in all fan-out ViewModels (atomic update{}).
 
 ## In progress (uncommitted: NO — checkpoint commit follows this file)
 - none
 
 ## NEXT ACTION (start here)
-Phase 2 (MASTER_PLAN §10), suggested order:
-1. **Details screen**: route "details/{type}/{id}"; resolve meta via §4.1.6
-   fallback chain (meta-declaring addons → Cinemeta by IMDb id); backdrop,
-   description, seasons/episodes from `videos` array grouped by season.
-   PosterCard onClick navigates here (currently a no-op).
-2. **Stream list screen** (§4.1.5/§4.1.7): parallel fan-out over stream
-   addons via `declares("stream", type, id)`, incremental render, addon-order
-   groups, failure chips. NOTE: owner has AIOStreams instances — ask for a
-   manifest URL when testing (SECRET — never commit, same rule as always).
-3. **ExoPlayer engine** (§6.1): PlayerEngine interface + ExoPlayerEngine +
-   MediaSessionService + Compose overlay; PlayableSource from §3.2 (already
-   spec'd; create domain/PlayableSource.kt). Wire proxyHeaders + notWebReady.
-4. **Watch progress**: Room `media_ref`-keyed progress (§8.4 — NOT IMDb-keyed),
-   Continue Watching row goes live, resume dialog.
-5. Gate: full browse→play→resume loop vs a real AIOStreams instance.
+Phase 2 remaining:
+1. **Watch progress + Continue Watching + resume** (§10 Phase 2 item 4):
+   - Room: `watch_progress` table keyed (source_kind, external_id) = MediaRef
+     (§8.4 — NOT IMDb-keyed; movies: kind="addon", id=meta id; episodes:
+     id=video id). Columns: positionMs, durationMs, updatedAt, title,
+     poster, type (for the row card + details resume).
+   - PlayerScreen: persist position every ~10s + on exit (player.currentPosition).
+   - Continue Watching row = always-first home row (§5.6) when non-empty;
+     click → details (or straight to streams w/ resume position).
+   - Resume dialog on details/streams when progress exists (§10): "Resume from
+     X / Start over" → PlayableSource.startPositionMs.
+2. **MediaSessionService** (§6.1): move ExoPlayer into a MediaSessionService
+   so hardware media keys + assistant work and playback survives UI churn.
+3. Gate: browse→play→resume loop vs a real AIOStreams instance (ask owner for
+   manifest URL — SECRET, never commit).
+
+## Environment rules (hard-earned — do not skip)
+- **Playback testing needs a WINDOWED emulator** (`-gpu auto`, NO
+  `-no-window`): the goldfish H.264 decoder fails to init headless
+  (DecoderInitializationException) and videos won't play.
+- **Cold-boot the emulator** (`-no-snapshot`) or verify `adb shell date -u`:
+  snapshot clock drift breaks TLS for fresh certs.
+- **Never run two gradle invocations concurrently.**
+- Build outputs in `app/build.nosync/` (iCloud-proofing, DECISIONS #8).
+- JAVA_HOME=/opt/homebrew/opt/openjdk@17; SDK/adb per CLAUDE.md.
+- Real addon URLs are secrets. Emulator app-DB has Cinemeta + owner's
+  AIOMetadata + "Local Test Addon" (http://10.0.2.2:8090 — harmless leftover;
+  its server script is gone, so its rows just show failure chips unless the
+  script is recreated per TESTLOG).
+- On the Addons screen, initial D-pad focus lands on the FIRST ROW's toggle,
+  not "Add addon" — press UP first. (Known UX wart for the Phase 4 audit,
+  along with: reaching the home header takes one UP per row — needs a
+  focus shortcut.)
 
 ## Environment rules (hard-earned — do not skip)
 - **Cold-boot the emulator** (`-no-snapshot`) or verify `adb shell date -u`

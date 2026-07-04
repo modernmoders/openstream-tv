@@ -31,9 +31,12 @@ import dev.openstream.tv.ui.theme.MutedText
  */
 @Composable
 fun StreamListScreen(
-    onStreamSelected: (Stream) -> Unit = {}, // player lands in the next Phase 2 unit
+    onPlay: () -> Unit = {},
     viewModel: StreamListViewModel = hiltViewModel(),
 ) {
+    val onStreamSelected: (Stream) -> Unit = { stream ->
+        if (viewModel.stage(stream)) onPlay()
+    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(

@@ -12,6 +12,7 @@ import dev.openstream.tv.ui.addons.AddonManagerScreen
 import dev.openstream.tv.ui.details.DetailsScreen
 import dev.openstream.tv.ui.discover.DiscoverScreen
 import dev.openstream.tv.ui.home.HomeScreen
+import dev.openstream.tv.ui.player.PlayerScreen
 import dev.openstream.tv.ui.search.SearchScreen
 import dev.openstream.tv.ui.streams.StreamListScreen
 
@@ -33,6 +34,9 @@ object Routes {
     const val STREAMS = "streams/{type}/{videoId}?title={title}"
     fun streams(type: String, videoId: String, title: String) =
         "streams/${Uri.encode(type)}/${Uri.encode(videoId)}?title=${Uri.encode(title)}"
+
+    /** Source arrives via CurrentPlayback, not route args (see that class). */
+    const val PLAYER = "player"
 }
 
 @Composable
@@ -62,6 +66,11 @@ fun AppNavHost() {
                 navController.navigate(Routes.streams(type, videoId, title))
             })
         }
-        composable(Routes.STREAMS) { StreamListScreen() }
+        composable(Routes.STREAMS) {
+            StreamListScreen(onPlay = { navController.navigate(Routes.PLAYER) })
+        }
+        composable(Routes.PLAYER) {
+            PlayerScreen(onExit = { navController.popBackStack() })
+        }
     }
 }
