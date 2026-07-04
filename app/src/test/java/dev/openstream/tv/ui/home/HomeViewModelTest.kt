@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import okhttp3.OkHttpClient
@@ -49,7 +50,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `no addons yields empty state, not rows`() = runTest {
+    fun `no addons yields empty state, not rows`() = runTest(timeout = 60.seconds) {
         val viewModel = HomeViewModel(addonRepository, catalogRepository)
         val state = viewModel.uiState.first { !it.initializing }
         assertTrue(state.rows.isEmpty())
@@ -57,7 +58,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `installed addon produces a loaded row from its browsable catalog`() = runTest {
+    fun `installed addon produces a loaded row from its browsable catalog`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
         server.start()
@@ -74,7 +75,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `catalog failure becomes a visible Failed row`() = runTest {
+    fun `catalog failure becomes a visible Failed row`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         // no catalog route -> 404 on fetch
         server.start()

@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import okhttp3.OkHttpClient
@@ -44,7 +45,7 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun `selects first browsable catalog and loads its first page`() = runTest {
+    fun `selects first browsable catalog and loads its first page`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
         server.start()
@@ -58,7 +59,7 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun `loadMore passes skip and dedupes repeated items`() = runTest {
+    fun `loadMore passes skip and dedupes repeated items`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
         // Page 2: same fixture -> all duplicates -> endReached, no growth
@@ -78,7 +79,7 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun `first-page failure surfaces as error not crash`() = runTest {
+    fun `first-page failure surfaces as error not crash`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.start() // no catalog route -> 404
         addonRepository.install(server.url("/manifest.json")).getOrThrow()

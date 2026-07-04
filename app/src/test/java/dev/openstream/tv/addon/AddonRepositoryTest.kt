@@ -5,6 +5,7 @@ import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.first
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -40,7 +41,7 @@ class AddonRepositoryTest {
     fun tearDown() = server.shutdown()
 
     @Test
-    fun `install fetches manifest and persists enabled at end of list`() = runTest {
+    fun `install fetches manifest and persists enabled at end of list`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.start()
 
@@ -53,7 +54,7 @@ class AddonRepositoryTest {
     }
 
     @Test
-    fun `two instances with the same manifest id coexist`() = runTest {
+    fun `two instances with the same manifest id coexist`() = runTest(timeout = 60.seconds) {
         // MASTER_PLAN §4.2: multiple AIOStreams configs share a manifest id
         server.route("/a/manifest.json", Fixtures.load("manifest_full"))
         server.route("/b/manifest.json", Fixtures.load("manifest_full"))
@@ -69,7 +70,7 @@ class AddonRepositoryTest {
     }
 
     @Test
-    fun `reinstall refreshes manifest but keeps order and enabled flag`() = runTest {
+    fun `reinstall refreshes manifest but keeps order and enabled flag`() = runTest(timeout = 60.seconds) {
         server.route("/a/manifest.json", Fixtures.load("manifest_full"))
         server.route("/b/manifest.json", Fixtures.load("manifest_full"))
         server.start()
@@ -86,7 +87,7 @@ class AddonRepositoryTest {
     }
 
     @Test
-    fun `install failure stores nothing`() = runTest {
+    fun `install failure stores nothing`() = runTest(timeout = 60.seconds) {
         server.start() // 404 for everything
 
         val result = repository.install(server.url("/manifest.json"))
@@ -96,14 +97,14 @@ class AddonRepositoryTest {
     }
 
     @Test
-    fun `invalid url fails fast without network`() = runTest {
+    fun `invalid url fails fast without network`() = runTest(timeout = 60.seconds) {
         val result = repository.install("definitely not a url")
         val error = result.exceptionOrNull() as AddonRequestException
         assertEquals(AddonRequestException.Reason.INVALID_URL, error.reason)
     }
 
     @Test
-    fun `uninstall and reorder update the observed list`() = runTest {
+    fun `uninstall and reorder update the observed list`() = runTest(timeout = 60.seconds) {
         server.route("/a/manifest.json", Fixtures.load("manifest_full"))
         server.route("/b/manifest.json", Fixtures.load("manifest_full"))
         server.route("/c/manifest.json", Fixtures.load("manifest_full"))

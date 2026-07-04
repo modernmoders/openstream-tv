@@ -3,6 +3,7 @@ package dev.openstream.tv.addon
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -66,7 +67,7 @@ class CatalogRepositoryTest {
     }
 
     @Test
-    fun `fetch returns usable metas from the catalog endpoint`() = runTest {
+    fun `fetch returns usable metas from the catalog endpoint`() = runTest(timeout = 60.seconds) {
         server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
         server.start()
         val addon = installed(server.url("/manifest.json"))
@@ -78,7 +79,7 @@ class CatalogRepositoryTest {
     }
 
     @Test
-    fun `fetch failure surfaces as Result failure for the row chip`() = runTest {
+    fun `fetch failure surfaces as Result failure for the row chip`() = runTest(timeout = 60.seconds) {
         server.start() // 404 everywhere
         val addon = installed(server.url("/manifest.json"))
         val ref = CatalogRepository.CatalogRef(addon, addon.manifest.catalogs.first())

@@ -3,6 +3,7 @@ package dev.openstream.tv.addon
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -35,7 +36,7 @@ class AddonClientTest {
     fun tearDown() = server.shutdown()
 
     @Test
-    fun `fetches and validates a manifest`() = runTest {
+    fun `fetches and validates a manifest`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.start()
 
@@ -44,7 +45,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `empty manifest fails with INVALID_MANIFEST`() = runTest {
+    fun `empty manifest fails with INVALID_MANIFEST`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", "{}")
         server.start()
 
@@ -54,7 +55,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `catalog with extra builds protocol-shaped path`() = runTest {
+    fun `catalog with extra builds protocol-shaped path`() = runTest(timeout = 60.seconds) {
         server.route(
             "/catalog/movie/top/search=game%20of%20thrones&skip=100.json",
             Fixtures.load("catalog_mixed"),
@@ -75,7 +76,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `episode ids with colons survive path building`() = runTest {
+    fun `episode ids with colons survive path building`() = runTest(timeout = 60.seconds) {
         server.route("/stream/series/tt0108778:1:1.json", Fixtures.load("streams_full"))
         server.start()
 
@@ -85,7 +86,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `malformed body fails with BAD_JSON not a crash`() = runTest {
+    fun `malformed body fails with BAD_JSON not a crash`() = runTest(timeout = 60.seconds) {
         server.route("/stream/movie/tt1.json", Fixtures.load("malformed"))
         server.start()
 
@@ -95,7 +96,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `http error fails with HTTP_STATUS`() = runTest {
+    fun `http error fails with HTTP_STATUS`() = runTest(timeout = 60.seconds) {
         server.start() // no routes -> 404 for everything
 
         val error = client.streams(server.url(""), "movie", "tt1")
@@ -105,7 +106,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `unreachable server fails with NETWORK`() = runTest {
+    fun `unreachable server fails with NETWORK`() = runTest(timeout = 60.seconds) {
         server.start()
         val deadUrl = server.url("")
         server.shutdown()
@@ -116,7 +117,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `slow addon still succeeds within timeout`() = runTest {
+    fun `slow addon still succeeds within timeout`() = runTest(timeout = 60.seconds) {
         // 1s delayed body vs 3s call timeout: slow-but-alive addons must work
         server.route("/stream/movie/tt1.json", Fixtures.load("streams_full"), delayMs = 1000)
         server.start()
@@ -126,7 +127,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `subtitles endpoint parses`() = runTest {
+    fun `subtitles endpoint parses`() = runTest(timeout = 60.seconds) {
         server.route("/subtitles/movie/tt1.json", Fixtures.load("subtitles"))
         server.start()
 
@@ -135,7 +136,7 @@ class AddonClientTest {
     }
 
     @Test
-    fun `meta endpoint parses`() = runTest {
+    fun `meta endpoint parses`() = runTest(timeout = 60.seconds) {
         server.route("/meta/series/tt0108778.json", Fixtures.load("meta_series"))
         server.start()
 

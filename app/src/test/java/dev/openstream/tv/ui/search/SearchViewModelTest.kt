@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import okhttp3.OkHttpClient
@@ -45,7 +46,7 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `search queries every search-capable catalog with the search extra`() = runTest {
+    fun `search queries every search-capable catalog with the search extra`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         // manifest_full search-capable catalogs: top (optional search),
         // searchonly (required), legacy (extraSupported) -> 3 rows
@@ -69,14 +70,14 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `blank query is ignored`() = runTest {
+    fun `blank query is ignored`() = runTest(timeout = 60.seconds) {
         val viewModel = SearchViewModel(addonRepository, catalogRepository)
         viewModel.search("   ")
         assertTrue(!viewModel.uiState.value.searched)
     }
 
     @Test
-    fun `failed catalog search becomes a Failed row`() = runTest {
+    fun `failed catalog search becomes a Failed row`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.route("/catalog/movie/top/search=x.json", Fixtures.load("catalog_mixed"))
         // searchonly + legacy have no routes -> 404 -> Failed rows

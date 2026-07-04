@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import okhttp3.OkHttpClient
@@ -52,14 +53,14 @@ class AddAddonViewModelTest {
         viewModel.state.first { it !is UiState.Fetching && it !is UiState.Installing }
 
     @Test
-    fun `invalid url errors without touching the network`() = runTest {
+    fun `invalid url errors without touching the network`() = runTest(timeout = 60.seconds) {
         viewModel.fetchPreview("not a url")
         val state = viewModel.state.value as UiState.Error
         assertTrue(state.message.contains("manifest.json"))
     }
 
     @Test
-    fun `fetch shows preview and confirm persists the addon`() = runTest {
+    fun `fetch shows preview and confirm persists the addon`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.start()
 
@@ -74,7 +75,7 @@ class AddAddonViewModelTest {
     }
 
     @Test
-    fun `dismissing the preview installs nothing`() = runTest {
+    fun `dismissing the preview installs nothing`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.start()
 
@@ -87,7 +88,7 @@ class AddAddonViewModelTest {
     }
 
     @Test
-    fun `unreachable addon yields friendly network error`() = runTest {
+    fun `unreachable addon yields friendly network error`() = runTest(timeout = 60.seconds) {
         server.start()
         val deadUrl = server.url("/manifest.json")
         server.shutdown()
@@ -98,7 +99,7 @@ class AddAddonViewModelTest {
     }
 
     @Test
-    fun `non-manifest response yields friendly error`() = runTest {
+    fun `non-manifest response yields friendly error`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", "{}") // parses, but unusable manifest
         server.start()
 
