@@ -1,36 +1,44 @@
-# STATE — updated 2026-07-04T03:25 by session 1
+# STATE — updated 2026-07-04T03:30 by session 1
 
 ## Phase
-Phase 0 — Repo + continuity scaffolding
+Phase 0 — COMPLETE (all §10 Phase 0 boxes ticked; tag `phase-0-done`).
+Next phase: Phase 1 — Addon client + catalogs.
 
 ## Branch
 main (no remote yet — see blockers)
 
 ## Just finished
-- Gradle/Android scaffold builds green: assembleDebug + testDebugUnitTest PASS
-- Continuity docs created (CLAUDE.md, DECISIONS.md #1–#5, TESTLOG.md)
+- Full Phase 0: git repo + GPLv3, Android scaffold (builds green), continuity
+  docs, CI workflow, hello screen verified on TV emulator (TESTLOG.md 2026-07-04)
 
-## In progress (uncommitted: YES)
-- Phase 0 remainder: CI workflow, emulator boot verification, first commit
+## In progress (uncommitted: NO)
+- none
 
 ## NEXT ACTION (start here)
-1. Verify hello screen on TV emulator: boot AVD `openstream_tv_api34`, install
-   app/build/outputs/apk/debug/app-debug.apk, launch, send DPAD_CENTER, confirm
-   button reacts. Log result in docs/TESTLOG.md.
-2. Commit everything (conventional commits), tag `phase-0-done` once §10 Phase 0
-   checkboxes are all satisfied.
+1. Start Phase 1 with the mock addon fixture server + protocol DTOs (MASTER_PLAN
+   §9.1 says mock server first).
+2. Create: `app/src/test/java/dev/openstream/tv/addon/` — MockWebServer fixtures
+   serving canned manifest/catalog/meta/stream JSON (valid, malformed, delayed,
+   empty variants), then `app/src/main/java/dev/openstream/tv/addon/` DTOs with
+   lenient kotlinx.serialization parsing, tested against the fixtures.
+3. Authoritative spec: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/protocol.md
+   — implement against it, not memory.
+4. Acceptance: DTO parse tests green incl. malformed-JSON cases; `AddonClient`
+   interface defined per MASTER_PLAN §3.2/§4.
 
-## Blockers / open questions
-- **No GitHub remote.** `gh` CLI is not installed and this machine has no stored
-  GitHub credentials. OWNER ACTION: create the public repo (suggested name
-  `openstream-tv`), then `git remote add origin <url> && git push -u origin main`.
-  Alternatively install gh (`brew install gh && gh auth login`) so sessions can push.
+## Blockers / open questions (none block Phase 1 coding)
+- **No GitHub remote.** OWNER ACTION: create public repo (suggested `openstream-tv`),
+  then `git remote add origin <url> && git push -u origin main --tags`.
+  Or `brew install gh && gh auth login` so sessions can push. Until then, §2.2
+  rule 6 (push after every commit) is impossible — commits stay local.
 - Gemini reference doc missing from docs/reference/ (owner to supply).
-- License GPLv3 + name "OpenStream TV" are session-picked per plan; owner may veto
-  (DECISIONS.md #2, #3).
+- Name "OpenStream TV" + GPLv3 are session-picked per plan; owner may veto
+  (DECISIONS.md #2/#3) — cheap to change until the remote exists.
 
 ## Environment notes
 - JAVA_HOME=/opt/homebrew/opt/openjdk@17 required for all gradlew calls
-- SDK at /opt/homebrew/share/android-commandlinetools (in local.properties;
-  local.properties is gitignored — recreate if missing)
-- Emulator AVD: openstream_tv_api34 (Android TV 14, 1080p, arm64)
+- SDK at /opt/homebrew/share/android-commandlinetools (in gitignored
+  local.properties — recreate with `echo "sdk.dir=/opt/homebrew/share/android-commandlinetools" > local.properties`)
+- TV emulator: AVD `openstream_tv_api34`; boot headless with
+  `$SDK/emulator/emulator -avd openstream_tv_api34 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect`
+- adb lives at $SDK/platform-tools/adb (not on default PATH)

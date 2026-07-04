@@ -299,11 +299,11 @@ Binding constraints on v1 code:
 Mark checkboxes as phases complete; each phase ends with: build green, tests green, STATE.md updated, tag `phase-N-done`.
 
 ### Phase 0 — Repo + continuity scaffolding (do first, small)
-- [ ] Init public GitHub repo (working name: pick one at kickoff, e.g. `couchpilot` / owner's choice; record in DECISIONS.md). License decision per §11.
-- [ ] Android Studio project: Kotlin, Compose + tv-material, Hilt, Room, Media3, Coil, kotlinx.serialization; min/target SDK decision recorded.
-- [ ] Create `CLAUDE.md` (§2.4), `docs/STATE.md`, `docs/DECISIONS.md` (with §3 decision as entry #1), `docs/TESTLOG.md`, copy this file to `docs/MASTER_PLAN.md`, copy Gemini doc to `docs/reference/`.
-- [ ] GitHub Actions: assembleDebug + unit tests on every PR/push.
-- [ ] Empty-shell app boots on TV emulator with a focusable "hello" screen.
+- [x] Init public GitHub repo (working name: pick one at kickoff, e.g. `couchpilot` / owner's choice; record in DECISIONS.md). License decision per §11. *(2026-07-04: local git repo + GPLv3 + name "OpenStream TV" done — DECISIONS.md #2/#3. GitHub remote creation is an OWNER ACTION: no gh/credentials on this machine, see STATE.md.)*
+- [x] Android Studio project: Kotlin, Compose + tv-material, Hilt, Room, Media3, Coil, kotlinx.serialization; min/target SDK decision recorded. *(2026-07-04: DECISIONS.md #4 — minSdk 23, compileSdk/targetSdk 37, AGP 9 built-in Kotlin.)*
+- [x] Create `CLAUDE.md` (§2.4), `docs/STATE.md`, `docs/DECISIONS.md` (with §3 decision as entry #1), `docs/TESTLOG.md`, copy this file to `docs/MASTER_PLAN.md`, copy Gemini doc to `docs/reference/`. *(2026-07-04: all done except Gemini doc — file was not in the project dir; owner to supply, see docs/reference/README.md.)*
+- [x] GitHub Actions: assembleDebug + unit tests on every PR/push. *(2026-07-04: .github/workflows/ci.yml — will first run once the remote exists.)*
+- [x] Empty-shell app boots on TV emulator with a focusable "hello" screen. *(2026-07-04: verified on AVD openstream_tv_api34, TESTLOG.md.)*
 
 ### Phase 1 — Addon client + catalogs
 - [ ] Protocol DTOs + lenient parsing; `AddonClient`; manifest install/uninstall/reorder UI (URL entry with on-screen keyboard).
