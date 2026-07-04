@@ -51,4 +51,14 @@ abstract class AddonModule {
     @Binds
     @Singleton
     abstract fun addonClient(impl: OkHttpAddonClient): AddonClient
+
+    companion object {
+        /**
+         * Metadata fallback for IMDb ids (MASTER_PLAN §4.1.6). The one addon
+         * the app knows out of the box; everything else is user-installed.
+         */
+        @Provides
+        @javax.inject.Named("cinemetaBaseUrl")
+        fun cinemetaBaseUrl(): String = "https://v3-cinemeta.strem.io"
+    }
 }

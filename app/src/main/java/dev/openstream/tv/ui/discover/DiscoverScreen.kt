@@ -40,7 +40,10 @@ import dev.openstream.tv.ui.theme.MutedText
  * browses the selected one with skip pagination (§5.1: 6-col default).
  */
 @Composable
-fun DiscoverScreen(viewModel: DiscoverViewModel = hiltViewModel()) {
+fun DiscoverScreen(
+    onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
+    viewModel: DiscoverViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val gridState = rememberLazyGridState()
 
@@ -117,7 +120,7 @@ fun DiscoverScreen(viewModel: DiscoverViewModel = hiltViewModel()) {
                     verticalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                 ) {
                     itemsIndexed(state.items, key = { _, it -> it.id }) { _, item ->
-                        PosterCard(item)
+                        PosterCard(item, onClick = { onItemClick(item) })
                     }
                     if (state.loading) {
                         item {

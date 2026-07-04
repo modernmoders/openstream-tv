@@ -35,7 +35,10 @@ import dev.openstream.tv.ui.theme.CardSizeTokens
 import dev.openstream.tv.ui.theme.MutedText
 
 @Composable
-fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
+fun SearchScreen(
+    onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
+    viewModel: SearchViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     val fieldFocus = remember { FocusRequester() }
@@ -73,14 +76,14 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
             items(state.rows, key = { it.ref.key }) { row ->
-                SearchRow(row)
+                SearchRow(row, onItemClick)
             }
         }
     }
 }
 
 @Composable
-private fun SearchRow(row: RowState) {
+private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit) {
     Column {
         Row(
             modifier = Modifier.padding(horizontal = 48.dp),
@@ -110,7 +113,7 @@ private fun SearchRow(row: RowState) {
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
                     ) {
                         items(row.items, key = { it.id }) { item ->
-                            PosterCard(item)
+                            PosterCard(item, onClick = { onItemClick(item) })
                         }
                     }
                 }

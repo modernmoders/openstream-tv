@@ -39,6 +39,7 @@ fun HomeScreen(
     onDiscover: () -> Unit,
     onSearch: () -> Unit,
     onManageAddons: () -> Unit,
+    onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,7 +82,7 @@ fun HomeScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
             ) {
                 items(state.rows, key = { it.ref.key }) { row ->
-                    CatalogRow(row)
+                    CatalogRow(row, onItemClick)
                 }
             }
         }
@@ -100,7 +101,7 @@ private fun EmptyHome() {
 }
 
 @Composable
-private fun CatalogRow(row: RowState) {
+private fun CatalogRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit) {
     Column {
         Row(
             modifier = Modifier.padding(horizontal = 48.dp),
@@ -132,7 +133,7 @@ private fun CatalogRow(row: RowState) {
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
                     ) {
                         items(row.items, key = { it.id }) { item ->
-                            PosterCard(item)
+                            PosterCard(item, onClick = { onItemClick(item) })
                         }
                     }
                 }
