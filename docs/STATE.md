@@ -1,42 +1,39 @@
-# STATE — updated 2026-07-04T05:40 by session 1
+# STATE — updated 2026-07-04T06:30 by session 1
 
 ## Phase
 Phase 1 — Addon client + catalogs (in progress)
 
 ## Branch
-main (remote pending — see blockers)
+main @ origin (https://github.com/modernmoders/openstream-tv) — CI green
 
 ## Just finished
-- Addon protocol layer (27 tests) — DTOs, AddonClient/OkHttpAddonClient,
-  MockAddonServer fixtures, NetworkModule. See commit 18984be.
-- Addon persistence (33 tests total now): `data/db/` InstalledAddonEntity/Dao/
-  OpenStreamDatabase (Room, schema exported to app/schemas/), `addon/
-  AddonRepository` (install/uninstall/reorder/setEnabled; keyed by manifest URL
-  so same-id instances coexist §4.2; reinstall keeps order+enabled),
-  `di/DataModule`. Repository tested against fake DAO + MockAddonServer.
+- Addon manager UI, verified end-to-end on the TV emulator with a REAL addon:
+  Home → Addons → Add addon → typed Cinemeta manifest URL → preview → Install
+  → listed with Enabled/▲/▼/Remove; survives force-stop (Room). 38/38 tests.
+  - ui/: AppNavHost (navigation-compose, DECISIONS #6), theme/, home/
+    (placeholder), addons/ (AddonManagerScreen+VM, AddAddonScreen+VM)
+  - Fixed a real TV focus trap in text fields — rule in DECISIONS #7
+- Before that: protocol DTOs + AddonClient (18984be), Room persistence (9146fd3)
 
 ## In progress (uncommitted: NO — checkpoint commit follows this file)
 - none
 
 ## NEXT ACTION (start here)
-Phase 1 remaining, in order (MASTER_PLAN §10):
-1. **Addon manager UI** (§4.1.1): screen listing installed addons
-   (observeInstalled), URL entry field (on-screen keyboard) → install() →
-   confirmation dialog showing manifest name/description/types/resources/
-   catalogs before persisting; uninstall + reorder + enable toggle.
-   Needs a ViewModel (Hilt) + navigation from MainActivity (add
-   androidx.navigation:navigation-compose or simple state-based nav — record
-   choice in DECISIONS.md). D-pad focus per §5.4.
-2. Home screen catalog rows + Discover grid (6-col default) + search
-   (CatalogRepository fan-out over enabled addons' catalogs).
-3. Gate: browse a real AIOMetadata instance smoothly on the TV emulator.
+Phase 1 remaining (MASTER_PLAN §10):
+1. **CatalogRepository + Home screen rows.** Fan out over enabled addons'
+   manifest catalogs (skip isSearchOnly ones), fetch each via
+   AddonClient.catalog(), render as horizontal poster rows (LazyColumn of
+   LazyRows, stable keys, 2:3 posters via Coil AsyncImage). Continue Watching
+   stub row first (§5.6). Per-catalog failure chip on error (§4.1.8).
+2. Discover grid (6-col default at 1080p, LazyVerticalGrid) + density setting
+   later (§5.1); search screen using catalog `search` extra (reuse UrlField
+   focus pattern from DECISIONS #7).
+3. Gate: browse a real AIOMetadata instance smoothly on the TV emulator
+   (owner has instances — ask for a manifest URL, or use Cinemeta which is
+   already installed on the emulator from this session's test).
 
 ## Blockers / open questions
-- **No GitHub remote.** gh CLI now installed + authed (account: modernmoders),
-  but repo creation was policy-blocked for the agent: OWNER must create the
-  public repo (web UI or `gh repo create openstream-tv --public`), then any
-  session can wire + push: `git remote add origin <url> && git push -u origin main --tags`.
-- Owner approved name/license going forward (session 1, 2026-07-04).
+- none blocking. Owner approved name/license; remote is live.
 
 ## Environment notes
 - JAVA_HOME=/opt/homebrew/opt/openjdk@17 required for all gradlew calls

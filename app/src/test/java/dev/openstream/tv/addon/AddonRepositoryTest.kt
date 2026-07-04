@@ -1,14 +1,10 @@
 package dev.openstream.tv.addon
 
+import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
-import dev.openstream.tv.data.db.InstalledAddonDao
-import dev.openstream.tv.data.db.InstalledAddonEntity
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -122,36 +118,5 @@ class AddonRepositoryTest {
 
         val installed = repository.observeInstalled().first()
         assertEquals(listOf(c, a), installed.map { it.manifestUrl })
-    }
-}
-
-/** In-memory stand-in for the Room DAO. */
-private class FakeInstalledAddonDao : InstalledAddonDao {
-    private val state = MutableStateFlow<Map<String, InstalledAddonEntity>>(emptyMap())
-
-    private fun sorted() = state.value.values.sortedBy { it.sortOrder }
-
-    override fun observeAll(): Flow<List<InstalledAddonEntity>> =
-        state.map { it.values.sortedBy { e -> e.sortOrder } }
-
-    override suspend fun getAll(): List<InstalledAddonEntity> = sorted()
-
-    override suspend fun get(manifestUrl: String): InstalledAddonEntity? =
-        state.value[manifestUrl]
-
-    override suspend fun upsert(entity: InstalledAddonEntity) {
-        state.value = state.value + (entity.manifestUrl to entity)
-    }
-
-    override suspend fun delete(manifestUrl: String) {
-        state.value = state.value - manifestUrl
-    }
-
-    override suspend fun setEnabled(manifestUrl: String, enabled: Boolean) {
-        state.value[manifestUrl]?.let { upsert(it.copy(enabled = enabled)) }
-    }
-
-    override suspend fun setSortOrder(manifestUrl: String, sortOrder: Int) {
-        state.value[manifestUrl]?.let { upsert(it.copy(sortOrder = sortOrder)) }
     }
 }

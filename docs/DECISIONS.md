@@ -85,3 +85,29 @@ revisit with a superseding entry.
 
 **Rejected:** Retrofit (dynamic-URL awkwardness), Ktor client (second HTTP stack to
 learn; OkHttp is already required by Coil and MockWebServer tests).
+
+## 6. 2026-07-04 — Navigation: androidx navigation-compose (classic, string routes)
+
+**Decision:** `androidx.navigation:navigation-compose` (2.9.x) with plain string
+routes in one `AppNavHost`.
+
+**Rationale:** The screen graph will grow to ~8 destinations (home, discover,
+search, details, streams, player, settings, addons) — hand-rolled state
+navigation stops scaling past 2–3. Classic navigation-compose is the boring,
+massively documented option a new contributor already knows. Back = popBackStack
+= exactly one level, satisfying MASTER_PLAN §5.4.
+
+**Rejected:** Navigation 3 (too new — thinner docs violate the layman-contributor
+directive), manual back-stack state (doesn't scale, reimplements the wheel).
+
+## 7. 2026-07-04 — TV text-field focus rule (learned from a real bug)
+
+**Decision:** Every text input on a TV screen must route D-pad UP/DOWN out of the
+field via `onPreviewKeyEvent` + `focusManager.moveFocus(...)`, and offer an IME
+action (Go/Search) as the primary submit path.
+
+**Rationale:** Found during on-emulator verification of the add-addon flow: a
+focused Compose `BasicTextField` consumes D-pad DOWN, permanently trapping focus —
+the §5.4 "focus never lost" rule also means "never trapped". `UrlField` in
+AddAddonScreen.kt is the reference implementation for all future text inputs
+(search screen!).
