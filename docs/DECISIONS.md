@@ -1,0 +1,87 @@
+# DECISIONS.md — append-only log of non-obvious choices
+
+Format per entry: date, decision, rationale, alternatives rejected. Never rewrite
+old entries; add a new entry that supersedes.
+
+---
+
+## 1. 2026-07-04 — Pure Kotlin addon client, no stremio-core JNI (v1)
+
+**Decision:** Implement the Stremio addon protocol natively in Kotlin. Do not
+integrate `stremio-core` (Rust) via JNI in v1.
+
+**Rationale:** The addon protocol is plain REST + JSON — a Kotlin client is a few
+hundred lines. JNI + Rust toolchain (cargo-ndk, ABI matrix, memory-ownership
+hazards) multiplies build complexity and locks out layman contributors, violating
+Prime Directive 2 (KISS). We don't need Stremio account sync, its P2P engine, or
+its Ctx state machine for v1.
+
+**Escape hatch:** All addon access goes through a single `AddonClient` interface;
+`stremio-core-kotlin` can be swapped in behind it later without touching UI.
+
+**Rejected:** stremio-core-kotlin JNI bindings (build complexity), WebView-wrapping
+stremio-web (GPL entanglement + not a real TV app).
+
+## 2. 2026-07-04 — Project name: OpenStream TV
+
+**Decision:** Working name **OpenStream TV**, repo slug `openstream-tv`,
+applicationId/namespace `dev.openstream.tv`.
+
+**Rationale:** The machine already had a TV emulator AVD named
+`openstream_tv_api34` created by the owner during environment prep — strongest
+available signal of the owner's preferred name. MASTER_PLAN §10 Phase 0 allowed
+the session to pick.
+
+**Note:** Trivially renameable until the public GitHub repo is created (repo name)
+— but `applicationId` should be considered frozen once any build is distributed.
+Owner may override; if so, add a superseding entry here.
+
+## 3. 2026-07-04 — License: GPLv3
+
+**Decision:** GPLv3 for the whole app (LICENSE at repo root).
+
+**Rationale:** MASTER_PLAN §11 recommendation: matches ecosystem expectations for
+Stremio-client projects, keeps forks open, and removes all ambiguity about
+referencing GPL stremio-web code. Provisional until the owner confirms; switching
+to MIT/Apache-2.0 is possible only while there are no outside contributors and no
+stremio-web-derived code (currently true).
+
+**Rejected (for now):** MIT/Apache-2.0 — would forbid ever copying from
+stremio-web and offers weaker fork-openness guarantees.
+
+## 4. 2026-07-04 — Toolchain: AGP 9.2.1 (built-in Kotlin), Gradle 9.6.1, current AndroidX line
+
+**Decision:** AGP 9.2.1 + Gradle 9.6.1 wrapper + AGP built-in Kotlin (no
+`org.jetbrains.kotlin.android` plugin) + Kotlin plugin line 2.3.21, KSP 2.3.9,
+Hilt 2.60, Compose BOM 2026.06.01, tv-material 1.1.0, Media3 1.10.1, Room 2.8.4,
+Coil 3.5.0, OkHttp 5.4.0. compileSdk/targetSdk 37, **minSdk 23**.
+
+**Rationale (verified by building, not from docs alone):**
+- Hilt ≥2.59 hard-requires AGP 9; the mid-2026 AndroidX line (lifecycle 2.11,
+  Compose BOM 2026.06) requires AGP 9.1+ and compileSdk 37. Staying on AGP 8.x
+  would have forced downgrading every library and re-upgrading within months.
+- AGP 9 has built-in Kotlin support; applying kotlin-android is now an error.
+  See https://developer.android.com/build/migrate-to-built-in-kotlin
+- minSdk 23: Compose ≥1.8 requires API 23. Owner's lowest-end devices (onn boxes)
+  run API 29+, so 23 is a comfortable floor (MASTER_PLAN §3.1 allowed 21–23).
+- jvmTarget defaults to compileOptions targetCompatibility (17) under built-in
+  Kotlin — no explicit kotlin block needed in app/build.gradle.kts.
+
+**Rejected:** AGP 8.13.2 + Hilt 2.58 + 2025-era AndroidX (works, but ecosystem has
+moved past it; tried first and abandoned after dependency-requirement errors).
+
+## 5. 2026-07-04 — Networking: plain OkHttp + kotlinx.serialization (no Retrofit, no Ktor)
+
+**Decision:** The addon client will use OkHttp directly with kotlinx.serialization
+for JSON. Neither Retrofit nor Ktor client.
+
+**Rationale:** MASTER_PLAN §3.1 said "Retrofit or Ktor — pick one", but every addon
+has a *different, user-supplied base URL* and a tiny fixed path grammar
+(`/{resource}/{type}/{id}.json`). Retrofit's value (typed interfaces per base URL)
+mostly disappears with fully dynamic hosts, and it adds a layer a new contributor
+must learn. One `AddonClient` class building URLs by string concatenation +
+lenient `Json` decoding is simpler and easier to debug. If endpoint variety grows,
+revisit with a superseding entry.
+
+**Rejected:** Retrofit (dynamic-URL awkwardness), Ktor client (second HTTP stack to
+learn; OkHttp is already required by Coil and MockWebServer tests).
