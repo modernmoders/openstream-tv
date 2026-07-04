@@ -4,6 +4,31 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-04 — Phase 2: MediaSessionService verified (session 4, same day)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew assembleDebug && testDebugUnitTest` after moving the engine into PlaybackService (MediaSessionService §6.1) | macOS, JDK 17 | PASS (72/72) |
+| Playback through service-owned engine: resume dialog → Resume from 3:05 → video plays (progress had persisted across `adb install -r`) | AVD windowed | PASS |
+| `dumpsys media_session`: session registered, `active=true`, **"Media button session is dev.openstream.tv"** | same | PASS |
+| Hardware media keys via session: `KEYCODE_MEDIA_PAUSE` → state PAUSED(2), `KEYCODE_MEDIA_PLAY` → PLAYING(3), position ticked from the resumed offset | same | PASS |
+| Back from player: ServiceRecord count 0, "Media button session is null" — no leaked session/notification; Back = stop is deliberate TV UX | same | PASS |
+| Build note: adding an @AndroidEntryPoint service made Dagger's generated component reference `@CanIgnoreReturnValue` → added `compileOnly(errorprone-annotations)` | host | FIXED |
+| Fixture server committed as `tools/test_addon_server.py` (local-only URLs, no secrets) so future sessions stop recreating it | repo | NOTE |
+
+## 2026-07-04 — Phase 2: watch progress + Continue Watching + resume verified (session 4)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` — 72 tests (new: ProgressRepository eligibility/roundtrip/observe ×8, StreamListViewModel resume ×2, HomeViewModel continue-watching ×1) | macOS, JDK 17 | PASS (72/72) |
+| Room v1→v2 migration (watch_progress table) ran on the emulator's existing v1 DB via `adb install -r` — no migration errors, addons and app data intact | AVD windowed, cold boot | PASS |
+| **Full progress loop:** local test addon (recreated at http://10.0.2.2:8090 with catalog+meta+stream+video w/ HTTP Range) → BBB plays → seek to 2:02 → periodic save tick → Back exits player (final save) → home shows **Continue Watching first row with progress bar (~20%)** → card click → details → View streams → stream click → **"Resume from 2:34 / Start over" dialog** → Resume → playback lands at 2:34 | same | PASS (screenshots reviewed) |
+| Progress survives process death: app relaunched fresh, Continue Watching row + bar restored from Room | same | PASS |
+| Resume dialog is a real Dialog window (focus trapped, Back dismisses) — list behind unreachable while up | same | PASS |
+| Cinemeta + owner's AIOMetadata unaffected (AIO briefly toggled Disabled during the test to shorten D-pad paths; re-enabled after) | same | OK |
+| Google `gtv-videos-bucket` sample URLs now 403 (was last session's red herring) and `download.blender.org/demo/movies/BBB/` 404s — working fixture source: `download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_720p_h264.mov` (H.264 in .mov, plays fine through Media3 mp4 extractor) | host | NOTE |
+| Ended→clear path (watched item leaves Continue Watching) covered by unit tests (isResumable >95% + PlayerViewModel clearAsync on ENDED); not re-verified end-to-end on emulator | JVM tests | PASS (unit) |
+
 ## 2026-07-05 — Phase 2: details, stream list, PLAYBACK verified (session 3)
 
 | Check | Environment | Result |

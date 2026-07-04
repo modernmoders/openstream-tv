@@ -45,6 +45,9 @@ private const val OVERLAY_TIMEOUT_MS = 5_000L
  * Internal player (§6.1): Media3 PlayerView (SurfaceView) with a Compose
  * overlay for all controls. D-pad: any key wakes the overlay; CENTER
  * play/pauses; LEFT/RIGHT seek ±10s/±30s; overlay hides after 5s.
+ *
+ * The engine lives in PlaybackService; this screen binds once the service
+ * hands it over (a few ms — a black frame, not a spinner).
  */
 @Composable
 fun PlayerScreen(
@@ -52,9 +55,16 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val engineOrNull by viewModel.engine.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.hasSource) {
         if (!state.hasSource) onExit() // process death restored this route
+    }
+
+    val engine = engineOrNull
+    if (engine == null) {
+        Box(Modifier.fillMaxSize().background(Color.Black))
+        return
     }
 
     var overlayVisible by remember { mutableStateOf(true) }
@@ -66,7 +76,7 @@ fun PlayerScreen(
     // Overlay auto-hide + position ticker (only while visible).
     LaunchedEffect(overlayVisible, lastInteractionMs) {
         while (overlayVisible) {
-            val player = viewModel.engine.exoPlayer
+            val player = engine.exoPlayer
             positionText = "${player.currentPosition.asClock()} / ${player.duration.asClock()}"
             playing = player.isPlaying
             if (System.currentTimeMillis() - lastInteractionMs > OVERLAY_TIMEOUT_MS) {
@@ -90,7 +100,7 @@ fun PlayerScreen(
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                val player = viewModel.engine.exoPlayer
+                val player = engine.exoPlayer
                 when (event.key.nativeKeyCode) {
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER,
                     AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
@@ -117,10 +127,12 @@ fun PlayerScreen(
         AndroidView(
             factory = { context ->
                 PlayerView(context).apply {
-                    player = viewModel.engine.exoPlayer
                     useController = false // Compose overlay owns all controls
                 }
             },
+            // update, not factory: the service engine can arrive after the
+            // first composition and must still get the surface.
+            update = { view -> view.player = engine.exoPlayer },
             modifier = Modifier.fillMaxSize(),
         )
 

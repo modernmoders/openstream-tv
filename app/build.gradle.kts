@@ -76,6 +76,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    compileOnly(libs.errorprone.annotations)
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)

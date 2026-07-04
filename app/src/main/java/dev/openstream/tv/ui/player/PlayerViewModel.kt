@@ -1,6 +1,7 @@
 package dev.openstream.tv.ui.player
 
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,24 +10,32 @@ import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.player.ExoPlayerEngine
+import dev.openstream.tv.player.PlaybackService
 import dev.openstream.tv.player.PlayerEvent
+import dev.openstream.tv.player.PlayerHolder
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val PROGRESS_SAVE_INTERVAL_MS = 10_000L
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     currentPlayback: CurrentPlayback,
     private val progressRepository: ProgressRepository,
+    playerHolder: PlayerHolder,
 ) : ViewModel() {
 
-    /** One engine per playback session; released with the ViewModel. */
-    val engine = ExoPlayerEngine(context)
+    /**
+     * The service-owned engine (§6.1); null until [PlaybackService] is up.
+     * The screen binds its PlayerView the moment this becomes non-null.
+     */
+    val engine: StateFlow<ExoPlayerEngine?> = playerHolder.engine
 
     data class UiState(
         val title: String = "",
@@ -47,26 +56,31 @@ class PlayerViewModel @Inject constructor(
             _uiState.value = UiState(hasSource = false)
         } else {
             _uiState.value = UiState(title = req.source.title)
-            engine.play(req.source)
+            context.startService(Intent(context, PlaybackService::class.java))
             viewModelScope.launch {
-                engine.events.collect { event ->
-                    when (event) {
-                        is PlayerEvent.Ended -> {
-                            // Finished = no longer resumable; Phase 3 autoplay
-                            // will hand the NEXT episode to Continue Watching.
-                            req.mediaRef?.let { progressRepository.clearAsync(it) }
-                            _uiState.value = _uiState.value.copy(ended = true)
+                val engine = this@PlayerViewModel.engine.filterNotNull().first()
+                engine.play(req.source)
+                launch {
+                    engine.events.collect { event ->
+                        when (event) {
+                            is PlayerEvent.Ended -> {
+                                // Finished = no longer resumable; Phase 3
+                                // autoplay hands the NEXT episode to
+                                // Continue Watching.
+                                req.mediaRef?.let { progressRepository.clearAsync(it) }
+                                _uiState.value = _uiState.value.copy(ended = true)
+                            }
+                            is PlayerEvent.Error ->
+                                _uiState.value = _uiState.value.copy(error = event.message)
                         }
-                        is PlayerEvent.Error ->
-                            _uiState.value = _uiState.value.copy(error = event.message)
                     }
                 }
-            }
-            viewModelScope.launch {
-                // Crash/kill loses at most this interval of progress.
-                while (true) {
-                    delay(PROGRESS_SAVE_INTERVAL_MS)
-                    persistProgress()
+                launch {
+                    // Crash/kill loses at most this interval of progress.
+                    while (true) {
+                        delay(PROGRESS_SAVE_INTERVAL_MS)
+                        persistProgress(engine)
+                    }
                 }
             }
         }
@@ -76,7 +90,7 @@ class PlayerViewModel @Inject constructor(
      * Snapshot the player position into the progress table. Main-thread only
      * (ExoPlayer contract); the DB write itself hops to IO inside the repo.
      */
-    private fun persistProgress() {
+    private fun persistProgress(engine: ExoPlayerEngine) {
         val req = request ?: return
         val ref = req.mediaRef ?: return
         if (_uiState.value.ended) return
@@ -100,12 +114,16 @@ class PlayerViewModel @Inject constructor(
 
     fun retry() {
         val req = request ?: return
+        val engine = engine.value ?: return
         _uiState.value = _uiState.value.copy(error = null, ended = false)
         engine.play(req.source)
     }
 
     override fun onCleared() {
-        persistProgress() // exit position — the one users actually resume from
-        engine.release()
+        // Exit position — the one users actually resume from.
+        engine.value?.let { persistProgress(it) }
+        // Back from the player means stop (TV UX): tear the service down,
+        // which releases the session and the engine.
+        context.stopService(Intent(context, PlaybackService::class.java))
     }
 }

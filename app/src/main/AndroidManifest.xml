@@ -4,6 +4,10 @@
     <!-- Addon protocol + streaming are network features -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Playback runs in a foreground MediaSessionService (§6.1) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
     <!-- TV-only app: leanback UI required, touchscreen explicitly not required
          so TV devices without touch can install it. -->
     <uses-feature
@@ -30,5 +34,14 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".player.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
