@@ -22,3 +22,9 @@ captures/
 # Kotlin
 .kotlin/
 tools/bbb_720p.mov
+
+# Owner's private automation folder — contains users.json with real addon
+# tokens and passwords. NEVER commit anything under it (CLAUDE.md security).
+docs/reference/StremioSurfer/
+docs/reference/MastaP/
+.DS_Store
