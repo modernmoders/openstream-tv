@@ -37,6 +37,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true // android.util.Log no-ops in JVM tests
+    }
     // Kotlin jvmTarget defaults to compileOptions.targetCompatibility (17),
     // so no explicit kotlin { compilerOptions } block is needed.
 }

@@ -1,49 +1,49 @@
-# STATE — updated 2026-07-04T07:45 by session 1
+# STATE — updated 2026-07-05 by session 2
 
 ## Phase
-Phase 1 — Addon client + catalogs. **GATE PASSED** (real AIOMetadata browses
-on the emulator). Remaining: Discover grid + search, then tag phase-1-done.
+**Phase 1 — COMPLETE** (tag `phase-1-done`). All §10 Phase 1 boxes ticked.
+Next: Phase 2 — Details, streams, internal playback.
 
 ## Branch
-main @ origin (https://github.com/modernmoders/openstream-tv) — CI green
+main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
-- CatalogRepository (browsable-feed refs in addon order; isBrowsableFeed skips
-  extras-required catalogs) + HomeViewModel parallel fan-out with incremental
-  rows + failure chips (§4.1.5/§4.1.8) + HomeScreen poster rows
-  (CardSizeTokens 6-col, Coil AsyncImage). 46/46 tests, clean build.
-- GATE: owner's private AIOMetadata instance (URL is a SECRET — never commit;
-  it lives only in the emulator's Room DB) installed via UI; its rows render
-  alongside Cinemeta with smooth D-pad scrolling. TESTLOG has details.
-- Wild-JSON fix: FlexibleStringListSerializer (AIOMetadata sends "director"
-  as string). Security fix: failure chips no longer render addon URLs.
+- Discover (curated-catalog rail + paginated grid) and Search verified on the
+  emulator against Cinemeta + owner's AIOMetadata. 52/52 tests.
+- Root-caused and fixed two infrastructure gremlins (TESTLOG 2026-07-05):
+  iCloud corrupting builds (build output now in `build.nosync/`, DECISIONS #8)
+  and emulator snapshot clock-drift breaking TLS (cold-boot rule below).
 
 ## In progress (uncommitted: NO — checkpoint commit follows this file)
 - none
 
 ## NEXT ACTION (start here)
-1. **Discover grid**: LazyVerticalGrid, CardSizeTokens.DEFAULT_COLUMNS (6),
-   route "discover"; pick a catalog (or all-catalogs browse), paginate with
-   catalog `skip` extra on scroll end. §5.1.
-2. **Search screen**: reuse the UrlField D-pad pattern (DECISIONS #7 — this
-   was written for exactly this screen); query all search-capable catalogs
-   (`supportsExtra("search")`) in parallel; render result rows like Home.
-3. Then: focus audit vs §5, tag `phase-1-done`, update MASTER_PLAN checkboxes.
-4. Emulator state note: AVD `openstream_tv_api34` already has Cinemeta + the
-   owner's AIOMetadata installed in the app DB from the gate test.
+Phase 2 (MASTER_PLAN §10), suggested order:
+1. **Details screen**: route "details/{type}/{id}"; resolve meta via §4.1.6
+   fallback chain (meta-declaring addons → Cinemeta by IMDb id); backdrop,
+   description, seasons/episodes from `videos` array grouped by season.
+   PosterCard onClick navigates here (currently a no-op).
+2. **Stream list screen** (§4.1.5/§4.1.7): parallel fan-out over stream
+   addons via `declares("stream", type, id)`, incremental render, addon-order
+   groups, failure chips. NOTE: owner has AIOStreams instances — ask for a
+   manifest URL when testing (SECRET — never commit, same rule as always).
+3. **ExoPlayer engine** (§6.1): PlayerEngine interface + ExoPlayerEngine +
+   MediaSessionService + Compose overlay; PlayableSource from §3.2 (already
+   spec'd; create domain/PlayableSource.kt). Wire proxyHeaders + notWebReady.
+4. **Watch progress**: Room `media_ref`-keyed progress (§8.4 — NOT IMDb-keyed),
+   Continue Watching row goes live, resume dialog.
+5. Gate: full browse→play→resume loop vs a real AIOStreams instance.
 
-## Warnings for future sessions
-- NEVER run two gradle invocations concurrently (background + foreground) —
-  it corrupted intermediates once (" 2.class" files, stale APKs). Serial only;
-  full clean fixes it if it recurs.
-- Real addon URLs are secrets — CLAUDE.md security rule.
+## Environment rules (hard-earned — do not skip)
+- **Cold-boot the emulator** (`-no-snapshot`) or verify `adb shell date -u`
+  matches host: snapshot resume leaves the clock hours behind → TLS "chain
+  validation failed" → every fresh-cert addon fails with NETWORK chips.
+- **Never run two gradle invocations concurrently.**
+- Build outputs are in `app/build.nosync/` (NOT app/build/) — iCloud-proofing,
+  DECISIONS #8. APK: app/build.nosync/outputs/apk/debug/app-debug.apk
+- JAVA_HOME=/opt/homebrew/opt/openjdk@17; SDK/adb per CLAUDE.md.
+- Real addon URLs are secrets (CLAUDE.md rule). Emulator has Cinemeta +
+  owner's AIOMetadata installed in-app.
 
 ## Blockers / open questions
-- none blocking.
-
-## Environment notes
-- JAVA_HOME=/opt/homebrew/opt/openjdk@17 required for all gradlew calls
-- SDK at /opt/homebrew/share/android-commandlinetools (gitignored local.properties)
-- TV emulator AVD: openstream_tv_api34; headless boot:
-  `$SDK/emulator/emulator -avd openstream_tv_api34 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect`
-- adb at $SDK/platform-tools/adb
+- none.

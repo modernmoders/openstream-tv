@@ -4,6 +4,18 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Phase 1 COMPLETE: Discover + Search verified; two root causes fixed (session 2)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` — 52 tests (new: DiscoverViewModel select/paginate/dedupe/error, SearchViewModel fan-out/blank/failed-rows) | macOS, JDK 17, clean build | PASS (52/52) |
+| Discover: left-rail catalog picker (Cinemeta + owner's AIO curated/merged catalogs), grid deep-browse of AIO "Trending" with rich posters, D-pad selection | AVD `openstream_tv_api34`, live internet | PASS (screenshots) |
+| Search: "batman" fanned out to all search-capable catalogs; Popular·movie + Popular·series rows rendered in parallel | same | PASS |
+| **ROOT CAUSE 1 — iCloud build corruption:** repo lives in iCloud-synced ~/Documents; CloudDocs created "name 2.class" conflict copies in build intermediates → recurring dexBuilderDebug failures, one stale APK, inflated test XMLs. Confirmed with `brctl status`. Fix: all build output → `build.nosync/` (DECISIONS #8). | host | FIXED |
+| **ROOT CAUSE 2 — emulator clock drift → TLS failures:** snapshot resume left guest clock 9h behind; fresh Cloudflare edge certs "not yet valid" → "Chain validation failed" → NETWORK chips for a healthy addon. Fix: cold-boot emulator (`-no-snapshot`) so clock syncs from host RTC. Future sessions: always cold-boot or verify `adb shell date`. | AVD | FIXED |
+| Also fixed: OkHttp callTimeout counted queue time with 60+ catalogs on one host (DECISIONS #9 — per-request timeouts + 16/host concurrency) | app | FIXED |
+| Known-good failure: AIO "Trakt Recommendations" catalog hangs server-side 60s+ (curl too) — app shows failure chip after read timeout, exactly per §4.1.5/§4.1.8 | live addon | BY DESIGN |
+
 ## 2026-07-04 — Phase 1 GATE: catalog rows vs real AIOMetadata (session 1)
 
 | Check | Environment | Result |

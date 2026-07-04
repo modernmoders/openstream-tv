@@ -2,6 +2,9 @@
 .gradle/
 build/
 app/build/
+# custom build dir name that iCloud Drive won't sync (see root build.gradle.kts)
+build.nosync/
+app/build.nosync/
 
 # Android Studio / IntelliJ
 .idea/

@@ -306,10 +306,10 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [x] Empty-shell app boots on TV emulator with a focusable "hello" screen. *(2026-07-04: verified on AVD openstream_tv_api34, TESTLOG.md.)*
 
 ### Phase 1 — Addon client + catalogs
-- [ ] Protocol DTOs + lenient parsing; `AddonClient`; manifest install/uninstall/reorder UI (URL entry with on-screen keyboard).
-- [ ] Mock addon fixture server + parser test suite.
-- [ ] Home screen: Continue Watching stub + catalog rows from installed addons; Discover grid (6-col default, density setting); search (via catalog `search` extra).
-- [ ] Gate: install a real AIOMetadata instance and browse its catalogs smoothly on the TV emulator.
+- [x] Protocol DTOs + lenient parsing; `AddonClient`; manifest install/uninstall/reorder UI (URL entry with on-screen keyboard). *(2026-07-04/05)*
+- [x] Mock addon fixture server + parser test suite. *(2026-07-04: MockAddonServer + fixtures; 52 unit tests by phase end.)*
+- [x] Home screen: Continue Watching stub + catalog rows from installed addons; Discover grid (6-col default, density setting); search (via catalog `search` extra). *(2026-07-05: density SETTING deferred to Phase 4 §10 where the settings screen lives; grid derives from CardSizeTokens so it's one number. Continue Watching renders when progress exists — Phase 2 wires it.)*
+- [x] Gate: install a real AIOMetadata instance and browse its catalogs smoothly on the TV emulator. *(2026-07-04/05: owner's private instance; TESTLOG. Found+fixed: string-vs-array metas, URL-leaking chips, OkHttp queue timeouts, iCloud build corruption, emulator clock-drift TLS failures.)*
 
 ### Phase 2 — Details, streams, internal playback
 - [ ] Details screen (meta, seasons/episodes from `videos` array, cast, backdrop).

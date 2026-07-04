@@ -111,3 +111,33 @@ focused Compose `BasicTextField` consumes D-pad DOWN, permanently trapping focus
 the §5.4 "focus never lost" rule also means "never trapped". `UrlField` in
 AddAddonScreen.kt is the reference implementation for all future text inputs
 (search screen!).
+
+## 8. 2026-07-05 — Build outputs live in `build.nosync/` (iCloud-proofing)
+
+**Decision:** All Gradle build output goes to `build.nosync/` (root
+build.gradle.kts sets `layout.buildDirectory` for every project).
+
+**Rationale:** The owner's repo lives under `~/Documents`, which macOS iCloud
+Drive syncs. iCloud created `"name 2.class"` conflict copies inside
+`app/build/intermediates` while builds ran, breaking D8 with unfathomable
+errors and once producing a silently stale APK. Confirmed via `brctl status`
+showing CloudDocs churning on build intermediates. Folders whose name ends in
+`.nosync` are excluded from iCloud sync. Harmless on Linux/CI/Windows.
+
+**Residual risk:** `.gradle/` (config cache) still syncs; if config-cache
+corruption appears, either exclude `~/Documents/Claude` from iCloud or move the
+repo out of `~/Documents` (owner's call).
+
+**Rejected:** moving the repo (owner's filesystem, session paths keyed to it),
+`--project-cache-dir` (CLI-flag-only, hurts "buildable by anyone").
+
+## 9. 2026-07-05 — Addon HTTP: per-request timeouts, higher per-host concurrency
+
+**Decision:** OkHttpClient uses connect(10s)/read(15s) timeouts — NOT
+`callTimeout` — with dispatcher maxRequests=32, maxRequestsPerHost=16.
+
+**Rationale:** One AIOMetadata instance exposes 60+ catalogs on one host. With
+OkHttp's default 5-per-host and a 15s callTimeout (which counts dispatcher
+QUEUE time), the home fan-out filled the queue and healthy queued calls died at
+15s ("couldn't reach the addon" for an addon answering curl in 3s). Read
+timeout still enforces the §4.1.5 budget against genuinely stalled addons.

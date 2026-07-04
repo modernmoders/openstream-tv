@@ -130,6 +130,9 @@ class OkHttpAddonClient @Inject constructor(
                     }
                 }
             } catch (e: IOException) {
+                // Log the exception class: the on-screen chip is URL-free by
+                // design, so logcat is where diagnosis happens (§4.1.8 "logged").
+                android.util.Log.w("AddonClient", "request failed: $url", e)
                 Result.failure(
                     AddonRequestException(
                         url, AddonRequestException.Reason.NETWORK, e.message ?: "network error", e
