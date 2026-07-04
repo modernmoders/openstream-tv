@@ -4,6 +4,13 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-04 — Phase 1: AddonRepository + Room persistence (session 1)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` — 33 tests total; new AddonRepositoryTest: install/persist, same-manifest-id coexistence (§4.2), reinstall keeps order+enabled, failed install stores nothing, invalid URL fast-fail, uninstall+reorder | macOS, JDK 17, local JVM | PASS (33/33) |
+| `./gradlew assembleDebug` (Room schema exported to app/schemas/) | same | PASS |
+
 ## 2026-07-04 — Phase 1: addon protocol DTOs + AddonClient (session 1)
 
 | Check | Environment | Result |

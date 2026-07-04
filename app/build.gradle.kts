@@ -41,6 +41,11 @@ android {
     // so no explicit kotlin { compilerOptions } block is needed.
 }
 
+ksp {
+    // Version-controlled Room schema history — needed for safe migrations later.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
