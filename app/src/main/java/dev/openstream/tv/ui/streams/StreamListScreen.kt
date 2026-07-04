@@ -2,17 +2,27 @@ package dev.openstream.tv.ui.streams
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
@@ -20,6 +30,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
@@ -34,11 +45,20 @@ fun StreamListScreen(
     onPlay: () -> Unit = {},
     viewModel: StreamListViewModel = hiltViewModel(),
 ) {
-    val onStreamSelected: (Stream) -> Unit = { stream ->
-        if (viewModel.stage(stream)) onPlay()
-    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    /** Stream awaiting a Resume/Start-over decision (progress exists for this video). */
+    var pendingResume by remember { mutableStateOf<Stream?>(null) }
+
+    val onStreamSelected: (Stream) -> Unit = { stream ->
+        if (state.resumePositionMs != null) {
+            pendingResume = stream
+        } else if (viewModel.stage(stream)) {
+            onPlay()
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -93,6 +113,61 @@ fun StreamListScreen(
                             }
                         }
                 }
+            }
+        }
+    }
+
+    pendingResume?.let { stream ->
+        ResumeDialog(
+            resumePositionMs = state.resumePositionMs ?: 0,
+            onResume = {
+                pendingResume = null
+                if (viewModel.stage(stream, state.resumePositionMs ?: 0)) onPlay()
+            },
+            onStartOver = {
+                pendingResume = null
+                if (viewModel.stage(stream)) onPlay()
+            },
+            onDismiss = { pendingResume = null },
+        )
+    }
+    }
+}
+
+/**
+ * "Resume from X / Start over" (§10 Phase 2). A real Dialog window so D-pad
+ * focus is trapped inside and Back dismisses — the list behind must not be
+ * reachable while it's up (§5.4 focus predictability).
+ */
+@Composable
+private fun ResumeDialog(
+    resumePositionMs: Long,
+    onResume: () -> Unit,
+    onStartOver: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val resumeFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { resumeFocus.requestFocus() }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .background(Color(0xF0181822))
+                .padding(32.dp),
+        ) {
+            Text(
+                text = "You've watched part of this",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onResume,
+                    modifier = Modifier.focusRequester(resumeFocus),
+                ) { Text("Resume from ${resumePositionMs.asClock()}") }
+                Button(onClick = onStartOver) { Text("Start over") }
             }
         }
     }

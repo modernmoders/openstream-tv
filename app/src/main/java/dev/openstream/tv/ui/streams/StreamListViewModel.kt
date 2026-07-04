@@ -8,7 +8,10 @@ import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.addon.StreamRepository
 import dev.openstream.tv.addon.toPlayableSource
+import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.player.CurrentPlayback
+import dev.openstream.tv.player.PlaybackRequest
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,12 +28,20 @@ import kotlinx.coroutines.launch
 class StreamListViewModel @Inject constructor(
     private val streamRepository: StreamRepository,
     private val currentPlayback: CurrentPlayback,
+    private val progressRepository: ProgressRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     val type: String = checkNotNull(savedStateHandle["type"])
     val videoId: String = checkNotNull(savedStateHandle["videoId"])
     val title: String = savedStateHandle["title"] ?: ""
+
+    /** Meta id for progress rows; movies arrive without one — video id IS the meta id. */
+    private val metaId: String = savedStateHandle.get<String>("metaId")?.ifBlank { null } ?: videoId
+    private val poster: String? = savedStateHandle.get<String>("poster")?.ifBlank { null }
+
+    /** Progress key for this video (§8.4): opaque, addon-kind for now. */
+    private val mediaRef = MediaRef.addon(videoId)
 
     sealed interface GroupState {
         val addon: InstalledAddon
@@ -44,6 +55,8 @@ class StreamListViewModel @Inject constructor(
         val initializing: Boolean = true,
         /** One group per addon, user's addon order (§4.1.7). */
         val groups: List<GroupState> = emptyList(),
+        /** Non-null = show "Resume from X / Start over" before playing. */
+        val resumePositionMs: Long? = null,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -53,20 +66,31 @@ class StreamListViewModel @Inject constructor(
      * Stage the stream for the player screen; returns false for sources v1
      * can't play (the UI shows those as notes, so this is belt-and-braces).
      */
-    fun stage(stream: Stream): Boolean {
+    fun stage(stream: Stream, startPositionMs: Long = 0): Boolean {
         val source = stream.toPlayableSource(title.ifBlank { stream.name ?: "Stream" })
             ?: return false
-        currentPlayback.source = source
+        currentPlayback.request = PlaybackRequest(
+            source = source.copy(startPositionMs = startPositionMs),
+            mediaRef = mediaRef,
+            metaId = metaId,
+            metaType = type,
+            poster = poster,
+        )
         return true
     }
 
     init {
         viewModelScope.launch {
+            _uiState.update {
+                it.copy(resumePositionMs = progressRepository.resumePositionFor(mediaRef))
+            }
+        }
+        viewModelScope.launch {
             val addons = streamRepository.streamAddons(type, videoId)
-            _uiState.value = UiState(
-                initializing = false,
-                groups = addons.map { GroupState.Loading(it) },
-            )
+            // update{}, not value=: must not clobber the parallel resume-position load
+            _uiState.update {
+                it.copy(initializing = false, groups = addons.map { a -> GroupState.Loading(a) })
+            }
             addons.forEach { addon ->
                 launch {
                     val newState = streamRepository.fetch(addon, type, videoId).fold(

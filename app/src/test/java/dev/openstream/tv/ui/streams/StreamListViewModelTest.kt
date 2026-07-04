@@ -5,11 +5,17 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.StreamRepository
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
+import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
+import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.domain.MediaRef
+import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -19,6 +25,7 @@ import kotlinx.coroutines.test.setMain
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -28,6 +35,8 @@ class StreamListViewModelTest {
     private lateinit var server: MockAddonServer
     private lateinit var addonRepository: AddonRepository
     private lateinit var streamRepository: StreamRepository
+    private lateinit var progressRepository: ProgressRepository
+    private lateinit var currentPlayback: CurrentPlayback
 
     @Before
     fun setUp() {
@@ -38,6 +47,9 @@ class StreamListViewModelTest {
         )
         addonRepository = AddonRepository(client, FakeInstalledAddonDao())
         streamRepository = StreamRepository(client, addonRepository)
+        progressRepository =
+            ProgressRepository(FakeWatchProgressDao(), CoroutineScope(Dispatchers.Unconfined))
+        currentPlayback = CurrentPlayback()
     }
 
     @After
@@ -48,7 +60,8 @@ class StreamListViewModelTest {
 
     private fun viewModel(type: String, videoId: String) = StreamListViewModel(
         streamRepository,
-        dev.openstream.tv.player.CurrentPlayback(),
+        currentPlayback,
+        progressRepository,
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
 
@@ -104,5 +117,52 @@ class StreamListViewModelTest {
         }
 
         assertTrue(state.groups.single() is GroupState.Failed)
+    }
+
+    @Test
+    fun `existing progress surfaces resume position and stage applies it`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/stream/movie/tt1254207.json", Fixtures.load("streams_full"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+        progressRepository.save(
+            WatchProgress(
+                ref = MediaRef.addon("tt1254207"),
+                metaId = "tt1254207", metaType = "movie", title = "T", poster = null,
+                positionMs = 120_000, durationMs = 600_000, updatedAt = 1,
+            )
+        )
+
+        val vm = viewModel("movie", "tt1254207")
+        val state = vm.uiState.first {
+            it.resumePositionMs != null && it.groups.any { g -> g is GroupState.Loaded }
+        }
+
+        assertEquals(120_000L, state.resumePositionMs)
+
+        val stream = (state.groups.first() as GroupState.Loaded).streams.first()
+        assertTrue(vm.stage(stream, state.resumePositionMs!!))
+        val request = currentPlayback.request!!
+        assertEquals(120_000L, request.source.startPositionMs)
+        assertEquals(MediaRef.addon("tt1254207"), request.mediaRef)
+    }
+
+    @Test
+    fun `no progress means no resume offer and stage starts from zero`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/stream/movie/tt1254207.json", Fixtures.load("streams_full"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+
+        val vm = viewModel("movie", "tt1254207")
+        val state = vm.uiState.first {
+            !it.initializing && it.groups.any { g -> g is GroupState.Loaded }
+        }
+
+        assertNull(state.resumePositionMs)
+
+        val stream = (state.groups.first() as GroupState.Loaded).streams.first()
+        assertTrue(vm.stage(stream))
+        assertEquals(0L, currentPlayback.request!!.source.startPositionMs)
     }
 }

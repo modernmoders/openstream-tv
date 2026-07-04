@@ -40,7 +40,7 @@ import dev.openstream.tv.ui.theme.MutedText
  */
 @Composable
 fun DetailsScreen(
-    onOpenStreams: (type: String, videoId: String, title: String) -> Unit,
+    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -84,10 +84,16 @@ fun DetailsScreen(
                 onSelectSeason = viewModel::selectSeason,
                 onPlayMovie = {
                     // Movies: video id == meta id (spec)
-                    onOpenStreams(viewModel.type, viewModel.id, state.meta!!.name)
+                    onOpenStreams(
+                        viewModel.type, viewModel.id, state.meta!!.name,
+                        viewModel.id, state.meta!!.poster,
+                    )
                 },
                 onPlayEpisode = { video ->
-                    onOpenStreams(viewModel.type, video.id, video.displayTitle)
+                    onOpenStreams(
+                        viewModel.type, video.id, video.displayTitle,
+                        viewModel.id, state.meta!!.poster,
+                    )
                 },
             )
         }

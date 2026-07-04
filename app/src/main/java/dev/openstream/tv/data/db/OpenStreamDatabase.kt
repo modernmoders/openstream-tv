@@ -9,10 +9,11 @@ import androidx.room.RoomDatabase
  * [InstalledAddonEntity]).
  */
 @Database(
-    entities = [InstalledAddonEntity::class],
-    version = 1,
+    entities = [InstalledAddonEntity::class, WatchProgressEntity::class],
+    version = 2,
     exportSchema = true,
 )
 abstract class OpenStreamDatabase : RoomDatabase() {
     abstract fun installedAddonDao(): InstalledAddonDao
+    abstract fun watchProgressDao(): WatchProgressDao
 }

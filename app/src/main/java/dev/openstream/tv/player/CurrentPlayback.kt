@@ -1,19 +1,34 @@
 package dev.openstream.tv.player
 
+import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.PlayableSource
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * One playback order: the source to play plus the identity needed to track
+ * progress. [mediaRef] is nullable on purpose (§8.2) — a source without one
+ * simply plays untracked; nothing in the player may require it.
+ */
+data class PlaybackRequest(
+    val source: PlayableSource,
+    val mediaRef: MediaRef?,
+    /** Where a Continue Watching click navigates back to (details screen). */
+    val metaId: String,
+    val metaType: String,
+    val poster: String?,
+)
 
 /**
  * Hand-off slot between the stream list and the player screen.
  *
  * Why not navigation args: a PlayableSource carries a header map and
  * subtitle list that don't survive URL-encoding sanely. Trade-off: if the
- * process dies mid-playback, restoring the player route finds no source and
- * falls back to the home screen — acceptable for v1 (progress persistence in
- * the next unit makes resume-from-home work anyway).
+ * process dies mid-playback, restoring the player route finds no request and
+ * falls back to the home screen — acceptable for v1 (watch progress makes
+ * resume-from-home work anyway).
  */
 @Singleton
 class CurrentPlayback @Inject constructor() {
-    var source: PlayableSource? = null
+    var request: PlaybackRequest? = null
 }

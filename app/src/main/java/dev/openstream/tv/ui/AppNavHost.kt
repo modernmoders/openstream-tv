@@ -31,9 +31,10 @@ object Routes {
     const val DETAILS = "details/{type}/{id}"
     fun details(item: MetaItem) = "details/${Uri.encode(item.type)}/${Uri.encode(item.id)}"
 
-    const val STREAMS = "streams/{type}/{videoId}?title={title}"
-    fun streams(type: String, videoId: String, title: String) =
-        "streams/${Uri.encode(type)}/${Uri.encode(videoId)}?title=${Uri.encode(title)}"
+    const val STREAMS = "streams/{type}/{videoId}?title={title}&metaId={metaId}&poster={poster}"
+    fun streams(type: String, videoId: String, title: String, metaId: String, poster: String?) =
+        "streams/${Uri.encode(type)}/${Uri.encode(videoId)}?title=${Uri.encode(title)}" +
+            "&metaId=${Uri.encode(metaId)}&poster=${Uri.encode(poster.orEmpty())}"
 
     /** Source arrives via CurrentPlayback, not route args (see that class). */
     const val PLAYER = "player"
@@ -62,8 +63,8 @@ fun AppNavHost() {
             AddAddonScreen(onInstalled = { navController.popBackStack() })
         }
         composable(Routes.DETAILS) {
-            DetailsScreen(onOpenStreams = { type, videoId, title ->
-                navController.navigate(Routes.streams(type, videoId, title))
+            DetailsScreen(onOpenStreams = { type, videoId, title, metaId, poster ->
+                navController.navigate(Routes.streams(type, videoId, title, metaId, poster))
             })
         }
         composable(Routes.STREAMS) {

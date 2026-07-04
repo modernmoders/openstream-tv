@@ -7,6 +7,8 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.coroutineScope
@@ -26,6 +28,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
+    private val progressRepository: ProgressRepository,
 ) : ViewModel() {
 
     sealed interface RowState {
@@ -40,6 +43,8 @@ class HomeViewModel @Inject constructor(
         /** True until the addon list itself has been read from Room. */
         val initializing: Boolean = true,
         val hasAddons: Boolean = false,
+        /** Always-first row when non-empty (§5.6). */
+        val continueWatching: List<WatchProgress> = emptyList(),
         /** Rows in addon-order then manifest-order; each loads independently. */
         val rows: List<RowState> = emptyList(),
     )
@@ -49,15 +54,24 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            progressRepository.observeContinueWatching().collect { list ->
+                _uiState.update { it.copy(continueWatching = list) }
+            }
+        }
+        viewModelScope.launch {
             // collectLatest: an addon change cancels in-flight fetches and
             // restarts the fan-out against the new addon set.
             addonRepository.observeInstalled().collectLatest { addons ->
                 val refs = catalogRepository.catalogRefs(addons)
-                _uiState.value = HomeUiState(
-                    initializing = false,
-                    hasAddons = addons.any { it.enabled },
-                    rows = refs.map { RowState.Loading(it) },
-                )
+                // update{}, not value=: the Continue Watching collector above
+                // runs in parallel and its state must survive an addon change.
+                _uiState.update {
+                    it.copy(
+                        initializing = false,
+                        hasAddons = addons.any { a -> a.enabled },
+                        rows = refs.map { r -> RowState.Loading(r) },
+                    )
+                }
                 coroutineScope {
                     refs.forEach { ref ->
                         launch {

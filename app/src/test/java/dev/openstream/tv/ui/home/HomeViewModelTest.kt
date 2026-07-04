@@ -4,10 +4,15 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
+import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
+import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.domain.MediaRef
+import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -31,6 +36,7 @@ class HomeViewModelTest {
     private lateinit var server: MockAddonServer
     private lateinit var addonRepository: AddonRepository
     private lateinit var catalogRepository: CatalogRepository
+    private lateinit var progressRepository: ProgressRepository
 
     @Before
     fun setUp() {
@@ -41,6 +47,8 @@ class HomeViewModelTest {
         )
         addonRepository = AddonRepository(client, FakeInstalledAddonDao())
         catalogRepository = CatalogRepository(client)
+        progressRepository =
+            ProgressRepository(FakeWatchProgressDao(), CoroutineScope(Dispatchers.Unconfined))
     }
 
     @After
@@ -51,7 +59,7 @@ class HomeViewModelTest {
 
     @Test
     fun `no addons yields empty state, not rows`() = runTest(timeout = 60.seconds) {
-        val viewModel = HomeViewModel(addonRepository, catalogRepository)
+        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
         val state = viewModel.uiState.first { !it.initializing }
         assertTrue(state.rows.isEmpty())
         assertTrue(!state.hasAddons)
@@ -64,7 +72,7 @@ class HomeViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = HomeViewModel(addonRepository, catalogRepository)
+        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
         }
@@ -81,11 +89,27 @@ class HomeViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = HomeViewModel(addonRepository, catalogRepository)
+        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
         }
 
         assertTrue(state.rows.single() is RowState.Failed)
+    }
+
+    @Test
+    fun `resumable progress appears as continue watching, newest first`() = runTest(timeout = 60.seconds) {
+        fun progress(id: String, updatedAt: Long) = WatchProgress(
+            ref = MediaRef.addon(id),
+            metaId = id, metaType = "movie", title = id, poster = null,
+            positionMs = 300_000, durationMs = 1_200_000, updatedAt = updatedAt,
+        )
+        progressRepository.save(progress("tt1", updatedAt = 1))
+        progressRepository.save(progress("tt2", updatedAt = 2))
+
+        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
+        val state = viewModel.uiState.first { it.continueWatching.isNotEmpty() }
+
+        assertEquals(listOf("tt2", "tt1"), state.continueWatching.map { it.ref.externalId })
     }
 }

@@ -22,6 +22,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.ui.components.ContinueWatchingCard
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
@@ -81,6 +84,11 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
             ) {
+                if (state.continueWatching.isNotEmpty()) {
+                    item(key = "continue-watching") {
+                        ContinueWatchingRow(state.continueWatching, onItemClick)
+                    }
+                }
                 items(state.rows, key = { it.ref.key }) { row ->
                     CatalogRow(row, onItemClick)
                 }
@@ -97,6 +105,41 @@ private fun EmptyHome() {
             style = MaterialTheme.typography.bodyLarge,
             color = MutedText,
         )
+    }
+}
+
+/**
+ * Always-first row when non-empty (§5.6). A click navigates to the item's
+ * DETAILS page — from there the resume dialog (stream list) takes over.
+ */
+@Composable
+private fun ContinueWatchingRow(
+    entries: List<WatchProgress>,
+    onItemClick: (MetaItem) -> Unit,
+) {
+    Column {
+        Text(
+            text = "Continue Watching",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 48.dp),
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
+        ) {
+            items(entries, key = { "${it.ref.sourceKind}:${it.ref.externalId}" }) { p ->
+                ContinueWatchingCard(
+                    progress = p,
+                    onClick = {
+                        // Minimal MetaItem: details re-resolves the full meta by id.
+                        onItemClick(
+                            MetaItem(id = p.metaId, type = p.metaType, name = p.title, poster = p.poster)
+                        )
+                    },
+                )
+            }
+        }
     }
 }
 

@@ -35,6 +35,7 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
 
@@ -175,13 +176,4 @@ private fun CenterPanel(message: String, actions: @Composable () -> Unit) {
             actions()
         }
     }
-}
-
-private fun Long.asClock(): String {
-    if (this <= 0) return "0:00"
-    val totalSeconds = this / 1000
-    val h = totalSeconds / 3600
-    val m = (totalSeconds % 3600) / 60
-    val s = totalSeconds % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
