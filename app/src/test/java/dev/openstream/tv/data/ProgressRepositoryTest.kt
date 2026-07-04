@@ -96,6 +96,21 @@ class ProgressRepositoryTest {
     }
 
     @Test
+    fun `observeResumePosition re-emits as playback saves land`() = runTest(timeout = 60.seconds) {
+        val repo = repo()
+        val p = progress()
+
+        assertNull(repo.observeResumePosition(p.ref).first())
+
+        repo.save(p)
+        assertEquals(300_000L, repo.observeResumePosition(p.ref).first())
+
+        // Player saved a later position while this screen sat on the back stack
+        repo.save(p.copy(positionMs = 900_000))
+        assertEquals(900_000L, repo.observeResumePosition(p.ref).first())
+    }
+
+    @Test
     fun `observeContinueWatching reflects saves and clears`() = runTest(timeout = 60.seconds) {
         val repo = repo()
         val p = progress()

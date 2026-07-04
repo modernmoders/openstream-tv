@@ -19,6 +19,9 @@ class FakeWatchProgressDao : WatchProgressDao {
     override suspend fun get(sourceKind: String, externalId: String): WatchProgressEntity? =
         rows.value[sourceKind to externalId]
 
+    override fun observe(sourceKind: String, externalId: String): Flow<WatchProgressEntity?> =
+        rows.map { it[sourceKind to externalId] }
+
     override suspend fun upsert(entity: WatchProgressEntity) {
         rows.update { it + ((entity.sourceKind to entity.externalId) to entity) }
     }

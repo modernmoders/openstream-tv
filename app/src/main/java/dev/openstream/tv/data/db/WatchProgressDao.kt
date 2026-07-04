@@ -19,6 +19,9 @@ interface WatchProgressDao {
     @Query("SELECT * FROM watch_progress WHERE sourceKind = :sourceKind AND externalId = :externalId")
     suspend fun get(sourceKind: String, externalId: String): WatchProgressEntity?
 
+    @Query("SELECT * FROM watch_progress WHERE sourceKind = :sourceKind AND externalId = :externalId")
+    fun observe(sourceKind: String, externalId: String): Flow<WatchProgressEntity?>
+
     @Upsert
     suspend fun upsert(entity: WatchProgressEntity)
 

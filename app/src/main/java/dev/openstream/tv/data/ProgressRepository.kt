@@ -35,6 +35,15 @@ class ProgressRepository @Inject constructor(
     suspend fun resumePositionFor(ref: MediaRef): Long? =
         get(ref)?.takeIf { isResumable(it) }?.positionMs
 
+    /**
+     * Live [resumePositionFor]: re-emits as playback saves land, so a screen
+     * that survives on the back stack while the player runs never offers a
+     * stale resume position.
+     */
+    fun observeResumePosition(ref: MediaRef): Flow<Long?> =
+        dao.observe(ref.sourceKind, ref.externalId)
+            .map { entity -> entity?.toDomain()?.takeIf { isResumable(it) }?.positionMs }
+
     suspend fun save(progress: WatchProgress) = dao.upsert(progress.toEntity())
 
     suspend fun clear(ref: MediaRef) = dao.delete(ref.sourceKind, ref.externalId)

@@ -81,8 +81,10 @@ class StreamListViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(resumePositionMs = progressRepository.resumePositionFor(mediaRef))
+            // Collect, don't read once: this ViewModel survives on the back
+            // stack while the player advances progress (found in Phase 2 gate).
+            progressRepository.observeResumePosition(mediaRef).collect { positionMs ->
+                _uiState.update { it.copy(resumePositionMs = positionMs) }
             }
         }
         viewModelScope.launch {
