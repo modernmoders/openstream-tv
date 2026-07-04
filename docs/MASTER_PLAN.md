@@ -312,11 +312,11 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [x] Gate: install a real AIOMetadata instance and browse its catalogs smoothly on the TV emulator. *(2026-07-04/05: owner's private instance; TESTLOG. Found+fixed: string-vs-array metas, URL-leaking chips, OkHttp queue timeouts, iCloud build corruption, emulator clock-drift TLS failures.)*
 
 ### Phase 2 — Details, streams, internal playback
-- [ ] Details screen (meta, seasons/episodes from `videos` array, cast, backdrop).
-- [ ] Stream list: parallel fan-out, incremental render, addon-order preserved, failure chips.
-- [ ] ExoPlayer engine + MediaSessionService + Compose overlay controls + subtitle rendering/selection.
-- [ ] Watch progress: Room persistence, Continue Watching row goes live, resume dialog.
-- [ ] Gate: full browse→play→resume loop against a real AIOStreams instance.
+- [x] Details screen (meta, seasons/episodes from `videos` array, cast, backdrop). *(2026-07-04: commit d6c14f7.)*
+- [x] Stream list: parallel fan-out, incremental render, addon-order preserved, failure chips. *(2026-07-04: commit d6c14f7, §4.1.5 fan-out.)*
+- [x] ExoPlayer engine + MediaSessionService + Compose overlay controls + subtitle rendering/selection. *(2026-07-04: commits 6b910d3 + 8bfa221; media keys verified via dumpsys.)*
+- [x] Watch progress: Room persistence, Continue Watching row goes live, resume dialog. *(2026-07-04: commit 17adcfd; process-death persistence verified.)*
+- [x] Gate: full browse→play→resume loop against a real AIOStreams instance. *(2026-07-04: owner's private instance, real debrid 1080p stream; TESTLOG. Found+fixed: stale resume position on back-stack stream list — progress now observed as a Flow.)*
 
 ### Phase 3 — Autoplay + external players
 - [ ] `AutoplayController` per §7 (state machine unit-tested first, then wired).

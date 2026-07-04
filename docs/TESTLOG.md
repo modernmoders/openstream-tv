@@ -4,6 +4,17 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-04 — Phase 2 GATE PASSED: full loop vs owner's real AIOStreams instance (sessions 4–5)
+
+| Check | Environment | Result |
+|---|---|---|
+| Installed owner's AIOStreams instance (URL withheld — secret, typed via adb, never in files) through Addons → Add addon: manifest fetched (v2.30.5, 48 catalogs, stream/catalog/meta/subtitles) → preview → Install | AVD windowed, cold boot, live internet | PASS (session 4) |
+| **GATE §10 Phase 2:** Continue Watching → details (owner's AIOMetadata meta) → View streams → AIOStreams group renders with server-side order preserved (starred 1080p WEB-DLs first) → real debrid HTTPS 1080p stream plays (BUFFERING→PLAYING 1.0x, frames verified) → resume dialog offers saved position → resume lands at exact saved ms (14:53 = 893400ms, DB-confirmed) → MEDIA_FAST_FORWARD seeks through the session (926s→990s) → Back (exit save) → Continue Watching → re-entry dialog shows updated 16:52 (=1012770ms in Room) | same | PASS (screenshots + dumpsys + DB dump) |
+| **Bug found & fixed: stale resume position on back-stack screen.** StreamListViewModel loaded `resumePositionMs` once in `init`; returning from the player to the still-alive stream list and reselecting a stream offered the pre-playback position (14:53 instead of 16:52) while Room already held the fresh value. Fix: new `WatchProgressDao.observe(ref)` + `ProgressRepository.observeResumePosition(ref)` Flow, collected by the ViewModel. Re-tested same-screen reselect after play+seek: dialog shows fresh 17:46. | same | FIXED + PASS |
+| `./gradlew assembleDebug && testDebugUnitTest` — 73 tests (new: observeResumePosition re-emits as saves land) | macOS, JDK 17 | PASS (73/73) |
+| Session-4 tail note: "server is temporarily limiting requests" chip from owner's instance during first gate attempt — transient server-side throttle, gone after session gap; app surfaced it as a failure chip per §4.1.8 | live addon | BY DESIGN |
+| Focus wart for Phase 4 audit: stream list initial focus misses the first card (first DPAD_CENTER no-ops; DOWN/UP re-anchors) — same family as Addons-screen wart in STATE.md | AVD | NOTE |
+
 ## 2026-07-04 — Phase 2: MediaSessionService verified (session 4, same day)
 
 | Check | Environment | Result |
