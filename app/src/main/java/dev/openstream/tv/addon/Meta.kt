@@ -28,8 +28,12 @@ data class MetaItem(
     val country: String? = null,
     val awards: String? = null,
     val website: String? = null,
+    // string-or-array in the wild (AIOMetadata sends "director": "Name")
+    @Serializable(with = FlexibleStringListSerializer::class)
     val genres: List<String> = emptyList(),
+    @Serializable(with = FlexibleStringListSerializer::class)
     val director: List<String> = emptyList(),
+    @Serializable(with = FlexibleStringListSerializer::class)
     val cast: List<String> = emptyList(),
     val links: List<MetaLink> = emptyList(),
     /** Episodes/uploads for series and channels; absent for movies. */

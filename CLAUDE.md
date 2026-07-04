@@ -12,6 +12,11 @@ MANDATORY before ending work or when a usage-limit warning appears:
 3. Commit: chore(state): checkpoint. Push.
 
 Rules:
+- SECURITY: Real addon manifest URLs are secrets — they embed the owner's
+  personal config tokens. NEVER write them into any tracked file (code,
+  fixtures, docs, TESTLOG, commit messages). In committed artifacts use only
+  Cinemeta (https://v3-cinemeta.strem.io/manifest.json) or the MockAddonServer.
+  Refer to private instances as "owner's AIOStreams/AIOMetadata instance".
 - KISS/YAGNI/SOLID. Code must be readable by a new developer; comment the why.
 - Never break the Live-TV compatibility constraints in MASTER_PLAN.md §8.
 - Record non-obvious choices in docs/DECISIONS.md.

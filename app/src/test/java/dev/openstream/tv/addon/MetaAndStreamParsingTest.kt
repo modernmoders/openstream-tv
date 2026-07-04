@@ -89,6 +89,32 @@ class MetaAndStreamParsingTest {
     }
 
     @Test
+    fun `string-valued array fields parse as single-element lists`() {
+        // Regression: AIOMetadata sends director/writer as plain strings where
+        // the spec says arrays (found live during the Phase 1 gate test).
+        val sloppy = """
+            {
+                "metas": [{
+                    "id": "tt0486655",
+                    "type": "movie",
+                    "name": "Stardust",
+                    "director": "Matthew Vaughn",
+                    "genres": ["Fantasy", "Adventure"],
+                    "cast": null,
+                    "_hasPoster": true,
+                    "app_extras": { "cacheMaxAge": 3600 }
+                }]
+            }
+        """
+        val meta = AddonJson
+            .decodeFromString(CatalogResponse.serializer(), sloppy)
+            .metas.single()
+        assertEquals(listOf("Matthew Vaughn"), meta.director)
+        assertEquals(listOf("Fantasy", "Adventure"), meta.genres)
+        assertTrue(meta.cast.isEmpty())
+    }
+
+    @Test
     fun `empty and blank responses yield empty lists`() {
         assertTrue(
             AddonJson.decodeFromString(StreamsResponse.serializer(), Fixtures.load("streams_empty"))

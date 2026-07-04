@@ -136,6 +136,14 @@ data class ManifestCatalog(
 
     /** A catalog that requires `search` is search-only: never show as a feed row. */
     val isSearchOnly: Boolean get() = requiresExtra("search")
+
+    /**
+     * True when the catalog can be fetched with no extra args at all — only
+     * these become home-screen rows. (Cinemeta's "New" catalogs, for example,
+     * require a `genre` extra and would 404 as a plain feed.)
+     */
+    val isBrowsableFeed: Boolean
+        get() = extra.none { it.isRequired } && extraRequired.isEmpty()
 }
 
 @Serializable
