@@ -1,9 +1,6 @@
 package dev.openstream.tv.ui.addons
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,9 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,22 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
@@ -45,6 +27,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.addon.Manifest
 import dev.openstream.tv.ui.addons.AddAddonViewModel.UiState
+import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
 
@@ -86,11 +69,12 @@ fun AddAddonScreen(
             color = MutedText,
         )
 
-        UrlField(
+        TvTextField(
             value = url,
             onValueChange = { url = it },
             onSubmit = { viewModel.fetchPreview(url) },
             focusRequester = urlFieldFocus,
+            keyboardType = KeyboardType.Uri,
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -166,50 +150,3 @@ private fun ManifestPreview(
     }
 }
 
-@Composable
-private fun UrlField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    focusRequester: FocusRequester,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val focusManager = LocalFocusManager.current
-
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Uri,
-            imeAction = ImeAction.Go,
-        ),
-        keyboardActions = KeyboardActions(onGo = { onSubmit() }),
-        textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
-        cursorBrush = SolidColor(Color.White),
-        interactionSource = interactionSource,
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(focusRequester)
-            // A focused text field consumes D-pad by default, trapping focus
-            // (§5.4: focus must never be lost OR trapped). Route vertical
-            // D-pad presses to normal focus navigation instead.
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (event.key) {
-                    Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
-                    Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
-                    else -> false
-                }
-            }
-            .background(Color(0xFF1A1A28), RoundedCornerShape(8.dp))
-            .border(
-                width = 2.dp,
-                // Visible focus indicator on every focusable (§5.4)
-                color = if (isFocused) Color(0xFF4DA3FF) else Color(0xFF33334A),
-                shape = RoundedCornerShape(8.dp),
-            )
-            .padding(16.dp),
-    )
-}

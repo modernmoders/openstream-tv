@@ -27,8 +27,10 @@ class CatalogRepository @Inject constructor(
     }
 
     /**
-     * The home-screen row list: enabled addons in user order, each addon's
-     * browsable-feed catalogs in manifest order (§4.1.7 ordering is sacred).
+     * The home/discover catalog list: enabled addons in user order, each
+     * addon's browsable-feed catalogs in manifest order (§4.1.7 ordering is
+     * sacred). The owner curates these lists server-side (merged catalogs in
+     * AIOMetadata) — the app's job is to honor that curation, not re-sort it.
      */
     fun catalogRefs(addons: List<InstalledAddon>): List<CatalogRef> =
         addons
@@ -39,8 +41,21 @@ class CatalogRepository @Inject constructor(
                     .map { CatalogRef(addon, it) }
             }
 
-    /** Fetch one catalog's items (plain feed, no extras). */
-    suspend fun fetch(ref: CatalogRef): Result<List<MetaItem>> =
-        client.catalog(ref.addon.baseUrl, ref.catalog.type, ref.catalog.id)
+    /** Catalogs that can serve a text search (modern or legacy notation). */
+    fun searchRefs(addons: List<InstalledAddon>): List<CatalogRef> =
+        addons
+            .filter { it.enabled }
+            .flatMap { addon ->
+                addon.manifest.catalogs
+                    .filter { it.supportsExtra("search") }
+                    .map { CatalogRef(addon, it) }
+            }
+
+    /** Fetch one catalog's items, optionally with extras (search/skip/genre). */
+    suspend fun fetch(
+        ref: CatalogRef,
+        extra: Map<String, String> = emptyMap(),
+    ): Result<List<MetaItem>> =
+        client.catalog(ref.addon.baseUrl, ref.catalog.type, ref.catalog.id, extra)
             .map { metas -> metas.filter { it.isUsable } }
 }

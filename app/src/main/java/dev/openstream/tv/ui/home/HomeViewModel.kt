@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.AddonRepository
-import dev.openstream.tv.addon.AddonRequestException
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,22 +45,6 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
-
-    /**
-     * Short, URL-free text for the on-screen failure chip. Addon URLs are
-     * user secrets (they can embed personal config tokens) — never render
-     * them on screen; the full exception stays available for a future debug
-     * overlay (§6.1).
-     */
-    private fun Throwable.toChipMessage(): String =
-        when ((this as? AddonRequestException)?.reason) {
-            AddonRequestException.Reason.NETWORK -> "couldn't reach the addon"
-            AddonRequestException.Reason.HTTP_STATUS -> "the addon answered with an error"
-            AddonRequestException.Reason.BAD_JSON -> "the addon sent an unreadable response"
-            AddonRequestException.Reason.INVALID_URL,
-            AddonRequestException.Reason.INVALID_MANIFEST,
-            null -> "failed to load"
-        }
 
     init {
         viewModelScope.launch {
