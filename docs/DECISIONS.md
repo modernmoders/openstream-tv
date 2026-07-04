@@ -141,3 +141,29 @@ OkHttp's default 5-per-host and a 15s callTimeout (which counts dispatcher
 QUEUE time), the home fan-out filled the queue and healthy queued calls died at
 15s ("couldn't reach the addon" for an addon answering curl in 3s). Read
 timeout still enforces the §4.1.5 budget against genuinely stalled addons.
+
+## 10. 2026-07-04 — Autoplay §7.1: pure reducer + lexicographic cascade
+
+**Decision:** `AutoplayStateMachine` is a pure `(state, event) → (state,
+effect)` reducer fed 1-second Tick events; the §7.1 tier cascade is ONE
+lexicographic comparator (bingeGroup match, then same-addon, same-resolution,
+episode-normalized filename similarity, cache flag, then addon priority +
+server order) in `StreamCascade.rank`, which returns the full ordered attempt
+list.
+
+**Rationale:** the flagship feature's rules (patience ceiling, 3-attempt
+fallthrough, never-a-dead-screen) must be exhaustively unit-testable without
+clocks or coroutines (§9.2). A comparator preserves the spec's STRICT tier
+ordering — a weighted score would let a strong low-tier signal (cache flag)
+outvote a weak higher-tier one (filename similarity).
+
+**Non-obvious choices:**
+- Attempt starts EARLY on a tier-1 bingeGroup hit (no better candidate can
+  arrive by definition) and when all addons settle; the 60s patience ceiling
+  only governs stragglers. At 60s: play whatever ranked, else manual list.
+- All-settled-with-zero-playable goes straight to the manual list — waiting
+  out the clock when every addon already answered helps nobody.
+- Specials (season 0) sort AFTER regular seasons in binge order; unnumbered
+  videos keep array order at the very end.
+- "2160p" folds into "4k" for resolution equality; cache detection is the ⚡
+  marker or the words cached/instant (AIOStreams convention).
