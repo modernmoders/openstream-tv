@@ -1,0 +1,44 @@
+{
+    "id": "org.openstream.fixture",
+    "version": "1.2.3",
+    "name": "Fixture Addon",
+    "description": "Exercises every manifest shape the protocol allows",
+    "logo": "https://example.com/logo.png",
+    "background": "https://example.com/bg.jpg",
+    "contactEmail": "fixtures@example.com",
+    "types": ["movie", "series", "channel", "tv"],
+    "idPrefixes": ["tt", "fix"],
+    "resources": [
+        "catalog",
+        { "name": "meta", "types": ["series", "channel"], "idPrefixes": ["fix"] },
+        { "name": "stream", "types": ["movie", "series"] },
+        "subtitles"
+    ],
+    "catalogs": [
+        {
+            "type": "movie",
+            "id": "top",
+            "name": "Top Movies",
+            "extra": [
+                { "name": "search", "isRequired": false },
+                { "name": "genre", "isRequired": false, "options": ["Action", "Comedy"], "optionsLimit": 1 },
+                { "name": "skip", "isRequired": false }
+            ]
+        },
+        {
+            "type": "series",
+            "id": "searchonly",
+            "name": "Search Only",
+            "extra": [ { "name": "search", "isRequired": true } ]
+        },
+        {
+            "type": "tv",
+            "id": "legacy",
+            "name": "Legacy Extra Notation",
+            "extraSupported": ["search", "genre"],
+            "extraRequired": ["search"]
+        }
+    ],
+    "behaviorHints": { "adult": false, "p2p": true, "configurable": true, "configurationRequired": false },
+    "somethingNewerClientsUnderstand": { "nested": [1, 2, 3] }
+}

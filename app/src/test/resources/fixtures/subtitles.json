@@ -1,0 +1,6 @@
+{
+    "subtitles": [
+        { "id": "en-1", "url": "https://example.com/subs/en.srt", "lang": "eng" },
+        { "id": "de-1", "url": "https://example.com/subs/de.srt", "lang": "ger" }
+    ]
+}

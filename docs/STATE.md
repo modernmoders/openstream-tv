@@ -1,44 +1,48 @@
-# STATE — updated 2026-07-04T03:30 by session 1
+# STATE — updated 2026-07-04T05:10 by session 1
 
 ## Phase
-Phase 0 — COMPLETE (all §10 Phase 0 boxes ticked; tag `phase-0-done`).
-Next phase: Phase 1 — Addon client + catalogs.
+Phase 1 — Addon client + catalogs (in progress)
 
 ## Branch
-main (no remote yet — see blockers)
+main (remote pending — see blockers)
 
 ## Just finished
-- Full Phase 0: git repo + GPLv3, Android scaffold (builds green), continuity
-  docs, CI workflow, hello screen verified on TV emulator (TESTLOG.md 2026-07-04)
+- Addon protocol layer complete and tested (27/27 unit tests green):
+  - `addon/` DTOs with lenient parsing: Manifest (string-or-object resources,
+    legacy extraSupported/extraRequired), MetaItem/Video (title-or-name),
+    Stream (bingeGroup, proxyHeaders, infoHash kept but flagged not-v1-playable),
+    Subtitle, response envelopes. `domain/ContentType` keeps CHANNEL/TV (§8).
+  - `AddonClient` interface + `OkHttpAddonClient` (Result-based errors with
+    Reason enum for failure chips; extraProps path segments; stremio:// rewrite)
+  - `di/NetworkModule` (15s call timeout = §4.1.5 per-addon budget)
+  - Mock addon fixture server (§9.1) + fixtures: valid/malformed/delayed/empty
+- Gemini reference doc committed to docs/reference/
 
-## In progress (uncommitted: NO)
+## In progress (uncommitted: NO — checkpoint commit follows this file)
 - none
 
 ## NEXT ACTION (start here)
-1. Start Phase 1 with the mock addon fixture server + protocol DTOs (MASTER_PLAN
-   §9.1 says mock server first).
-2. Create: `app/src/test/java/dev/openstream/tv/addon/` — MockWebServer fixtures
-   serving canned manifest/catalog/meta/stream JSON (valid, malformed, delayed,
-   empty variants), then `app/src/main/java/dev/openstream/tv/addon/` DTOs with
-   lenient kotlinx.serialization parsing, tested against the fixtures.
-3. Authoritative spec: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/protocol.md
-   — implement against it, not memory.
-4. Acceptance: DTO parse tests green incl. malformed-JSON cases; `AddonClient`
-   interface defined per MASTER_PLAN §3.2/§4.
+Phase 1 remaining, in order (MASTER_PLAN §10):
+1. **AddonRepository + Room persistence for installed addons.** Key addons by
+   manifest URL (not manifest id — multiple AIOStreams instances must coexist,
+   §4.2). Room entity: manifest URL (PK), raw manifest JSON, install order,
+   enabled flag. Install/uninstall/reorder operations. Unit tests with the
+   existing MockAddonServer.
+2. Manifest install UI (URL entry w/ on-screen keyboard, show name/description/
+   types/resources/catalogs before confirming — §4.1.1).
+3. Home screen catalog rows + Discover grid (6-col default) + search.
+4. Gate: browse a real AIOMetadata instance smoothly on the TV emulator.
 
-## Blockers / open questions (none block Phase 1 coding)
-- **No GitHub remote.** OWNER ACTION: create public repo (suggested `openstream-tv`),
-  then `git remote add origin <url> && git push -u origin main --tags`.
-  Or `brew install gh && gh auth login` so sessions can push. Until then, §2.2
-  rule 6 (push after every commit) is impossible — commits stay local.
-- Gemini reference doc missing from docs/reference/ (owner to supply).
-- Name "OpenStream TV" + GPLv3 are session-picked per plan; owner may veto
-  (DECISIONS.md #2/#3) — cheap to change until the remote exists.
+## Blockers / open questions
+- **No GitHub remote.** gh CLI now installed + authed (account: modernmoders),
+  but repo creation was policy-blocked for the agent: OWNER must create the
+  public repo (web UI or `gh repo create openstream-tv --public`), then any
+  session can wire + push: `git remote add origin <url> && git push -u origin main --tags`.
+- Owner approved name/license going forward (session 1, 2026-07-04).
 
 ## Environment notes
 - JAVA_HOME=/opt/homebrew/opt/openjdk@17 required for all gradlew calls
-- SDK at /opt/homebrew/share/android-commandlinetools (in gitignored
-  local.properties — recreate with `echo "sdk.dir=/opt/homebrew/share/android-commandlinetools" > local.properties`)
-- TV emulator: AVD `openstream_tv_api34`; boot headless with
+- SDK at /opt/homebrew/share/android-commandlinetools (gitignored local.properties)
+- TV emulator AVD: openstream_tv_api34; headless boot:
   `$SDK/emulator/emulator -avd openstream_tv_api34 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect`
-- adb lives at $SDK/platform-tools/adb (not on default PATH)
+- adb at $SDK/platform-tools/adb

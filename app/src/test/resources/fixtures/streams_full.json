@@ -1,0 +1,39 @@
+{
+    "streams": [
+        {
+            "name": "Fixture 4K",
+            "description": "Friends S01E01 2160p WEB-DL",
+            "url": "https://cdn.example.com/friends-s01e01-2160p.mkv",
+            "behaviorHints": {
+                "bingeGroup": "fixture-2160p-webdl",
+                "notWebReady": true,
+                "proxyHeaders": { "request": { "User-Agent": "OpenStream", "Authorization": "Bearer x" } },
+                "filename": "Friends.S01E01.2160p.WEB-DL.mkv",
+                "videoSize": 4294967296
+            },
+            "subtitles": [
+                { "id": "en1", "url": "https://example.com/en.srt", "lang": "eng" }
+            ]
+        },
+        {
+            "name": "Fixture 1080p",
+            "title": "Friends S01E01 1080p (legacy title field)",
+            "url": "https://cdn.example.com/friends-s01e01-1080p.mp4",
+            "behaviorHints": { "bingeGroup": "fixture-1080p" }
+        },
+        {
+            "name": "Torrent Source",
+            "description": "Not playable in v1",
+            "infoHash": "6366e0a6d44d49c8fa09c04669375c024e42bf7e",
+            "fileIdx": 0
+        },
+        {
+            "name": "External",
+            "externalUrl": "https://www.netflix.com/title/70153404"
+        },
+        {
+            "description": "Stream with no name and no hints at all",
+            "url": "https://cdn.example.com/bare.mp4"
+        }
+    ]
+}

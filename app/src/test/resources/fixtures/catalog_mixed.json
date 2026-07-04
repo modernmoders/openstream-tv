@@ -1,0 +1,37 @@
+{
+    "metas": [
+        {
+            "id": "tt1254207",
+            "type": "movie",
+            "name": "Big Buck Bunny",
+            "poster": "https://example.com/bbb.jpg",
+            "posterShape": "poster",
+            "releaseInfo": "2008",
+            "imdbRating": "6.4",
+            "genres": ["Animation", "Comedy"]
+        },
+        {
+            "id": "fix:series:1",
+            "type": "series",
+            "name": "Fixture Show",
+            "poster": "https://example.com/fs.jpg"
+        },
+        {
+            "id": "fix:channel:1",
+            "type": "channel",
+            "name": "Fixture Channel",
+            "posterShape": "square"
+        },
+        {
+            "id": "fix:tv:1",
+            "type": "tv",
+            "name": "Fixture Live TV",
+            "posterShape": "landscape"
+        },
+        {
+            "id": "fix:future:1",
+            "type": "hologram",
+            "name": "Unknown Type Item"
+        }
+    ]
+}

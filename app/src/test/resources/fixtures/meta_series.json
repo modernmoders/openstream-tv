@@ -1,0 +1,45 @@
+{
+    "meta": {
+        "id": "tt0108778",
+        "type": "series",
+        "name": "Friends",
+        "poster": "https://example.com/friends.jpg",
+        "background": "https://example.com/friends-bg.jpg",
+        "logo": "https://example.com/friends-logo.png",
+        "description": "Six young people, on their own and struggling to survive.",
+        "releaseInfo": "1994-2004",
+        "imdbRating": "8.9",
+        "runtime": "22m",
+        "genres": ["Comedy", "Romance"],
+        "cast": ["Jennifer Aniston", "Courteney Cox"],
+        "links": [
+            { "name": "Comedy", "category": "genre", "url": "stremio:///discover" }
+        ],
+        "behaviorHints": { "defaultVideoId": null },
+        "videos": [
+            {
+                "id": "tt0108778:1:1",
+                "name": "Pilot",
+                "season": 1,
+                "episode": 1,
+                "released": "1994-09-22T20:00:00.000Z",
+                "overview": "Monica and the gang introduce Rachel to the real world.",
+                "thumbnail": "https://example.com/s01e01.jpg"
+            },
+            {
+                "id": "tt0108778:1:2",
+                "title": "The One with the Sonogram at the End",
+                "season": 1,
+                "episode": 2,
+                "released": "1994-09-29T20:00:00.000Z"
+            },
+            {
+                "id": "tt0108778:embedded",
+                "title": "Episode With Embedded Stream",
+                "season": 1,
+                "episode": 3,
+                "streams": [ { "url": "https://example.com/embedded.mp4" } ]
+            }
+        ]
+    }
+}
