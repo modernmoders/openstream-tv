@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimal platform theme: no ActionBar, dark window background so the
+         brief pre-Compose frame doesn't flash white on TVs. All real theming
+         happens in Compose (tv-material). -->
+    <style name="Theme.OpenStream" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
