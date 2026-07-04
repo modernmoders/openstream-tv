@@ -1,73 +1,64 @@
-# STATE — updated 2026-07-05 by session 3
+# STATE — updated 2026-07-04 by session 4
 
 ## Phase
-Phase 2 — Details, streams, internal playback (3 of 5 units done).
+Phase 2 — Details, streams, internal playback (5 of 5 units built; GATE remains).
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
-- Details screen (MetaRepository §4.1.6 chain w/ Cinemeta fallback; movie +
-  series layouts verified on emulator) — commit d6c14f7.
-- Stream list (fan-out §4.1.5, addon-order sacred §4.1.7, unsupported-source
-  notes §4.1.4) — same commit.
-- **Playback engine works end-to-end** (this checkpoint's commit):
-  PlayableSource/SubtitleTrack (§3.2), PlayerEngine + ExoPlayerEngine
-  (headers, subtitle configs, generous buffering, §6.1 plain-language error
-  mapping), CurrentPlayback hand-off, PlayerScreen (PlayerView + Compose
-  overlay, D-pad seek/pause, error panel w/ Retry, end panel).
-  Verified with a local test addon (scratchpad script recreatable from
-  TESTLOG description; serves any /stream/movie/*.json). 61/61 tests.
-- Fixed a real lost-update race in all fan-out ViewModels (atomic update{}).
+- **Watch progress + Continue Watching + resume** (commit 17adcfd):
+  MediaRef key (§8.4), Room v2 `watch_progress` + migration (schema 2.json),
+  ProgressRepository (resume window 60s..95%, pure fns unit-tested),
+  PlayerViewModel 10s saves + exit save + ENDED clear, resume dialog
+  (real Dialog, focus-trapped) on the stream list, Continue Watching
+  always-first home row with progress-bar cards. Full loop verified on
+  emulator incl. process death + reinstall persistence.
+- **MediaSessionService** (commit 8bfa221): PlaybackService owns
+  engine+session, PlayerHolder hands engine to UI, media keys verified via
+  dumpsys (PAUSED/PLAYING through the session), clean teardown on Back.
+- Fixture addon server now committed: `tools/test_addon_server.py`
+  (download bbb_720p.mov per its docstring; Google sample bucket is dead).
+- 72/72 unit tests.
 
 ## In progress (uncommitted: NO — checkpoint commit follows this file)
 - none
 
 ## NEXT ACTION (start here)
-Phase 2 remaining:
-1. **Watch progress + Continue Watching + resume** (§10 Phase 2 item 4):
-   - Room: `watch_progress` table keyed (source_kind, external_id) = MediaRef
-     (§8.4 — NOT IMDb-keyed; movies: kind="addon", id=meta id; episodes:
-     id=video id). Columns: positionMs, durationMs, updatedAt, title,
-     poster, type (for the row card + details resume).
-   - PlayerScreen: persist position every ~10s + on exit (player.currentPosition).
-   - Continue Watching row = always-first home row (§5.6) when non-empty;
-     click → details (or straight to streams w/ resume position).
-   - Resume dialog on details/streams when progress exists (§10): "Resume from
-     X / Start over" → PlayableSource.startPositionMs.
-2. **MediaSessionService** (§6.1): move ExoPlayer into a MediaSessionService
-   so hardware media keys + assistant work and playback survives UI churn.
-3. Gate: browse→play→resume loop vs a real AIOStreams instance (ask owner for
-   manifest URL — SECRET, never commit).
+**Phase 2 GATE:** full browse→play→resume loop against a real AIOStreams
+instance. BLOCKED on owner supplying an AIOStreams manifest URL in chat
+(SECRET — never commit/display; install via the app UI only).
+Steps once URL arrives:
+1. Cold-boot windowed emulator, install current APK (or build main).
+2. Install the AIOStreams URL via Addons → Add addon (type with adb input
+   text; URL never goes in any file).
+3. Pick a movie (Cinemeta/AIO catalog) → details → streams (AIO groups must
+   keep server-side order) → play a debrid HTTPS stream → seek → back →
+   Continue Watching → resume dialog → resume.
+4. Log results in TESTLOG (no URLs), tick Phase 2 gate in MASTER_PLAN §10,
+   then start Phase 3: AutoplayController state machine (§7.1) unit tests
+   first — PlayerEvent.Ended + "Playback finished" panel are the hook points.
+
+If the URL hasn't arrived: start Phase 3 §7.1 state machine (pure Kotlin,
+fully testable without any addon).
 
 ## Environment rules (hard-earned — do not skip)
 - **Playback testing needs a WINDOWED emulator** (`-gpu auto`, NO
-  `-no-window`): the goldfish H.264 decoder fails to init headless
-  (DecoderInitializationException) and videos won't play.
-- **Cold-boot the emulator** (`-no-snapshot`) or verify `adb shell date -u`:
-  snapshot clock drift breaks TLS for fresh certs.
+  `-no-window`): goldfish H.264 decoder fails headless.
+- **Cold-boot the emulator** (`-no-snapshot`) or verify `adb shell date -u`
+  matches host: snapshot clock drift breaks TLS for fresh certs.
 - **Never run two gradle invocations concurrently.**
 - Build outputs in `app/build.nosync/` (iCloud-proofing, DECISIONS #8).
+  APK: app/build.nosync/outputs/apk/debug/app-debug.apk
 - JAVA_HOME=/opt/homebrew/opt/openjdk@17; SDK/adb per CLAUDE.md.
 - Real addon URLs are secrets. Emulator app-DB has Cinemeta + owner's
-  AIOMetadata + "Local Test Addon" (http://10.0.2.2:8090 — harmless leftover;
-  its server script is gone, so its rows just show failure chips unless the
-  script is recreated per TESTLOG).
-- On the Addons screen, initial D-pad focus lands on the FIRST ROW's toggle,
-  not "Add addon" — press UP first. (Known UX wart for the Phase 4 audit,
-  along with: reaching the home header takes one UP per row — needs a
-  focus shortcut.)
-
-## Environment rules (hard-earned — do not skip)
-- **Cold-boot the emulator** (`-no-snapshot`) or verify `adb shell date -u`
-  matches host: snapshot resume leaves the clock hours behind → TLS "chain
-  validation failed" → every fresh-cert addon fails with NETWORK chips.
-- **Never run two gradle invocations concurrently.**
-- Build outputs are in `app/build.nosync/` (NOT app/build/) — iCloud-proofing,
-  DECISIONS #8. APK: app/build.nosync/outputs/apk/debug/app-debug.apk
-- JAVA_HOME=/opt/homebrew/opt/openjdk@17; SDK/adb per CLAUDE.md.
-- Real addon URLs are secrets (CLAUDE.md rule). Emulator has Cinemeta +
-  owner's AIOMetadata installed in-app.
+  AIOMetadata + Local Test Addon (http://10.0.2.2:8090 — run
+  `python3 tools/test_addon_server.py` to bring it alive; video download
+  in its docstring).
+- Focus warts for Phase 4 audit: Addons screen initial focus lands on first
+  row's toggle (press UP for "Add addon"); home header needs one UP per row.
+- Emulator D-pad quirk: too many BACKs exits the app entirely; relaunch with
+  `adb shell am start -n dev.openstream.tv/.MainActivity`.
 
 ## Blockers / open questions
-- none.
+- Phase 2 gate needs owner's AIOStreams manifest URL (requested in chat).
