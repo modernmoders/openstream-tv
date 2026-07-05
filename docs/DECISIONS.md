@@ -377,3 +377,38 @@ session-scoped on purpose: a persistent preferred-language setting belongs
 to the Phase 4 settings screen (record there when it lands). The fixture
 addon now serves two synthetic .srt tracks (cue every 10 s) so caption
 selection stays emulator-testable without real streams.
+
+## 20. 2026-07-05 — R8 release build, debug-signed, as the deploy channel for the boxes
+
+**Decision:** The onn boxes (32-bit, 2–3 GB RAM) ran unoptimized DEBUG
+builds — the owner's "choppy animation" report is largely debug overhead
+(box audit, DECISIONS in TESTLOG 2026-07-05 alpha.5). `release` now builds
+with R8 + resource shrinking (APK 18.6 MB → 3.2 MB) and is deliberately
+signed with the DEBUG keystore so `adb install -r` upgrades the boxes'
+existing installs in place — addon DB and watch progress survive. Proper
+release signing is a Phase 5 concern. Proguard: library consumer rules are
+trusted; only our kotlinx-serialization DTO serializers get explicit keeps
+(app/proguard-rules.pro). Verified on-emulator before deploy: home rows,
+Discover tree, stream fetch, resume dialog, playback frames.
+
+## 21. 2026-07-05 — Cleartext HTTP allowed app-wide (both build types)
+
+**Decision:** The first R8 release smoke test failed with "CLEARTEXT
+communication not permitted": release builds had the platform default
+(HTTPS-only, targetSdk ≥ 28), and the old debug-only overlay allowed http
+ONLY to 10.0.2.2/localhost — meaning http addons/streams were silently
+broken everywhere but the emulator fixture. Stremio addons routinely serve
+plain-HTTP streams (Live-TV/IPTV especially — §8 compatibility is a hard
+constraint), so `android:usesCleartextTraffic="true"` now sits in the MAIN
+manifest and the debug overlay is deleted (a networkSecurityConfig would
+silently override the flag). Debug and release now have identical network
+policy.
+
+## 22. 2026-07-05 — Always-running animations read their clock in the draw/layer phase only
+
+**Decision:** The Discover ghost loader (figure-8 comet, GhostLoader.kt) and
+skeleton shimmer cards animate by reading their `infiniteTransition` value
+INSIDE the Canvas draw lambda / `graphicsLayer{}` block — draw/layer-phase
+invalidation only, zero per-frame recomposition or layout. On 32-bit boxes
+this is the difference between a free animation and a janky one; treat it
+as the house rule for any loader/pulse/ambient motion added later.

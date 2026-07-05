@@ -20,14 +20,25 @@ android {
         targetSdk = 37
         // Bump both for every pre-release: the Phase 5 in-app updater will
         // compare versionCode, and Android refuses to upgrade over an equal one.
-        versionCode = 6
-        versionName = "0.3.0-alpha.6"
+        versionCode = 7
+        versionName = "0.3.0-alpha.7"
     }
 
     buildTypes {
         release {
-            // No shrinking yet (YAGNI until release phase); debug-first project.
-            isMinifyEnabled = false
+            // R8 on: the onn boxes are 32-bit with 2-3 GB RAM and the owner
+            // reported animation jank — minified builds are the single
+            // biggest smoothness lever there (box audit, TESTLOG 2026-07-05).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            // Debug-signed on purpose: `adb install -r` then upgrades the
+            // boxes' existing debug installs in place, keeping the addon DB
+            // and watch progress. Proper release signing is a Phase 5 task.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

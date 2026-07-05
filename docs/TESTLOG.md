@@ -4,6 +4,23 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — alpha.7: R8 release build, Discover perf + ghost loader, View chip (session 10)
+
+Owner feedback round 4: Discover takes ~15 s on first click and chip focus is choppy while loading; wants loading placeholders + an "artsy full-screen loading effect with ghostly motion" that "runs screamingly well"; wants the View chip spaced out / visually distinct; couldn't see the Back button (wasn't deployed yet).
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `assembleRelease` + `testDebugUnitTest` — 185 tests | macOS, JDK 17 | PASS (185/185; APK 18.6 MB → 3.2 MB minified) |
+| **R8 regression found & fixed:** release blocked cleartext HTTP ("CLEARTEXT communication … not permitted", logcat) — old debug overlay only allowed http to 10.0.2.2, so http addons/streams were broken OFF-emulator too. Fix: `usesCleartextTraffic="true"` in main manifest, overlay deleted (DECISIONS #21) | AVD `openstream_tv_api34`, release APK | FIXED + PASS |
+| Release smoke: boots over existing install (data kept — CW row intact), home rows load (kotlinx-serialization + Room + Hilt + Coil under R8), Discover tree + pickers, stream fetch, resume dialog "Resume from 6:44", playback renders frames | same | PASS (screenshots) |
+| Ghost loader: dotted figure-8 with comet + fading tail fills the content area while a catalog loads; verified via `emu network speed gsm` throttle; comet position advances between shots; draw-phase-only animation (DECISIONS #22) | same | PASS (screenshots) |
+| Poster placeholders: grid paints solid card shapes on frame 1, posters fill in (visible mid-load); skeleton shimmer row replaces "Loading…" text for page-2+ fetches | same | PASS |
+| Discover perf: sort no longer runs inside the grid lambda (was re-sorting the full list every recomposition); items get contentType; PosterCard now honors the density setting (was hardcoded 6-col width) | code + emulator | PASS |
+| View chip: pushed to the far edge (weight spacer), OutlinedButton "⚙ View" — visually distinct from the tree pickers | same | PASS (screenshot) |
+| Discover "adult" genre on owner's AIO addon returns empty → "Nothing in this catalog" (not an error) | same | PASS (noted) |
+| **Deployed alpha.7 (R8 release) to BOTH onn boxes** via network adb `install -r` — upgrade in place, versionName=0.3.0-alpha.7 confirmed on both | onn 4K pro + 4K Plus | DONE |
+| NOT verified here: real-world smoothness on the boxes (debug→R8 is the big lever; owner eyeballs it), and the 15 s first-load is addon-server latency — masked by the ghost loader, not eliminated | — | owner check |
+
 ## 2026-07-05 — on-screen Back button on every screen below Home (session 10)
 
 §10 elder-friendly: users shouldn't need to know which remote key escapes a screen. Shared `BackButton` on Discover/Search/Addons/Add addon/Details/Streams; pops exactly one level (same as remote BACK). Rule: Back must never take a screen's initial focus — screens anchor their primary action with a FocusRequester instead.

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -36,15 +37,17 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
 import dev.openstream.tv.ui.components.BackButton
+import dev.openstream.tv.ui.components.GhostLoadingOverlay
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SkeletonPosterCard
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
-import dev.openstream.tv.ui.theme.MutedText
 
 /**
  * Discover: Stremio-style category tree (§5.1). A filter bar of three pickers
@@ -127,19 +130,33 @@ fun DiscoverScreen(
                 }
             }
             if (state.types.isNotEmpty()) {
-                Button(onClick = { openPicker = Picker.VIEW }) {
-                    Text("View")
+                // View is display settings, not a tree level — pushed to the
+                // far edge and outlined so it reads apart from the pickers
+                // (owner request 2026-07-05).
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(onClick = { openPicker = Picker.VIEW }) {
+                    Text("⚙ View")
                 }
             }
         }
 
+        // Sort once per (items, mode) change — inside the grid lambda it
+        // re-sorted the full list on every recomposition, which is exactly
+        // when frames are scarce (pages streaming in while the user moves).
+        val shown = remember(state.items, state.view.sort) {
+            DiscoverSort.apply(state.items, state.view.sort)
+        }
         when {
             state.types.isEmpty() -> RowMessage(
                 "Install an addon with catalogs to discover things",
                 horizontalPadding = 0.dp,
             )
             state.error != null -> RowMessage("⚠ ${state.error}", horizontalPadding = 0.dp)
-            state.items.isEmpty() && state.loading -> RowMessage("Loading…", horizontalPadding = 0.dp)
+            state.items.isEmpty() && state.loading -> GhostLoadingOverlay(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            )
             state.items.isEmpty() -> RowMessage("Nothing in this catalog", horizontalPadding = 0.dp)
             else -> LazyVerticalGrid(
                 state = gridState,
@@ -149,13 +166,24 @@ fun DiscoverScreen(
                 // Scroll-axis headroom for the first/last row's focus scale (§5.3).
                 contentPadding = PaddingValues(vertical = CardSizeTokens.focusHeadroom),
             ) {
-                val shown = DiscoverSort.apply(state.items, state.view.sort)
-                itemsIndexed(shown, key = { _, it -> it.id }) { _, item ->
-                    PosterCard(item, onClick = { onItemClick(item) })
+                itemsIndexed(
+                    items = shown,
+                    key = { _, it -> it.id },
+                    contentType = { _, _ -> "poster" },
+                ) { _, item ->
+                    PosterCard(
+                        item = item,
+                        onClick = { onItemClick(item) },
+                        columns = state.view.columns,
+                    )
                 }
                 if (state.loading) {
-                    item {
-                        Text("Loading…", color = MutedText)
+                    // Next page inbound: a shimmering placeholder row.
+                    items(state.view.columns, contentType = { "skeleton" }) {
+                        SkeletonPosterCard(
+                            width = CardSizeTokens.posterWidth(state.view.columns),
+                            height = CardSizeTokens.posterHeight(state.view.columns),
+                        )
                     }
                 }
             }

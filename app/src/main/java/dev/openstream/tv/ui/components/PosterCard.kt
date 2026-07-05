@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,17 +28,27 @@ import dev.openstream.tv.ui.theme.MutedText
  * FocusRequesters for row-entry rules (§10 Phase 4 search focus rule).
  */
 @Composable
-fun PosterCard(item: MetaItem, onClick: () -> Unit = {}, modifier: Modifier = Modifier) {
-    val width = CardSizeTokens.posterWidth()
+fun PosterCard(
+    item: MetaItem,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    columns: Int = CardSizeTokens.DEFAULT_COLUMNS,
+) {
+    val width = CardSizeTokens.posterWidth(columns)
     Column(modifier = Modifier.width(width)) {
         Card(onClick = onClick, modifier = modifier) {
             AsyncImage(
                 model = item.poster,
                 contentDescription = item.name,
                 contentScale = ContentScale.Crop,
+                // Solid placeholder: the grid paints its full layout on the
+                // first frame instead of popping in card by card as posters
+                // arrive — the pop-in itself read as jank on the onn boxes.
+                placeholder = ColorPainter(PosterPlaceholder),
+                error = ColorPainter(PosterPlaceholder),
                 modifier = Modifier
                     .width(width)
-                    .height(CardSizeTokens.posterHeight()),
+                    .height(CardSizeTokens.posterHeight(columns)),
             )
         }
         Text(
@@ -49,6 +61,9 @@ fun PosterCard(item: MetaItem, onClick: () -> Unit = {}, modifier: Modifier = Mo
         )
     }
 }
+
+/** Matches SkeletonPosterCard's fill so load states blend into each other. */
+private val PosterPlaceholder = Color(0xFF23232F)
 
 /** Inline status text used under row/grid headers (loading, failure chip). */
 @Composable
