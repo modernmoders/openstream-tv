@@ -14,6 +14,8 @@ import dev.openstream.tv.autoplay.AutoplayController
 import dev.openstream.tv.autoplay.AutoplayOriginHolder
 import dev.openstream.tv.autoplay.AutoplayStateMachine
 import dev.openstream.tv.autoplay.StreamCascade
+import dev.openstream.tv.data.PLAYER_INTERNAL
+import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
@@ -50,6 +52,7 @@ class StreamListViewModel @Inject constructor(
     private val autoplayOrigin: AutoplayOriginHolder,
     private val externalLauncher: ExternalPlayerPort,
     private val autoplay: AutoplayController,
+    playbackPrefs: PlaybackPrefs,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -80,6 +83,8 @@ class StreamListViewModel @Inject constructor(
         val resumePositionMs: Long? = null,
         /** Installed external players (§6.2); empty = long-press does nothing extra. */
         val externalPlayers: List<ExternalPlayerPort.Choice> = emptyList(),
+        /** §6.2 "Always use" setting — what a plain OK on a stream does. */
+        val playerPref: String = PLAYER_INTERNAL,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -239,6 +244,11 @@ class StreamListViewModel @Inject constructor(
 
     init {
         _uiState.update { it.copy(externalPlayers = externalLauncher.installedPlayers()) }
+        viewModelScope.launch {
+            playbackPrefs.preferredPlayer.collect { pref ->
+                _uiState.update { it.copy(playerPref = pref) }
+            }
+        }
         viewModelScope.launch {
             // Collect, don't read once: this ViewModel survives on the back
             // stack while the player advances progress (found in Phase 2 gate).

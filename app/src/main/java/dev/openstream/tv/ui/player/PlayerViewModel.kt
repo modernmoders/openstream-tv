@@ -12,7 +12,9 @@ import dev.openstream.tv.autoplay.AutoplayController
 import dev.openstream.tv.autoplay.AutoplayOriginHolder
 import dev.openstream.tv.autoplay.AutoplayStateMachine
 import dev.openstream.tv.autoplay.StreamCascade
+import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.SUBTITLES_OFF
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.player.CurrentPlayback
@@ -21,6 +23,10 @@ import dev.openstream.tv.player.PlaybackRequest
 import dev.openstream.tv.player.PlaybackService
 import dev.openstream.tv.player.PlayerEvent
 import dev.openstream.tv.player.PlayerHolder
+import dev.openstream.tv.player.TrackKind
+import dev.openstream.tv.player.TrackOption
+import dev.openstream.tv.player.applyPreferredLanguages
+import dev.openstream.tv.player.rememberedLanguage
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -40,6 +46,7 @@ class PlayerViewModel @Inject constructor(
     private val progressRepository: ProgressRepository,
     private val autoplay: AutoplayController,
     private val autoplayOrigin: AutoplayOriginHolder,
+    private val playbackPrefs: PlaybackPrefs,
     playerHolder: PlayerHolder,
 ) : ViewModel() {
 
@@ -80,6 +87,11 @@ class PlayerViewModel @Inject constructor(
             context.startService(Intent(context, PlaybackService::class.java))
             viewModelScope.launch {
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
+                // Remembered languages (DECISIONS #19) go on BEFORE play so the
+                // first track selection already honors them. Parameters stick
+                // to the player instance, so autoplay episode swaps keep them.
+                val languages = playbackPrefs.languages.first()
+                engine.exoPlayer.applyPreferredLanguages(languages.audio, languages.subtitle)
                 engine.play(req.source)
                 launch { collectPlayerEvents(engine) }
                 launch { collectAutoplayCommands(engine) }
@@ -161,6 +173,25 @@ class PlayerViewModel @Inject constructor(
         val se = if (next.season != null && next.episode != null) "S${next.season}E${next.episode}" else null
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { request?.source?.title.orEmpty() }
+    }
+
+    /**
+     * Remember a track pick as the preferred language (DECISIONS #19).
+     * Tag-less tracks change nothing — a stored preference survives them.
+     */
+    fun rememberTrackPick(option: TrackOption) {
+        val language = rememberedLanguage(option) ?: return
+        viewModelScope.launch {
+            when (option.kind) {
+                TrackKind.AUDIO -> playbackPrefs.setAudioLanguage(language)
+                TrackKind.SUBTITLE -> playbackPrefs.setSubtitleLanguage(language)
+            }
+        }
+    }
+
+    /** Subtitles Off is itself a preference: stay off next playback. */
+    fun rememberSubtitlesOff() {
+        viewModelScope.launch { playbackPrefs.setSubtitleLanguage(SUBTITLES_OFF) }
     }
 
     /** OK press while the Up Next card is visible. True = consumed. */

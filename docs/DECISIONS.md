@@ -430,3 +430,20 @@ and prefs changes restart the fan-out via `combine`, which the DECISIONS #17
 HTTP cache makes cheap. Continue Watching is not managed here (§5.6
 always-first is a hard rule, and elders losing that row would be a support
 call).
+
+## 24. 2026-07-05 — Playback preferences: languages are hints, the player setting never dead-ends
+
+**Decision:** (a) **Languages (DECISIONS #19 follow-up):** every audio/
+subtitle pick in the player's tracks dialog is persisted (audio tag,
+subtitle tag, or a SUBTITLES_OFF sentinel) and re-applied before the next
+playback via `setPreferredAudio/TextLanguage` — PREFERENCES, not track
+overrides, so a stream without the remembered language falls back to
+ExoPlayer's normal choice instead of failing. Picks on tag-less/und tracks
+change nothing (a stored preference must survive picking "Track 1").
+(b) **"Always use" player (§6.2):** stored as `internal` / `ask` / an
+`ExternalPlayer` enum name, resolved against the players installed AT CLICK
+TIME (`resolvePreferredPlayer`, pure + table-tested): an uninstalled
+preferred player silently falls back to internal — never a dead OK press —
+and `ask` with nothing installed behaves as internal. Long-press "Play
+with…" stays the one-off override regardless of the setting. The §7.1.6
+external binge chain inherits whatever player actually launched.

@@ -20,15 +20,26 @@ data class DiscoverViewPrefs(
     val sort: DiscoverSortMode = DiscoverSortMode.ADDON_ORDER,
 )
 
+/** Global poster density bounds (§5.1). 6 was the launch default; the owner
+ *  counts 6 visible posters as too few, so Settings offers 4–8. */
+const val MIN_POSTER_COLUMNS = 4
+const val MAX_POSTER_COLUMNS = 8
+const val DEFAULT_POSTER_COLUMNS = 6
+
 /**
  * Per-screen view preferences (owner request 2026-07-05: view/sort options
- * customizable on the screen where they're used). Interface so ViewModels
- * stay JVM-testable with an in-memory fake.
+ * customizable on the screen where they're used) plus the GLOBAL poster
+ * density used by home/search rows (§5.1 — Discover keeps its own per-screen
+ * View chip). Interface so ViewModels stay JVM-testable with an in-memory fake.
  */
 interface ViewPrefs {
     val discover: Flow<DiscoverViewPrefs>
+
+    /** Poster columns for home/search rows (4–8, default 6). */
+    val posterColumns: Flow<Int>
     suspend fun setDiscoverColumns(columns: Int)
     suspend fun setDiscoverSort(sort: DiscoverSortMode)
+    suspend fun setPosterColumns(columns: Int)
 }
 
 private val Context.viewPrefsStore by preferencesDataStore("view_prefs")
@@ -49,6 +60,14 @@ class DataStoreViewPrefs @Inject constructor(
             )
         }
 
+    override val posterColumns: Flow<Int> =
+        context.viewPrefsStore.data.map { prefs ->
+            // Out-of-range persisted value (future setting change) → default.
+            (prefs[POSTER_COLUMNS] ?: DEFAULT_POSTER_COLUMNS)
+                .takeIf { it in MIN_POSTER_COLUMNS..MAX_POSTER_COLUMNS }
+                ?: DEFAULT_POSTER_COLUMNS
+        }
+
     override suspend fun setDiscoverColumns(columns: Int) {
         context.viewPrefsStore.edit { it[DISCOVER_COLUMNS] = columns }
     }
@@ -57,8 +76,15 @@ class DataStoreViewPrefs @Inject constructor(
         context.viewPrefsStore.edit { it[DISCOVER_SORT] = sort.name }
     }
 
+    override suspend fun setPosterColumns(columns: Int) {
+        context.viewPrefsStore.edit {
+            it[POSTER_COLUMNS] = columns.coerceIn(MIN_POSTER_COLUMNS, MAX_POSTER_COLUMNS)
+        }
+    }
+
     private companion object {
         val DISCOVER_COLUMNS = intPreferencesKey("discover_columns")
         val DISCOVER_SORT = stringPreferencesKey("discover_sort")
+        val POSTER_COLUMNS = intPreferencesKey("poster_columns")
     }
 }

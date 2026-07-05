@@ -128,4 +128,24 @@ class PlayerTracksTest {
         assertEquals(4, menu.audio.single().groupIndex)
         assertEquals(2, menu.audio.single().trackIndex)
     }
+
+    @Test
+    fun `options carry the raw language tag for the preference store`() {
+        val menu = buildTrackMenu(
+            listOf(RawTrack(TrackKind.AUDIO, 0, 0, "es-419", null, 2, true, false))
+        )
+        assertEquals("es-419", menu.audio.single().languageTag)
+    }
+
+    @Test
+    fun `remembered language skips blank and und tags`() {
+        fun optionWithTag(tag: String?) = buildTrackMenu(
+            listOf(RawTrack(TrackKind.AUDIO, 0, 0, tag, "label", 2, true, false))
+        ).audio.single()
+
+        assertEquals("es", rememberedLanguage(optionWithTag("es")))
+        assertNull(rememberedLanguage(optionWithTag(null)))
+        assertNull(rememberedLanguage(optionWithTag("  ")))
+        assertNull(rememberedLanguage(optionWithTag("und")))
+    }
 }

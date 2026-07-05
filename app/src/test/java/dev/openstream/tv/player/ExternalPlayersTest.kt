@@ -1,5 +1,7 @@
 package dev.openstream.tv.player
 
+import dev.openstream.tv.data.PLAYER_ASK
+import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.domain.PlayableSource
 import dev.openstream.tv.domain.SubtitleTrack
 import org.junit.Assert.assertEquals
@@ -217,5 +219,40 @@ class ExternalPlayersTest {
             listOf("com.mxtech.videoplayer.pro", "com.mxtech.videoplayer.ad"),
             ExternalPlayer.MX_PLAYER.packageNames,
         )
+    }
+
+    // ---- §6.2 "Always use" resolution ----
+
+    private val vlc = ExternalPlayerPort.Choice(ExternalPlayer.VLC, "org.videolan.vlc")
+    private val mx = ExternalPlayerPort.Choice(ExternalPlayer.MX_PLAYER, "com.mxtech.videoplayer.ad")
+
+    @Test
+    fun `internal and unknown values resolve to the internal player`() {
+        assertEquals(PlayerDecision.Internal, resolvePreferredPlayer(PLAYER_INTERNAL, listOf(vlc)))
+        assertEquals(PlayerDecision.Internal, resolvePreferredPlayer("garbage", listOf(vlc)))
+    }
+
+    @Test
+    fun `a stored player resolves to its installed choice`() {
+        assertEquals(
+            PlayerDecision.External(vlc),
+            resolvePreferredPlayer("VLC", listOf(vlc, mx)),
+        )
+        assertEquals(
+            PlayerDecision.External(mx),
+            resolvePreferredPlayer("MX_PLAYER", listOf(vlc, mx)),
+        )
+    }
+
+    @Test
+    fun `an uninstalled preferred player falls back to internal, not a dead click`() {
+        assertEquals(PlayerDecision.Internal, resolvePreferredPlayer("VLC", listOf(mx)))
+        assertEquals(PlayerDecision.Internal, resolvePreferredPlayer("VLC", emptyList()))
+    }
+
+    @Test
+    fun `ask resolves to the dialog only when something is installed`() {
+        assertEquals(PlayerDecision.Ask, resolvePreferredPlayer(PLAYER_ASK, listOf(vlc)))
+        assertEquals(PlayerDecision.Internal, resolvePreferredPlayer(PLAYER_ASK, emptyList()))
     }
 }

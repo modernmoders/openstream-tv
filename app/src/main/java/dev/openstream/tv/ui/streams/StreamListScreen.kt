@@ -44,6 +44,8 @@ import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
 import dev.openstream.tv.player.ExternalPlayerPort
+import dev.openstream.tv.player.PlayerDecision
+import dev.openstream.tv.player.resolvePreferredPlayer
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
@@ -58,8 +60,8 @@ import dev.openstream.tv.ui.theme.MutedText
  * NEVER re-sorted (§4.1.7). Non-URL sources (torrents, external links) are
  * visible but not playable in v1 (§4.1.4).
  *
- * OK plays with the internal player; LONG-press OK opens "Play with…"
- * (§6.2 external players; the full always-use setting is Phase 4). This
+ * OK obeys the §6.2 "Always use" player setting (internal by default);
+ * LONG-press OK always opens "Play with…" for a one-off override. This
  * screen also hosts the §7.1.6 Up Next flow after an external player
  * returns with a (near-)finished position.
  */
@@ -222,7 +224,22 @@ fun StreamListScreen(
                                             Modifier.focusRequester(firstStreamFocus)
                                         } else Modifier,
                                         onClick = {
-                                            onPlayerDecided(PendingPlay(group.addon, stream, external = null))
+                                            // §6.2 "Always use" setting decides what OK means;
+                                            // uninstalled/unknown falls back to internal.
+                                            when (val decision = resolvePreferredPlayer(
+                                                state.playerPref, state.externalPlayers,
+                                            )) {
+                                                PlayerDecision.Internal -> onPlayerDecided(
+                                                    PendingPlay(group.addon, stream, external = null)
+                                                )
+                                                PlayerDecision.Ask -> {
+                                                    pendingPlay = PendingPlay(group.addon, stream, external = null)
+                                                    choosingPlayer = true
+                                                }
+                                                is PlayerDecision.External -> onPlayerDecided(
+                                                    PendingPlay(group.addon, stream, decision.choice)
+                                                )
+                                            }
                                         },
                                         onLongClick = {
                                             if (state.externalPlayers.isNotEmpty()) {

@@ -4,6 +4,26 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Phase 4 units 2–3: Poster size, language memory, "Always use" player (session 11)
+
+Three new Settings-backed features while the owner was out (gate checks
+deferred by owner — see STATE): global poster density (§5.1, owner's "only
+6 posters" gripe), preferred audio/subtitle language persistence
+(DECISIONS #19/#24), and the §6.2 "Always use" player setting
+(Internal / VLC / MX / Ask, resolution rules in DECISIONS #24).
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `testDebugUnitTest` — 205 tests (8 new: player-pref resolution ×4, remembered-language rules ×2, density into Home state + density survives a search) | macOS, JDK 17 | PASS (205/205, two consecutive clean runs) |
+| Settings now lists Home rows / Poster size / Player, each with a live description of the current value | AVD `openstream_tv_api34`, debug APK | PASS (screenshot) |
+| Poster size: dialog 4–8 with ✓ + focus on current; picked 8 → Home rows render 8-up; picked 6 back → 6-up | same | PASS (screenshots) |
+| Player dialog: Internal ✓ first, then VLC — DETECTED because the AVD has it sideloaded (§6.2 only-show-what-exists), then "Ask every time" + long-press hint | same | PASS (screenshot) |
+| "Ask every time": plain OK on a real stream (owner's AIOStreams, The Sheep Detectives list) opened the Play-with dialog instead of playing; no launch fired | same | PASS (screenshot) |
+| Back to Internal: plain OK on the fixture E1 stream played directly in the internal player (language-prefs apply path ran as a no-op with empty prefs — no regression) | same + fixture server :8090 | PASS (screenshots) |
+| Tracks dialog still correct on single-track media: "Track 1 · 5.1 ✓" / subtitles "Off ✓ — this stream has no subtitles" | same | PASS (screenshot) |
+| NOT yet verified on emulator: the full subtitle-language persistence round-trip (pick → exit → replay → auto-selected). The fixture's subtitle tracks are on the BBB movie whose home row sits below the owner's ~15 AIOMetadata collection rows — scroll-hunting risked the known input-degradation. The write path (`rememberedLanguage`) and fallback rules are unit-tested; the pick loop itself was verified in alpha.6. Fold into the owner's real-media audio/subtitle check (already a STATE item) or next session (fast path: Settings → Home rows → move "Local Test" up). | — | DEFERRED |
+| Boxes untouched — still alpha.9; everything since ships with the next deploy | — | note |
+
 ## 2026-07-05 — Phase 4 unit 1: Settings skeleton + Home-row manager (session 11)
 
 First Phase 4 unit proper (§10): a Settings screen (skeleton for all future

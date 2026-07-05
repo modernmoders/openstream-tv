@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import dev.openstream.tv.data.SUBTITLES_OFF
 import java.util.Locale
 
 /**
@@ -25,6 +26,8 @@ data class TrackOption(
     val trackIndex: Int,
     val label: String,
     val selected: Boolean,
+    /** Raw language tag — what the language preference remembers (DECISIONS #19). */
+    val languageTag: String? = null,
 )
 
 data class TrackMenu(
@@ -59,7 +62,10 @@ fun buildTrackMenu(raw: List<RawTrack>): TrackMenu {
             // audio); number the repeats so every row stays distinguishable.
             val count = seen.merge(base, 1, Int::plus)!!
             val name = if (count > 1) "$base ($count)" else base
-            TrackOption(kind, track.groupIndex, track.trackIndex, name, track.selected)
+            TrackOption(
+                kind, track.groupIndex, track.trackIndex, name, track.selected,
+                track.languageTag,
+            )
         }
     }
     val subtitles = optionsOf(TrackKind.SUBTITLE)
@@ -89,6 +95,14 @@ fun trackDisplayName(
     channelLayoutName(channelCount)?.let { parts += it }
     return parts.joinToString(" · ")
 }
+
+/**
+ * The language a pick should persist as a preference (DECISIONS #19), or
+ * null when the track carries no usable tag — an unnamed track pick should
+ * leave the stored preference untouched rather than clobber it.
+ */
+fun rememberedLanguage(option: TrackOption): String? =
+    option.languageTag?.takeIf { it.isNotBlank() && !it.equals("und", ignoreCase = true) }
 
 /** "en"/"en-US" → "English"; unknown short codes shown raw; null when absent. */
 fun displayLanguage(tag: String?): String? {
@@ -155,4 +169,25 @@ fun Player.disableSubtitles() {
         .clearOverridesOfType(C.TRACK_TYPE_TEXT)
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
         .build()
+}
+
+/**
+ * Applies the remembered language preferences (DECISIONS #19) before
+ * playback starts. Preferences, not overrides: if the stream has no track in
+ * the preferred language, ExoPlayer falls back to its normal choice.
+ * [subtitle] also takes [dev.openstream.tv.data.SUBTITLES_OFF].
+ */
+fun Player.applyPreferredLanguages(audio: String?, subtitle: String?) {
+    if (audio == null && subtitle == null) return
+    trackSelectionParameters = trackSelectionParameters.buildUpon().apply {
+        if (audio != null) setPreferredAudioLanguage(audio)
+        when (subtitle) {
+            null -> Unit
+            SUBTITLES_OFF -> setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            else -> {
+                setPreferredTextLanguage(subtitle)
+                setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            }
+        }
+    }.build()
 }

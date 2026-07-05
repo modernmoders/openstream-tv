@@ -9,6 +9,7 @@ import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
 import dev.openstream.tv.data.FakeHomeRowPrefsStore
+import dev.openstream.tv.data.FakeViewPrefs
 import dev.openstream.tv.data.HomeRowPrefs
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
@@ -66,10 +67,12 @@ class HomeViewModelTest {
     private fun viewModel(
         cinemetaBase: String = "http://localhost:1",
         rowPrefs: FakeHomeRowPrefsStore = FakeHomeRowPrefsStore(),
+        viewPrefs: FakeViewPrefs = FakeViewPrefs(),
     ) = HomeViewModel(
         addonRepository, catalogRepository, progressRepository,
         MetaRepository(client, addonRepository, cinemetaBase),
         rowPrefs,
+        viewPrefs,
     )
 
     @After
@@ -186,6 +189,19 @@ class HomeViewModelTest {
 
         // B is pinned first by the user; A follows in natural addon order.
         assertEquals(listOf(keyB, keyA), state.rows.map { it.ref.key })
+    }
+
+    @Test
+    fun `poster density setting flows into home state live`() = runTest(timeout = 60.seconds) {
+        val viewPrefs = FakeViewPrefs()
+        val viewModel = viewModel(viewPrefs = viewPrefs)
+        assertEquals(6, viewModel.uiState.first { !it.initializing }.columns)
+
+        viewPrefs.setPosterColumns(8)
+        assertEquals(8, viewModel.uiState.first { it.columns != 6 }.columns)
+
+        viewPrefs.setPosterColumns(99) // out of range → clamped by the store
+        assertEquals(8, viewModel.uiState.value.columns)
     }
 
     @Test

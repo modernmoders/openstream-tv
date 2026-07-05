@@ -11,6 +11,7 @@ import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
+import dev.openstream.tv.data.FakePlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
@@ -73,13 +74,18 @@ class StreamListViewModelTest {
         override fun resultExtras(data: Intent?) = emptyMap<String, Any?>()
     }
 
-    private fun viewModel(type: String, videoId: String) = StreamListViewModel(
+    private fun viewModel(
+        type: String,
+        videoId: String,
+        playbackPrefs: FakePlaybackPrefs = FakePlaybackPrefs(),
+    ) = StreamListViewModel(
         streamRepository,
         currentPlayback,
         progressRepository,
         autoplayOrigin,
         noExternalPlayers,
         AutoplayController(NeverAutoplayGateway),
+        playbackPrefs,
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
 

@@ -7,6 +7,8 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
+import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 class SearchViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
+    viewPrefs: ViewPrefs,
 ) : ViewModel() {
 
     sealed interface RowState {
@@ -39,12 +42,22 @@ class SearchViewModel @Inject constructor(
         val query: String = "",
         val searched: Boolean = false,
         val rows: List<RowState> = emptyList(),
+        /** Global poster density (§5.1 Settings → Poster size). */
+        val columns: Int = DEFAULT_POSTER_COLUMNS,
     )
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
 
     private var searchJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            viewPrefs.posterColumns.collect { columns ->
+                _uiState.update { it.copy(columns = columns) }
+            }
+        }
+    }
 
     fun search(query: String) {
         val trimmed = query.trim()
@@ -53,11 +66,14 @@ class SearchViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             val addons = addonRepository.observeInstalled().first()
             val refs = catalogRepository.searchRefs(addons)
-            _uiState.value = UiState(
-                query = trimmed,
-                searched = true,
-                rows = refs.map { RowState.Loading(it) },
-            )
+            // copy, not a fresh UiState: columns (collected above) must survive
+            _uiState.update {
+                it.copy(
+                    query = trimmed,
+                    searched = true,
+                    rows = refs.map { r -> RowState.Loading(r) },
+                )
+            }
             refs.forEach { ref ->
                 launch {
                     val newState = catalogRepository

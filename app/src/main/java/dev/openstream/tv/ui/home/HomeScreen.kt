@@ -95,7 +95,7 @@ fun HomeScreen(
                     }
                 }
                 items(state.rows, key = { it.ref.key }) { row ->
-                    CatalogRow(row, onItemClick)
+                    CatalogRow(row, state.columns, onItemClick)
                 }
             }
         }
@@ -153,7 +153,11 @@ private fun ContinueWatchingRow(
 }
 
 @Composable
-private fun CatalogRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit) {
+private fun CatalogRow(
+    row: RowState,
+    columns: Int,
+    onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
+) {
     Column {
         Row(
             modifier = Modifier.padding(horizontal = 48.dp),
@@ -187,7 +191,7 @@ private fun CatalogRow(row: RowState, onItemClick: (dev.openstream.tv.addon.Meta
                         ),
                     ) {
                         items(row.items, key = { it.id }) { item ->
-                            PosterCard(item, onClick = { onItemClick(item) })
+                            PosterCard(item, onClick = { onItemClick(item) }, columns = columns)
                         }
                     }
                 }

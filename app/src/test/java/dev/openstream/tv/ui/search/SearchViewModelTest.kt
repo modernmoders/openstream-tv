@@ -6,6 +6,7 @@ import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
+import dev.openstream.tv.data.FakeViewPrefs
 import dev.openstream.tv.ui.search.SearchViewModel.RowState
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +57,7 @@ class SearchViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository)
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs())
         viewModel.search("batman")
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
@@ -71,7 +72,7 @@ class SearchViewModelTest {
 
     @Test
     fun `blank query is ignored`() = runTest(timeout = 60.seconds) {
-        val viewModel = SearchViewModel(addonRepository, catalogRepository)
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs())
         viewModel.search("   ")
         assertTrue(!viewModel.uiState.value.searched)
     }
@@ -84,7 +85,7 @@ class SearchViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository)
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs())
         viewModel.search("x")
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
@@ -92,5 +93,27 @@ class SearchViewModelTest {
 
         assertEquals(1, state.rows.count { it is RowState.Loaded })
         assertEquals(2, state.rows.count { it is RowState.Failed })
+    }
+
+    @Test
+    fun `poster density setting survives a search`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/catalog/movie/top/search=x.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/series/searchonly/search=x.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/tv/legacy/search=x.json", Fixtures.load("catalog_mixed"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+        val viewPrefs = FakeViewPrefs()
+
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, viewPrefs)
+        viewPrefs.setPosterColumns(4)
+        viewModel.uiState.first { it.columns == 4 }
+
+        // search() must copy, not reset, the ui state (regression guard).
+        viewModel.search("x")
+        val state = viewModel.uiState.first {
+            it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
+        }
+        assertEquals(4, state.columns)
     }
 }

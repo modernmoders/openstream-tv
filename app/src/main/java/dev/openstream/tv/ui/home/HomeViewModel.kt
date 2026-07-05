@@ -8,8 +8,10 @@ import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.addon.MetaRepository
+import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
 import dev.openstream.tv.data.HomeRowPrefsStore
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.data.applyTo
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
@@ -35,6 +37,7 @@ class HomeViewModel @Inject constructor(
     private val progressRepository: ProgressRepository,
     private val metaRepository: MetaRepository,
     private val rowPrefs: HomeRowPrefsStore,
+    private val viewPrefs: ViewPrefs,
 ) : ViewModel() {
 
     companion object {
@@ -77,6 +80,8 @@ class HomeViewModel @Inject constructor(
         val continueWatching: List<WatchProgress> = emptyList(),
         /** Rows in addon-order then manifest-order; each loads independently. */
         val rows: List<RowState> = emptyList(),
+        /** Global poster density (§5.1 Settings → Poster size). */
+        val columns: Int = DEFAULT_POSTER_COLUMNS,
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -87,6 +92,11 @@ class HomeViewModel @Inject constructor(
             progressRepository.observeContinueWatching().collect { list ->
                 _uiState.update { it.copy(continueWatching = list) }
                 prefetchMeta(list)
+            }
+        }
+        viewModelScope.launch {
+            viewPrefs.posterColumns.collect { columns ->
+                _uiState.update { it.copy(columns = columns) }
             }
         }
         viewModelScope.launch {

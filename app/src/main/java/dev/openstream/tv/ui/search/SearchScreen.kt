@@ -140,7 +140,7 @@ fun SearchScreen(
             ),
         ) {
             items(state.rows, key = { it.ref.key }) { row ->
-                SearchRow(row, onItemClick)
+                SearchRow(row, state.columns, onItemClick)
             }
         }
     }
@@ -149,7 +149,11 @@ fun SearchScreen(
 // OptIn: focusRestorer — the §10 focus rule has no stable equivalent yet.
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit) {
+private fun SearchRow(
+    row: RowState,
+    columns: Int,
+    onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
+) {
     Column {
         Row(
             modifier = Modifier.padding(horizontal = 48.dp),
@@ -194,6 +198,7 @@ private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaI
                                 onClick = { onItemClick(item) },
                                 modifier = if (index == 0) Modifier.focusRequester(firstCardFocus)
                                 else Modifier,
+                                columns = columns,
                             )
                         }
                     }

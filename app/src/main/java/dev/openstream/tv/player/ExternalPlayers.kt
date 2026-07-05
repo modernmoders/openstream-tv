@@ -1,5 +1,6 @@
 package dev.openstream.tv.player
 
+import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.domain.PlayableSource
 
 /**
@@ -153,3 +154,30 @@ fun isNearComplete(positionMs: Long, durationMs: Long): Boolean =
 
 private const val NEAR_COMPLETE_FRACTION = 0.95
 private const val NEAR_COMPLETE_TAIL_MS = 30_000L
+
+// ---- §6.2 "Always use" player setting ----
+
+/** What a plain OK on a stream should do, given the setting. */
+sealed interface PlayerDecision {
+    data object Internal : PlayerDecision
+    data object Ask : PlayerDecision
+    data class External(val choice: ExternalPlayerPort.Choice) : PlayerDecision
+}
+
+/**
+ * Resolves the stored player preference against what is installed RIGHT NOW.
+ * Anything that can't be honored falls back to the internal player — an
+ * uninstalled VLC must not turn every OK press into a dead click (§5.4 no
+ * dead-ends; §6.2 detection happens at use time, not just settings time).
+ */
+fun resolvePreferredPlayer(
+    pref: String,
+    installed: List<ExternalPlayerPort.Choice>,
+): PlayerDecision = when {
+    pref == PLAYER_ASK ->
+        if (installed.isEmpty()) PlayerDecision.Internal else PlayerDecision.Ask
+    else ->
+        installed.firstOrNull { it.player.name == pref }
+            ?.let { PlayerDecision.External(it) }
+            ?: PlayerDecision.Internal // "internal", unknown value, or uninstalled
+}

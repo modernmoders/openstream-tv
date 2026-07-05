@@ -208,8 +208,14 @@ fun PlayerScreen(
         if (showTracks) {
             TracksDialog(
                 menu = tracksMenu,
-                onPick = { engine.exoPlayer.applyTrackOption(it) },
-                onSubtitlesOff = { engine.exoPlayer.disableSubtitles() },
+                onPick = {
+                    engine.exoPlayer.applyTrackOption(it)
+                    viewModel.rememberTrackPick(it) // DECISIONS #19
+                },
+                onSubtitlesOff = {
+                    engine.exoPlayer.disableSubtitles()
+                    viewModel.rememberSubtitlesOff()
+                },
                 onDismiss = { showTracks = false; wake() },
             )
         }

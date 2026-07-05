@@ -324,7 +324,7 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [ ] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner). *(Emulator half done 2026-07-05 — TESTLOG; owner's onn box run pending.)*
 
 ### Phase 4 — Customization + settings + polish
-- [ ] Row/catalog manager (reorder/rename/hide), density settings, player preference, autoplay settings, tunneling toggle, debug overlay. *(2026-07-05 session 11: row/catalog manager + the Settings screen skeleton SHIPPED (DECISIONS #23) — remaining items land as further Settings entries.)*
+- [ ] Row/catalog manager (reorder/rename/hide), density settings, player preference, autoplay settings, tunneling toggle, debug overlay. *(2026-07-05 session 11: row/catalog manager + Settings skeleton (DECISIONS #23), global density 4–8, "Always use" player, and audio/subtitle language memory (DECISIONS #24) ALL SHIPPED — remaining: autoplay settings, tunneling toggle, debug overlay.)*
 - [ ] Focus/UX audit of every screen against §5; performance pass on lowest-end device.
 - [ ] Local profiles (separate addon sets + progress) — only if time permits; otherwise cut (YAGNI) and log it.
 
@@ -336,11 +336,13 @@ Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 
 - [ ] **Discover scroll performance**: laggy/uneven on onn box. Prefetch the
   next catalog page (`skip` pagination) + preload next row's images (Coil)
   before the viewport reaches them; scroll timing must feel constant (§5.7).
-- [ ] **Density**: owner counts 6 visible posters — his own Stremio gripe.
+- [x] **Density**: owner counts 6 visible posters — his own Stremio gripe.
   Ship the §5.1 column setting (4–8), reconsider the default (7?), add the
-  compact-rows toggle. *(2026-07-05: first slice shipped — Discover View
-  chip offers 6/8 columns + client-side sort, DataStore-persisted
-  (DECISIONS #18). Global setting still belongs to the settings screen.)*
+  compact-rows toggle. *(2026-07-05: Discover View chip 6/8 + sort
+  (DECISIONS #18); session 11: GLOBAL Settings → Poster size 4–8 for
+  home/search rows, emulator-verified. Default stays 6 — owner can now
+  choose 7/8 himself; compact-rows toggle deferred until asked for
+  (YAGNI).)*
 - [ ] **Search**: (a) mic/voice input via RecognizerIntent; (b) recent
   searches list; (c) focus rule — moving into a new section lands on its
   left-most item unless returning to the section you came from.
