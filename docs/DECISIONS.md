@@ -167,3 +167,16 @@ outvote a weak higher-tier one (filename similarity).
   videos keep array order at the very end.
 - "2160p" folds into "4k" for resolution equality; cache detection is the ⚡
   marker or the words cached/instant (AIOStreams convention).
+
+## 11. 2026-07-05 — Autoplay stream fetches use a "patient" HTTP client
+
+**Decision:** `AddonAutoplayGateway.fetchStreams` goes through a second
+`AddonClient` built from the shared OkHttpClient with `readTimeout(50s)`
+(`@Named("patientAddonClient")`, shares pool/dispatcher via newBuilder()).
+
+**Rationale:** found live during the §7.2 delayed-addon run — the interactive
+15s read timeout (#9) killed a 20s-delayed stream response, so the §7.1
+"never cancel under 60s" promise could never survive past 15s: the fetch
+"settled" as a failure and autoplay fell back to the manual list. Interactive
+stream lists keep the snappy 15s budget; only autoplay waits patiently (50s
+keeps the HTTP layer inside the machine's 60s patience ceiling).

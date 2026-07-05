@@ -4,6 +4,19 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Phase 3 unit 2: AutoplayController wired — 3-episode chain + delayed addon verified (session 5)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew assembleDebug && testDebugUnitTest` — 124 tests (new ×11: AutoplayControllerTest with fake gateway + virtual time: countdown ticking, OK skip, Back cancel, 20s-slow addon, zero-playable → manual list, open-failure fallthrough, movie/series-end/no-meta inactive paths) | macOS, JDK 17 | PASS (124/124) |
+| Fixture: `tools/test_addon_server.py` extended with "Bunny: The Series" (3 episodes, bingeGroup streams + decoy, STREAM_DELAY_S env delays episodes 2+ for the §7.2 case) | host | NOTE |
+| **3-episode autoplay chain (§7.2 first half):** E1 → Ended → Up Next countdown (screenshot: "Up next: S1E2 · Episode 2 — Playing in 3s (OK play now · Back cancel)") → fan-out → tier-1 bingeGroup stream chosen over decoy → E2 plays → same → E3 plays ("Starting S1E3 · Episode 3" card screenshot) → series end → "Playback finished" panel, never a dead screen. Zero presses at every transition (in-episode seeks only to skip the 10-min fixture; server log confirms meta → stream/bbbs:1:2 → video → … → stream/bbbs:1:3 → video). Player overlay title updates per episode. | AVD windowed, local fixture addon | PASS (screenshots + server log) |
+| **Back cancels countdown (§7.1 4a):** BACK during "Up next" → "Playback finished" panel, still on player screen | same | PASS |
+| **Delayed addon (§7.2 second half):** server answering /stream/ for E2 after 20s → countdown → "Finding next episode… (0/1 addons responded, Back cancel)" patience card → E2 plays at ~31s after Ended. | same | PASS (screenshot + server log "delaying stream response 20.0s") |
+| **Bug found & fixed: 15s read timeout defeated the 60s patience rule.** First delayed run: OkHttp's interactive read timeout (DECISIONS #9) killed the 20s-delayed response → addon "settled" as failed → zero playable → manual stream list. §7.1's promise never survived past 15s. Fix: autoplay fetches use a patient client (readTimeout 50s, DECISIONS #11). Re-run: PASS. Manual-fallback path itself behaved exactly per spec (landed on E2's stream list — bonus verification). | same | FIXED + PASS |
+| **Bug found & fixed: finished/error panel buttons unreachable by OK.** Player key handler consumed DPAD_CENTER unconditionally (pre-existing since Phase 2), so the panel's focused "Back"/"Retry" buttons never received clicks. Now CENTER passes through when a panel is up; autoplay countdown still owns OK first. | same | FIXED |
+| Emulator hygiene notes: after ~2.5h of heavy input the TV launcher ANRs and input focus is lost (black screencaps, presses leak to launcher) — cold-boot the emulator when screencaps go black. `adb reboot` did NOT recover rendering; full emulator restart did. | AVD | RULE |
+
 ## 2026-07-04 — Phase 3 unit 1: autoplay state machine + cascade (session 5)
 
 | Check | Environment | Result |

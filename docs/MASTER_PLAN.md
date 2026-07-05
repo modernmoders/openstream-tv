@@ -319,9 +319,9 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [x] Gate: full browse→play→resume loop against a real AIOStreams instance. *(2026-07-04: owner's private instance, real debrid 1080p stream; TESTLOG. Found+fixed: stale resume position on back-stack stream list — progress now observed as a Flow.)*
 
 ### Phase 3 — Autoplay + external players
-- [ ] `AutoplayController` per §7 (state machine unit-tested first, then wired).
+- [x] `AutoplayController` per §7 (state machine unit-tested first, then wired). *(2026-07-04/05: machine+cascade pure & table-tested (DECISIONS #10), controller wired via AutoplayGateway; 3-episode chain + 20s-delayed addon verified on emulator vs local fixture series; patient HTTP client for autoplay fetches (DECISIONS #11).)*
 - [ ] VLC + MX Player + generic launchers, resume-position round-trip.
-- [ ] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner).
+- [ ] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner). *(Emulator half done 2026-07-05 — TESTLOG; owner's onn box run pending.)*
 
 ### Phase 4 — Customization + settings + polish
 - [ ] Row/catalog manager (reorder/rename/hide), density settings, player preference, autoplay settings, tunneling toggle, debug overlay.
