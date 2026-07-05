@@ -44,6 +44,7 @@ import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
 import dev.openstream.tv.player.ExternalPlayerPort
+import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
@@ -63,6 +64,7 @@ import dev.openstream.tv.ui.theme.MutedText
  */
 @Composable
 fun StreamListScreen(
+    onBack: () -> Unit = {},
     onPlay: () -> Unit = {},
     onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
         { _, _, _, _, _ -> },
@@ -122,6 +124,20 @@ fun StreamListScreen(
     // Back cancels the Up Next flow instead of leaving the screen (§7.1 step 4a)
     BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
 
+    // The Back button is the first focusable, so anchor entry focus on the
+    // first playable stream once one arrives (BackButton KDoc). runCatching:
+    // the row may not be composed yet if the user scrolled away — fall back
+    // to default focus rather than crash.
+    val firstStreamFocus = remember { FocusRequester() }
+    val firstPlayableKey = state.groups.firstNotNullOfOrNull { group ->
+        (group as? GroupState.Loaded)?.streams
+            ?.indexOfFirst { it.isPlayableInV1 }?.takeIf { it >= 0 }
+            ?.let { "s-${group.addon.manifestUrl}-$it" }
+    }
+    LaunchedEffect(firstPlayableKey != null) {
+        if (firstPlayableKey != null) runCatching { firstStreamFocus.requestFocus() }
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -144,14 +160,20 @@ fun StreamListScreen(
             .background(AppBackground)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
-        Text(
-            text = viewModel.title.ifBlank { "Streams" },
-            style = MaterialTheme.typography.headlineLarge,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(bottom = 12.dp),
-        )
+        ) {
+            BackButton(onBack)
+            Text(
+                text = viewModel.title.ifBlank { "Streams" },
+                style = MaterialTheme.typography.headlineLarge,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         if (!state.initializing && state.groups.isEmpty()) {
             RowMessage(
@@ -191,9 +213,13 @@ fun StreamListScreen(
                         } else {
                             // Index in key: addons may return near-identical rows
                             group.streams.forEachIndexed { index, stream ->
-                                item(key = "s-${group.addon.manifestUrl}-$index") {
+                                val key = "s-${group.addon.manifestUrl}-$index"
+                                item(key = key) {
                                     StreamRow(
                                         stream = stream,
+                                        modifier = if (key == firstPlayableKey) {
+                                            Modifier.focusRequester(firstStreamFocus)
+                                        } else Modifier,
                                         onClick = {
                                             onPlayerDecided(PendingPlay(group.addon, stream, external = null))
                                         },
@@ -332,12 +358,17 @@ private fun ResumeDialog(
 }
 
 @Composable
-private fun StreamRow(stream: Stream, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun StreamRow(
+    stream: Stream,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (stream.isPlayableInV1) {
         Button(
             onClick = onClick,
             onLongClick = onLongClick,
-            modifier = Modifier.fillMaxWidth(0.85f),
+            modifier = modifier.fillMaxWidth(0.85f),
         ) {
             Column(Modifier.padding(vertical = 2.dp)) {
                 Text(

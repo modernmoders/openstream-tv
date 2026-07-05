@@ -30,6 +30,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.TvTextField
@@ -40,6 +41,7 @@ import dev.openstream.tv.ui.theme.MutedText
 
 @Composable
 fun SearchScreen(
+    onBack: () -> Unit = {},
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
@@ -60,11 +62,17 @@ fun SearchScreen(
             modifier = Modifier.padding(horizontal = 48.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = "Search",
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                BackButton(onBack)
+                Text(
+                    text = "Search",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                )
+            }
             TvTextField(
                 value = query,
                 onValueChange = { query = it },

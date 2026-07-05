@@ -39,6 +39,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
+import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.theme.AppBackground
@@ -53,12 +54,20 @@ import dev.openstream.tv.ui.theme.MutedText
  */
 @Composable
 fun DiscoverScreen(
+    onBack: () -> Unit = {},
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
     viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val gridState = rememberLazyGridState()
     var openPicker by remember { mutableStateOf<Picker?>(null) }
+
+    // Back sits first in the filter bar, so anchor entry focus on the Type
+    // picker — OK-on-entry must browse, not bounce back home (BackButton KDoc).
+    val typeFocus = remember { FocusRequester() }
+    LaunchedEffect(state.types.isNotEmpty()) {
+        if (state.types.isNotEmpty()) runCatching { typeFocus.requestFocus() }
+    }
 
     // Ask for the next page when the last visible item is near the tail.
     val nearEnd by remember {
@@ -88,6 +97,7 @@ fun DiscoverScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(bottom = 16.dp),
         ) {
+            BackButton(onBack)
             Text(
                 text = "Discover",
                 style = MaterialTheme.typography.headlineLarge,
@@ -95,7 +105,10 @@ fun DiscoverScreen(
                 modifier = Modifier.padding(end = 16.dp),
             )
             if (state.types.isNotEmpty()) {
-                Button(onClick = { openPicker = Picker.TYPE }) {
+                Button(
+                    onClick = { openPicker = Picker.TYPE },
+                    modifier = Modifier.focusRequester(typeFocus),
+                ) {
                     Text(typeLabel(state.selectedType))
                 }
             }

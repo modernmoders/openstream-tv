@@ -12,9 +12,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -24,6 +28,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.addon.InstalledAddon
+import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
 
@@ -34,10 +39,16 @@ import dev.openstream.tv.ui.theme.MutedText
  */
 @Composable
 fun AddonManagerScreen(
+    onBack: () -> Unit,
     onAddAddon: () -> Unit,
     viewModel: AddonManagerViewModel = hiltViewModel(),
 ) {
     val addons by viewModel.addons.collectAsStateWithLifecycle()
+
+    // Predictable entry point: land on "Add addon", not the Back button and
+    // not whichever row control geometric search picks (BackButton KDoc).
+    val addFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { addFocus.requestFocus() } }
 
     Column(
         modifier = Modifier
@@ -45,14 +56,21 @@ fun AddonManagerScreen(
             .background(AppBackground)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            BackButton(onBack)
             Text(
                 text = "Addons",
                 style = MaterialTheme.typography.headlineLarge,
                 color = Color.White,
                 modifier = Modifier.weight(1f),
             )
-            Button(onClick = onAddAddon) { Text("Add addon") }
+            Button(
+                onClick = onAddAddon,
+                modifier = Modifier.focusRequester(addFocus),
+            ) { Text("Add addon") }
         }
 
         Spacer(Modifier.padding(top = 16.dp))

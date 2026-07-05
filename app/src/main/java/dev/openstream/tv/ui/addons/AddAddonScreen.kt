@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -31,6 +32,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.addon.Manifest
 import dev.openstream.tv.ui.addons.AddAddonViewModel.UiState
+import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
@@ -41,6 +43,7 @@ import dev.openstream.tv.ui.theme.MutedText
  */
 @Composable
 fun AddAddonScreen(
+    onBack: () -> Unit,
     onInstalled: () -> Unit,
     viewModel: AddAddonViewModel = hiltViewModel(),
 ) {
@@ -77,11 +80,17 @@ fun AddAddonScreen(
             .padding(horizontal = 48.dp, vertical = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = "Add addon",
-            style = MaterialTheme.typography.headlineLarge,
-            color = Color.White,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            BackButton(onBack)
+            Text(
+                text = "Add addon",
+                style = MaterialTheme.typography.headlineLarge,
+                color = Color.White,
+            )
+        }
         Text(
             text = "Paste an addon manifest URL (ends in manifest.json; stremio:// works too) " +
                 "or a setup link that installs a whole set at once",

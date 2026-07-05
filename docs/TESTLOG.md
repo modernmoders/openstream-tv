@@ -4,7 +4,20 @@ Append-only. Newest entries at the top.
 
 ---
 
-## 2026-07-05 — alpha.6: player audio/subtitle picker, search entry-focus rule, Continue Watching prefetch (session 9)
+## 2026-07-05 — on-screen Back button on every screen below Home (session 10)
+
+§10 elder-friendly: users shouldn't need to know which remote key escapes a screen. Shared `BackButton` on Discover/Search/Addons/Add addon/Details/Streams; pops exactly one level (same as remote BACK). Rule: Back must never take a screen's initial focus — screens anchor their primary action with a FocusRequester instead.
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `testDebugUnitTest` — 185 tests (UI-only change, no new JVM surface) | macOS, JDK 17 | PASS (185/185) |
+| Discover: Back rendered left of title; entry focus on Type picker ("Movie"), NOT Back; LEFT reaches Back, OK pops exactly one level to Home | AVD `openstream_tv_api34` (cold-booted; stale instance had the known black-screencap degradation), live internet | PASS (screenshots) |
+| Details (movie, Sheep Detectives/Cinemeta): Back above title; entry focus on "View streams" | same | PASS |
+| Details (series, fixture Bunny: The Series): entry focus on season chip, not Back | same | PASS |
+| Streams (owner's AIOStreams, real query): Back beside title; entry focus lands on FIRST playable stream — also fixes the STATE.md focus wart "stream list initial focus misses the first card" | same | PASS |
+| Addons: entry focus on "Add addon" — also fixes the wart "initial focus lands on first row's toggle" | same | PASS |
+| Search & Add addon: Back beside title; text field keeps entry focus (keyboard opens), Back reachable | same | PASS |
+| NOT verified: season-less series (channel-style) first-episode anchor — no such item in the test addons; same FocusRequester path as the season chip | — | edge case |
 
 Owner feedback round 3 (via handoff message): captions in the internal player, an audio-language selector "that actually selects the right language", search results starting mid-row, and preloading the newest Continue Watching titles.
 

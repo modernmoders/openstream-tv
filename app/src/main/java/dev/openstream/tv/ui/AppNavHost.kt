@@ -44,6 +44,8 @@ object Routes {
 fun AppNavHost() {
     val navController = rememberNavController()
     val openDetails: (MetaItem) -> Unit = { navController.navigate(Routes.details(it)) }
+    // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
+    val goBack: () -> Unit = { navController.popBackStack() }
 
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
@@ -54,21 +56,32 @@ fun AppNavHost() {
                 onItemClick = openDetails,
             )
         }
-        composable(Routes.DISCOVER) { DiscoverScreen(onItemClick = openDetails) }
-        composable(Routes.SEARCH) { SearchScreen(onItemClick = openDetails) }
+        composable(Routes.DISCOVER) {
+            DiscoverScreen(onBack = goBack, onItemClick = openDetails)
+        }
+        composable(Routes.SEARCH) {
+            SearchScreen(onBack = goBack, onItemClick = openDetails)
+        }
         composable(Routes.ADDONS) {
-            AddonManagerScreen(onAddAddon = { navController.navigate(Routes.ADDONS_ADD) })
+            AddonManagerScreen(
+                onBack = goBack,
+                onAddAddon = { navController.navigate(Routes.ADDONS_ADD) },
+            )
         }
         composable(Routes.ADDONS_ADD) {
-            AddAddonScreen(onInstalled = { navController.popBackStack() })
+            AddAddonScreen(onBack = goBack, onInstalled = { navController.popBackStack() })
         }
         composable(Routes.DETAILS) {
-            DetailsScreen(onOpenStreams = { type, videoId, title, metaId, poster ->
-                navController.navigate(Routes.streams(type, videoId, title, metaId, poster))
-            })
+            DetailsScreen(
+                onBack = goBack,
+                onOpenStreams = { type, videoId, title, metaId, poster ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster))
+                },
+            )
         }
         composable(Routes.STREAMS) {
             StreamListScreen(
+                onBack = goBack,
                 onPlay = { navController.navigate(Routes.PLAYER) },
                 // External-player autoplay's manual fallback (§7.1.6): REPLACE
                 // this episode's list with the next episode's, mirroring the
