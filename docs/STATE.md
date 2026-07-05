@@ -1,4 +1,4 @@
-# STATE — updated 2026-07-05 by session 9
+# STATE — updated 2026-07-05 by session 10
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
@@ -10,6 +10,17 @@ player track picker, search focus rule, CW prefetch — all SHIPPED).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **On-screen Back button on every screen below Home (session 10, commit
+  6919cbc):** shared `BackButton` component; pops exactly one level, same
+  as remote BACK (§10 elder-friendly). Back never takes initial focus —
+  screens anchor their primary action with a FocusRequester instead:
+  Details → View streams / first season chip / first episode (season-less),
+  Streams → FIRST playable stream, Addons → "Add addon", Discover → Type
+  picker; Search/Add-addon text fields keep their existing anchors. The
+  Streams and Addons anchors also FIX two of the "Focus warts" below.
+  Full flow screenshot-verified on the TV emulator (TESTLOG 2026-07-05).
+  185/185 tests. NOT yet deployed — boxes still run alpha.6; ships with
+  the next build so the owner's alpha.6 gate run isn't disturbed.
 - **alpha.6 — owner feedback round 3 (session 9): player audio & subtitle
   picker, search focus fix, Continue Watching prefetch.** DPAD_UP in the
   player opens a two-section trapped-focus dialog: audio tracks named by
@@ -158,10 +169,10 @@ Phase 3 gate (§7.2).**
   present locally, gitignored; movie stream now carries 2 synthetic .srt
   subtitle tracks for caption testing — cue every 10 s). Fast path to the
   fixture series: home → Continue Watching (while progress rows last).
-- Focus warts for Phase 4 audit: Addons screen initial focus lands on first
-  row's toggle (UP reaches "Add addon"); home header needs one UP per row;
-  stream list initial focus misses the first card (send DOWN then UP to
-  anchor before CENTER). Long-press OK = `input keyevent --longpress
+- Focus warts for Phase 4 audit: home header needs one UP per row.
+  FIXED in session 10: Addons now enters on "Add addon"; stream list now
+  enters on the first playable card (no DOWN/UP dance needed before
+  CENTER). Long-press OK = `input keyevent --longpress
   KEYCODE_DPAD_CENTER` (opens Play with…).
 - Emulator D-pad quirk: too many BACKs exits the app entirely; relaunch with
   `adb shell am start -n dev.openstream.tv/.MainActivity`. An old prototype
