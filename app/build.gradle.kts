@@ -18,8 +18,10 @@ android {
         // Decision recorded in docs/DECISIONS.md.
         minSdk = 23
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // Bump both for every pre-release: the Phase 5 in-app updater will
+        // compare versionCode, and Android refuses to upgrade over an equal one.
+        versionCode = 2
+        versionName = "0.3.0-alpha.2"
     }
 
     buildTypes {

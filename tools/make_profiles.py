@@ -21,6 +21,7 @@ Usage:
 import argparse
 import json
 import re
+import secrets
 import sys
 from pathlib import Path
 
@@ -77,15 +78,35 @@ def main():
     out_dir = args.out or args.users.parent / "profiles"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Sidecar config (lives next to users.json, so private by construction):
+    #   skip  — user names (case-insensitive) to not generate for
+    #   links — name -> filename, so a person's URL survives regeneration.
+    # Filenames carry a random token: profiles get hosted on a public domain,
+    # and a guessable name like jody-miller.json would hand out her tokens.
+    config_path = args.users.parent / "profiles.config.json"
+    config = json.loads(config_path.read_text()) if config_path.exists() \
+        else {"skip": [], "links": {}}
+    skip = {s.lower() for s in config.get("skip", [])}
+
     data = json.loads(args.users.read_text())
     for user in data.get("users", []):
+        name = user.get("name", "")
+        if name.lower() in skip:
+            print(f"(skipped {name})")
+            continue
         profile = profile_for(user, args.instance)
-        slug = re.sub(r"[^a-z0-9]+", "-", profile["name"].lower()).strip("-") or "user"
-        path = out_dir / f"{slug}.json"
+        filename = config["links"].get(name)
+        if not filename:
+            slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "user"
+            filename = f"{slug}-{secrets.token_urlsafe(8)}.json"
+            config["links"][name] = filename
+        path = out_dir / filename
         path.write_text(json.dumps(profile, indent=2) + "\n")
         # names and counts only — never echo URLs
         print(f"{path.name}: {len(profile['addons'])} addons "
               f"({', '.join(a['name'] for a in profile['addons'])})")
+
+    config_path.write_text(json.dumps(config, indent=2) + "\n")
     print(f"\nWrote to {out_dir} — these files contain tokens; host privately, never commit.")
 
 
