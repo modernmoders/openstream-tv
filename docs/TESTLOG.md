@@ -4,6 +4,18 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-04 — Owner real-box session (alpha.3, onn 4K pro): autoplay §7.2-A PASS; findings triaged (session 7)
+
+Owner-reported, Claude-recorded:
+
+| Observation | Verdict |
+|---|---|
+| Autoplay episode chain: "works flawlessly" | §7.2 check A **PASS on real hardware** (B: VLC round-trip, C: feel — still pending; C has open perf notes below) |
+| Setup-link + browser entry flow end-to-end ("everything else is working great") | PASS |
+| Switching streams mid-episode restarted from 0:00 (360p AVC w/ artifacts → 1080p HEVC) | GAP: 60s resume floor ate short progress → fixed same day (dialog floor now 15s, Continue Watching keeps 60s; alpha.4) |
+| 360p AVC stream: macroblock "dying GPU" artifacts; 1080p HEVC clean | Logged for investigation (likely low-bitrate source; verify decoder selection) — MASTER_PLAN Phase 4 backlog |
+| Discover scroll laggy/uneven; only 6 posters visible; focus-border/poster clipping; wants mic search, recent searches, watched row, better player controls, skip-intro/credits options, pastel-iridescent accents | All captured in MASTER_PLAN §10 Phase 4 owner-feedback backlog |
+
 ## 2026-07-04 — Add-addon: browser-submitted preview unreachable on real box → scroll + autofocus fix, emulator-verified (session 7)
 
 Owner repro on onn box (alpha.2): setup-link preview rendered below the fold

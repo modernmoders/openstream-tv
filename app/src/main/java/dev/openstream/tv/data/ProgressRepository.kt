@@ -58,21 +58,33 @@ class ProgressRepository @Inject constructor(
     }
 
     companion object {
-        /** Under a minute in = not meaningfully started; don't offer resume. */
-        const val MIN_RESUME_POSITION_MS = 60_000L
+        /**
+         * Resume-dialog floor. Deliberately low: when a stream is swapped
+         * mid-episode (broken source, quality change) even 15 seconds in
+         * should carry over — owner feedback 2026-07-04, "start from where
+         * the other quit".
+         */
+        const val MIN_RESUME_POSITION_MS = 15_000L
+
+        /** Continue Watching floor stays high: an accidental 20-second
+         *  click must not squat on the home screen's first row. */
+        const val MIN_CONTINUE_WATCHING_MS = 60_000L
 
         /** Past 95% = finished; offering "resume" into credits is noise. */
         const val WATCHED_FRACTION = 0.95
 
         private const val MAX_CONTINUE_WATCHING = 20
 
-        fun isResumable(p: WatchProgress): Boolean =
-            p.positionMs >= MIN_RESUME_POSITION_MS &&
+        fun isResumable(
+            p: WatchProgress,
+            minPositionMs: Long = MIN_RESUME_POSITION_MS,
+        ): Boolean =
+            p.positionMs >= minPositionMs &&
                 p.durationMs > 0 &&
                 p.positionMs < p.durationMs * WATCHED_FRACTION
 
         fun continueWatching(all: List<WatchProgress>): List<WatchProgress> =
-            all.filter(::isResumable)
+            all.filter { isResumable(it, MIN_CONTINUE_WATCHING_MS) }
                 .sortedByDescending { it.updatedAt }
                 .take(MAX_CONTINUE_WATCHING)
     }

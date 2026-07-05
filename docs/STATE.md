@@ -8,6 +8,14 @@ owner's onn box) is the only item left before `phase-3-done`.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Owner real-box feedback round (alpha.3):** autoplay = §7.2 check A PASS
+  on real hardware (TESTLOG 2026-07-04). Full feedback triaged into
+  MASTER_PLAN §10 Phase 4 backlog (scroll perf/prefetch, density default+
+  setting, mic + recent searches + search focus rule, watched row, clipping
+  bugs, player controls, skip-intro/credits options, pastel accents, 360p
+  artifact investigation). Quick fix shipped as **alpha.4**: resume-dialog
+  floor 60s→15s (Continue Watching keeps 60s) so swapping streams
+  mid-episode resumes instead of restarting.
 - **Setup links (DECISIONS #14):** Add-addon input (and the browser entry
   page) now also accepts a hosted profile JSON (`openstream:1` marker) →
   multi-addon preview → install-all in profile order. Owner tooling:

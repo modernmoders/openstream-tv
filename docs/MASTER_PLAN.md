@@ -328,6 +328,32 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [ ] Focus/UX audit of every screen against §5; performance pass on lowest-end device.
 - [ ] Local profiles (separate addon sets + progress) — only if time permits; otherwise cut (YAGNI) and log it.
 
+Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 4):
+- [ ] **Discover scroll performance**: laggy/uneven on onn box. Prefetch the
+  next catalog page (`skip` pagination) + preload next row's images (Coil)
+  before the viewport reaches them; scroll timing must feel constant (§5.7).
+- [ ] **Density**: owner counts 6 visible posters — his own Stremio gripe.
+  Ship the §5.1 column setting (4–8), reconsider the default (7?), add the
+  compact-rows toggle.
+- [ ] **Search**: (a) mic/voice input via RecognizerIntent; (b) recent
+  searches list; (c) focus rule — moving into a new section lands on its
+  left-most item unless returning to the section you came from.
+- [ ] **Home**: a watched-history row (finished titles), distinct from
+  Continue Watching.
+- [ ] **Clipping bugs**: focused episode card border clips off-screen; a
+  focused search-result poster covers the section title above it (§5.3/§5.4).
+- [ ] **Player controls upgrade**: seek UX (speed ramp/preview), buffering
+  state, general 10-foot polish.
+- [ ] **Skip intro/credits** options: {autoskip intro, autoskip end credits,
+  skip-to-next before credits}. Sources to investigate: stream chapter
+  metadata, AniSkip API (anime), silence/black-frame heuristics. Stremio has
+  no native skip — differentiator.
+- [ ] **Theme accents**: owner likes pastel-iridescent gradients (M365 admin
+  aesthetic) — explore on focus borders/highlights in the dark theme.
+- [ ] **Artifact investigation**: 360p AVC stream showed macroblock artifacts
+  on the onn box while 1080p HEVC was clean — likely a low-bitrate source,
+  but verify decoder selection; consider a software-decode fallback toggle.
+
 ### Phase 5 — Release + community
 - [ ] Release CI: tag → build signed APK (repo-secret keystore) → GitHub Release.
 - [ ] In-app updater: background check of GitHub Releases API, dismissible prompt, download + `ACTION_VIEW` package-installer intent (sideload-friendly; needs `REQUEST_INSTALL_PACKAGES`).

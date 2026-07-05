@@ -42,8 +42,17 @@ class ProgressRepositoryTest {
     }
 
     @Test
-    fun `under a minute in is not resumable`() {
-        assertFalse(ProgressRepository.isResumable(progress(positionMs = 59_999)))
+    fun `under 15 seconds in is not resumable`() {
+        assertFalse(ProgressRepository.isResumable(progress(positionMs = 14_999)))
+    }
+
+    @Test
+    fun `20 seconds in resumes the dialog but stays out of Continue Watching`() {
+        // Owner feedback 2026-07-04: swapping to a new stream mid-episode must
+        // carry short progress over — without letting brief clicks clutter home.
+        val brief = progress(positionMs = 20_000)
+        assertTrue(ProgressRepository.isResumable(brief))
+        assertTrue(ProgressRepository.continueWatching(listOf(brief)).isEmpty())
     }
 
     @Test
@@ -90,7 +99,7 @@ class ProgressRepositoryTest {
     @Test
     fun `resumePositionFor is null for barely-started items`() = runTest(timeout = 60.seconds) {
         val repo = repo()
-        val p = progress(positionMs = 10_000)
+        val p = progress(positionMs = 9_000)
         repo.save(p)
         assertNull(repo.resumePositionFor(p.ref))
     }
