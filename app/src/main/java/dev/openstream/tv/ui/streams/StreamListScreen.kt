@@ -1,5 +1,10 @@
 package dev.openstream.tv.ui.streams
 
+import android.content.ActivityNotFoundException
+import android.view.KeyEvent as AndroidKeyEvent
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -30,7 +40,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
+import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
+import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 import dev.openstream.tv.ui.theme.AppBackground
@@ -40,26 +53,89 @@ import dev.openstream.tv.ui.theme.MutedText
  * Stream list: groups by addon in user order, streams in addon order —
  * NEVER re-sorted (§4.1.7). Non-URL sources (torrents, external links) are
  * visible but not playable in v1 (§4.1.4).
+ *
+ * OK plays with the internal player; LONG-press OK opens "Play with…"
+ * (§6.2 external players; the full always-use setting is Phase 4). This
+ * screen also hosts the §7.1.6 Up Next flow after an external player
+ * returns with a (near-)finished position.
  */
 @Composable
 fun StreamListScreen(
     onPlay: () -> Unit = {},
+    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
+        { _, _, _, _, _ -> },
     viewModel: StreamListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val autoplay by viewModel.autoplayState.collectAsStateWithLifecycle()
 
-    /** Stream awaiting a Resume/Start-over decision (progress exists for this video). */
-    var pendingResume by remember { mutableStateOf<Pair<InstalledAddon, Stream>?>(null) }
+    /** Stream chosen but not yet launched: resume/start-over and/or player choice pending. */
+    var pendingPlay by remember { mutableStateOf<PendingPlay?>(null) }
+    /** True while [pendingPlay] shows the "Play with…" list, false = resume dialog. */
+    var choosingPlayer by remember { mutableStateOf(false) }
 
-    val onStreamSelected: (InstalledAddon, Stream) -> Unit = { addon, stream ->
-        if (state.resumePositionMs != null) {
-            pendingResume = addon to stream
-        } else if (viewModel.stage(addon, stream)) {
-            onPlay()
+    val externalResult = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result -> viewModel.onExternalResult(result.resultCode, result.data) }
+
+    fun fireExternal(intent: android.content.Intent) {
+        try {
+            externalResult.launch(intent)
+            viewModel.onExternalLaunched()
+        } catch (_: ActivityNotFoundException) {
+            // Race: player uninstalled after detection. During autoplay this
+            // is the §7.1 step 5 fallthrough; manually it's a silent no-op —
+            // reopening the dialog re-runs detection without the ghost entry.
+            viewModel.onExternalLaunchFailed()
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    fun launch(play: PendingPlay, startPositionMs: Long) {
+        val external = play.external
+        if (external == null) {
+            if (viewModel.stage(play.addon, play.stream, startPositionMs)) onPlay()
+        } else {
+            viewModel.externalIntent(play.addon, play.stream, external, startPositionMs)
+                ?.let(::fireExternal)
+        }
+    }
+
+    /** Player decided; ask about resume only when there is progress to resume. */
+    fun onPlayerDecided(play: PendingPlay) {
+        choosingPlayer = false
+        if (state.resumePositionMs != null) {
+            pendingPlay = play // keep dialog chain going: resume question next
+        } else {
+            pendingPlay = null
+            launch(play, 0)
+        }
+    }
+
+    // §7.1.6 chain: the next episode plays in the same external player
+    LaunchedEffect(Unit) { viewModel.launchExternal.collect(::fireExternal) }
+    LaunchedEffect(Unit) {
+        // Autoplay gave up → next episode's manual stream list replaces this one
+        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
+    }
+    // Back cancels the Up Next flow instead of leaving the screen (§7.1 step 4a)
+    BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { event ->
+                // While the Up Next card is up, OK confirms the countdown and
+                // must never click through to a stream row underneath.
+                if (autoplay == null) return@onPreviewKeyEvent false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key.nativeKeyCode) {
+                    AndroidKeyEvent.KEYCODE_DPAD_CENTER -> {
+                        viewModel.confirmAutoplay(); true
+                    }
+                    else -> false
+                }
+            },
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -109,7 +185,18 @@ fun StreamListScreen(
                             // Index in key: addons may return near-identical rows
                             group.streams.forEachIndexed { index, stream ->
                                 item(key = "s-${group.addon.manifestUrl}-$index") {
-                                    StreamRow(stream, onClick = { onStreamSelected(group.addon, stream) })
+                                    StreamRow(
+                                        stream = stream,
+                                        onClick = {
+                                            onPlayerDecided(PendingPlay(group.addon, stream, external = null))
+                                        },
+                                        onLongClick = {
+                                            if (state.externalPlayers.isNotEmpty()) {
+                                                pendingPlay = PendingPlay(group.addon, stream, external = null)
+                                                choosingPlayer = true
+                                            }
+                                        },
+                                    )
                                 }
                             }
                         }
@@ -118,20 +205,74 @@ fun StreamListScreen(
         }
     }
 
-    pendingResume?.let { (addon, stream) ->
-        ResumeDialog(
-            resumePositionMs = state.resumePositionMs ?: 0,
-            onResume = {
-                pendingResume = null
-                if (viewModel.stage(addon, stream, state.resumePositionMs ?: 0)) onPlay()
-            },
-            onStartOver = {
-                pendingResume = null
-                if (viewModel.stage(addon, stream)) onPlay()
-            },
-            onDismiss = { pendingResume = null },
-        )
+    pendingPlay?.let { play ->
+        if (choosingPlayer) {
+            PlayWithDialog(
+                externalPlayers = state.externalPlayers,
+                onPick = { choice -> onPlayerDecided(play.copy(external = choice)) },
+                onDismiss = { pendingPlay = null; choosingPlayer = false },
+            )
+        } else {
+            ResumeDialog(
+                resumePositionMs = state.resumePositionMs ?: 0,
+                onResume = {
+                    pendingPlay = null
+                    launch(play, state.resumePositionMs ?: 0)
+                },
+                onStartOver = {
+                    pendingPlay = null
+                    launch(play, 0)
+                },
+                onDismiss = { pendingPlay = null },
+            )
+        }
     }
+
+    UpNextOverlay(autoplay)
+    }
+}
+
+/** A chosen stream on its way to a player. external == null → internal ExoPlayer. */
+private data class PendingPlay(
+    val addon: InstalledAddon,
+    val stream: Stream,
+    val external: ExternalPlayerPort.Choice?,
+)
+
+/**
+ * "Play with…" (§6.2): internal player first (the default everywhere else),
+ * then only the players that are actually installed. Same Dialog rationale
+ * as ResumeDialog — D-pad focus trapped, Back dismisses.
+ */
+@Composable
+private fun PlayWithDialog(
+    externalPlayers: List<ExternalPlayerPort.Choice>,
+    onPick: (ExternalPlayerPort.Choice?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { firstFocus.requestFocus() }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .background(Color(0xF0181822))
+                .padding(32.dp),
+        ) {
+            Text(
+                text = "Play with",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
+            Button(
+                onClick = { onPick(null) },
+                modifier = Modifier.focusRequester(firstFocus),
+            ) { Text("Internal player") }
+            externalPlayers.forEach { choice ->
+                Button(onClick = { onPick(choice) }) { Text(choice.player.label) }
+            }
+        }
     }
 }
 
@@ -175,9 +316,13 @@ private fun ResumeDialog(
 }
 
 @Composable
-private fun StreamRow(stream: Stream, onClick: () -> Unit) {
+private fun StreamRow(stream: Stream, onClick: () -> Unit, onLongClick: () -> Unit) {
     if (stream.isPlayableInV1) {
-        Button(onClick = onClick, modifier = Modifier.fillMaxWidth(0.85f)) {
+        Button(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            modifier = Modifier.fillMaxWidth(0.85f),
+        ) {
             Column(Modifier.padding(vertical = 2.dp)) {
                 Text(
                     text = stream.name ?: "Stream",

@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.StreamRepository
+import dev.openstream.tv.autoplay.AutoplayController
+import dev.openstream.tv.autoplay.AutoplayGateway
 import dev.openstream.tv.autoplay.AutoplayOriginHolder
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
@@ -12,7 +14,10 @@ import dev.openstream.tv.addon.fixtures.MockAddonServer
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
+import android.content.Intent
 import dev.openstream.tv.player.CurrentPlayback
+import dev.openstream.tv.player.ExternalLaunch
+import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
@@ -61,13 +66,32 @@ class StreamListViewModelTest {
 
     private val autoplayOrigin = AutoplayOriginHolder()
 
+    /** No players installed — external paths are exercised by ExternalPlayersTest. */
+    private val noExternalPlayers = object : ExternalPlayerPort {
+        override fun installedPlayers() = emptyList<ExternalPlayerPort.Choice>()
+        override fun intentFor(launch: ExternalLaunch) = error("no external launches in these tests")
+        override fun resultExtras(data: Intent?) = emptyMap<String, Any?>()
+    }
+
     private fun viewModel(type: String, videoId: String) = StreamListViewModel(
         streamRepository,
         currentPlayback,
         progressRepository,
         autoplayOrigin,
+        noExternalPlayers,
+        AutoplayController(NeverAutoplayGateway),
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
+
+    /** Inert gateway: these tests never reach the §7.1.6 external Up Next flow. */
+    private object NeverAutoplayGateway : AutoplayGateway {
+        override suspend fun resolveMeta(type: String, id: String) = null
+        override suspend fun streamAddons(type: String, videoId: String) =
+            emptyList<dev.openstream.tv.addon.InstalledAddon>()
+        override suspend fun fetchStreams(
+            addon: dev.openstream.tv.addon.InstalledAddon, type: String, videoId: String,
+        ) = emptyList<dev.openstream.tv.addon.Stream>()
+    }
 
     @Test
     fun `groups follow addon order and keep stream order untouched`() = runTest(timeout = 60.seconds) {

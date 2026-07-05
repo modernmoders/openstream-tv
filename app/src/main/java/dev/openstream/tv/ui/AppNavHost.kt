@@ -68,7 +68,17 @@ fun AppNavHost() {
             })
         }
         composable(Routes.STREAMS) {
-            StreamListScreen(onPlay = { navController.navigate(Routes.PLAYER) })
+            StreamListScreen(
+                onPlay = { navController.navigate(Routes.PLAYER) },
+                // External-player autoplay's manual fallback (§7.1.6): REPLACE
+                // this episode's list with the next episode's, mirroring the
+                // player's behavior — Back must not walk a binge's whole tail.
+                onOpenStreams = { type, videoId, title, metaId, poster ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
+                        popUpTo(Routes.STREAMS) { inclusive = true }
+                    }
+                },
+            )
         }
         composable(Routes.PLAYER) {
             PlayerScreen(

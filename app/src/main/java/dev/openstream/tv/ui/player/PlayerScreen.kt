@@ -36,9 +36,8 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import dev.openstream.tv.addon.Video
 import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
-import dev.openstream.tv.autoplay.AutoplayStateMachine
+import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
@@ -179,25 +178,11 @@ fun PlayerScreen(
 
         // Up Next flow (§7.1) replaces the finished panel while it's working;
         // the panel stays the honest fallback for movies/series end/cancel.
-        when (val up = autoplay) {
-            is AutoplayStateMachine.State.Countdown -> UpNextCard(
-                headline = "Up next: ${up.next.upNextLabel()}",
-                detail = "Playing in ${up.secondsLeft}s   (OK play now · Back cancel)",
-            )
-            is AutoplayStateMachine.State.Resolving -> UpNextCard(
-                headline = "Finding next episode…",
-                detail = if (up.totalAddons > 0) {
-                    "${up.respondedAddons}/${up.totalAddons} addons responded   (Back cancel)"
-                } else "(Back cancel)",
-            )
-            is AutoplayStateMachine.State.Attempting -> UpNextCard(
-                headline = "Starting ${up.next.upNextLabel()}",
-                detail = if (up.attempt > 0) "Attempt ${up.attempt + 1}" else "",
-            )
-            else -> if (state.ended) {
-                CenterPanel("Playback finished") {
-                    Button(onClick = onExit) { Text("Back") }
-                }
+        if (autoplay != null) {
+            UpNextOverlay(autoplay)
+        } else if (state.ended) {
+            CenterPanel("Playback finished") {
+                Button(onClick = onExit) { Text("Back") }
             }
         }
 
@@ -208,30 +193,6 @@ fun PlayerScreen(
                     Button(onClick = viewModel::retry) { Text("Retry") }
                     Button(onClick = onExit) { Text("Back to streams") }
                 }
-            }
-        }
-    }
-}
-
-private fun Video.upNextLabel(): String {
-    val se = if (season != null && episode != null) "S${season}E$episode" else null
-    return listOfNotNull(se, displayTitle.takeIf { it.isNotBlank() && it != id }).joinToString(" · ")
-        .ifBlank { displayTitle }
-}
-
-/** The Up Next overlay (§7.1 step 2/4): visible waiting, never a dead screen. */
-@Composable
-private fun UpNextCard(headline: String, detail: String) {
-    Box(Modifier.fillMaxSize().padding(48.dp), contentAlignment = Alignment.BottomEnd) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier
-                .background(Color(0xF0181822))
-                .padding(horizontal = 28.dp, vertical = 20.dp),
-        ) {
-            Text(headline, style = MaterialTheme.typography.titleLarge, color = Color.White)
-            if (detail.isNotBlank()) {
-                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MutedText)
             }
         }
     }
