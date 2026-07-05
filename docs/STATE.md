@@ -48,9 +48,16 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 **Phase 3 gate (§7.2) — OWNER ACTION on an onn box, then tag.**
 1. Owner follows **docs/TESTING_ON_ONN.md** (written for a non-technical
    run-through): install via Downloader from the GitHub pre-release
-   (v0.3.0-alpha.1, `gh` is authed on this machine for future builds) or
-   adb-over-network so Claude can drive; then checks A (3-episode chain),
-   B (VLC round-trip incl. §7.1.6), C (feel).
+   (**v0.3.0-alpha.2** — includes browser entry + setup links; versionCode 2
+   so it upgrades over alpha.1) or adb-over-network so Claude can drive;
+   then checks A (3-episode chain), B (VLC round-trip incl. §7.1.6), C (feel).
+   Bonus check D: Add addon → open the shown web address on a phone → paste
+   a setup link → install-all lands.
+1b. Owner picks one of their unused domains + hosting for the 10 generated
+   profiles in `docs/reference/StremioSurfer/profiles/` (see
+   docs/SETUP_LINKS.md; skip list + stable filenames in
+   profiles.config.json). Claude can automate upload once told the host.
+   AIOMetadata URLs in users.json are still all EMPTY — fill + regenerate.
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
 3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start
