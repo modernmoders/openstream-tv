@@ -320,7 +320,7 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 
 ### Phase 3 — Autoplay + external players
 - [x] `AutoplayController` per §7 (state machine unit-tested first, then wired). *(2026-07-04/05: machine+cascade pure & table-tested (DECISIONS #10), controller wired via AutoplayGateway; 3-episode chain + 20s-delayed addon verified on emulator vs local fixture series; patient HTTP client for autoplay fetches (DECISIONS #11).)*
-- [ ] VLC + MX Player + generic launchers, resume-position round-trip.
+- [x] VLC + MX Player + generic launchers, resume-position round-trip. *(2026-07-05: per-launch "Play with…" long-press (DECISIONS #12); pure intent specs + result mapping, 20 unit tests; emulator verified detection/handoff/responsive-return with sideloaded VLC — VLC can't create a video output on the goldfish GPU, so the live position round-trip is folded into the owner's onn-box §7.2 run.)*
 - [ ] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner). *(Emulator half done 2026-07-05 — TESTLOG; owner's onn box run pending.)*
 
 ### Phase 4 — Customization + settings + polish

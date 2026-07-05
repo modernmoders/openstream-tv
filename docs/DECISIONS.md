@@ -180,3 +180,34 @@ outvote a weak higher-tier one (filename similarity).
 "settled" as a failure and autoplay fell back to the manual list. Interactive
 stream lists keep the snappy 15s budget; only autoplay waits patiently (50s
 keeps the HTTP layer inside the machine's 60s patience ceiling).
+
+## 12. 2026-07-05 — External players: per-launch choice, pure intent specs, same-player binge chain
+
+**Decision:** §6.2 external playback ships as a per-launch "Play with…"
+long-press on the stream list (the "Always use" setting waits for Phase 4's
+settings screen). The VLC/MX intent dialects live in pure data
+(`ExternalPlayers.kt`: LaunchSpec + result interpretation); the only Android
+edge is `ExternalPlayerLauncher` behind an `ExternalPlayerPort` seam
+(AutoplayGateway precedent — no MockK in this project).
+
+**Non-obvious choices:**
+- MX Pro package is preferred over free when both are installed — someone
+  who paid expects the paid app to open.
+- A successful `startActivityForResult` launch counts as autoplay attempt
+  success (`onPlaybackReady`) — we cannot see inside an external player;
+  ActivityNotFound is the §7.1 step 5 fallthrough.
+- Result mapping is deliberately conservative: progress is saved ONLY when
+  the player returned both position > 0 and duration > 0; anything else is
+  Unknown and leaves stored progress untouched (a canceled launch must not
+  wipe a real resume point). MX's `end_by=playback_completion` and the
+  §7.1.6 near-complete rule (≥95% or last 30s) map to Finished → clear
+  progress + run the Up Next flow.
+- The §7.1.6 best-effort binge chain relaunches the SAME external player the
+  user picked for this screen session; its manual fallback REPLACES the
+  current stream list (Back must not walk the binge tail). The stream list
+  hosts its own AutoplayController instance (the class is unscoped).
+- VLC start-over launches send `from_start=true` so VLC's own resume memory
+  cannot override the user's explicit "Start over".
+- GENERIC always goes through `Intent.createChooser` — "Other apps…" must
+  never silently bind to a previous "always" choice; it is only offered when
+  PackageManager finds another video/* handler (no empty choosers, §5.4).

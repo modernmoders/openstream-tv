@@ -4,6 +4,18 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Phase 3 unit 3: external players (VLC/MX/generic) — launch + detection verified; video render impossible on emulator (session 6)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew assembleDebug && testDebugUnitTest` — 144 tests (new ×20: ExternalPlayersTest — VLC/MX launch-extra dialects incl. position/from_start/return_result/headers/subs alignment, result interpretation incl. §7.1.6 near-complete boundaries, lenient int-vs-long extras, MX playback_completion, generic-unknown, non-OK-unknown) | macOS, JDK 17 | PASS (144/144) |
+| **"Play with…" long-press dialog (§6.2):** long-press OK on a stream row → dialog shows Internal player / VLC / Other apps… — VLC detected (sideloaded F-Droid 3.7.1 arm64), MX correctly absent (not installed), generic offered only because other video handlers exist. Screenshot. | AVD windowed, VLC sideloaded, local fixture addon | PASS |
+| **Intent handoff to VLC:** picking VLC opens VideoPlayerActivity with our URL — logcat: `libvlc input: 'http://10.0.2.2:8090/video.mov' successfully opened`, h264+aac decoders started. Intent extras contract exercised for real. | same | PASS |
+| **App responsive on return (§6.2 known-Stremio-failure check):** three VLC round-trips (incl. one canceled by VLC's first-run onboarding) — every return landed back on the intact stream list, no freeze, no crash, no bogus progress row (no-info results leave stored progress untouched). | same | PASS |
+| **Environment limit: VLC cannot render video on the goldfish GPU** — `libvlc video output: video output creation failed` → VLC aborts playback ~1s in, every attempt (its android_window/opaque-vout path; our ExoPlayer renders fine on the same AVD). No adb root on this image to force VLC's GLES2 vout. Consequence: live resume-position round-trip + §7.1.6 external Up Next chain CANNOT be emulator-verified — moved to the owner's onn box run (already the §7.2 gate owner action). Pure logic is fully unit-tested. | same | BLOCKED (env) |
+| VLC first-run gotcha (real devices too): onboarding (storage/scan pages) hijacks the first ACTION_VIEW launch and silently kills playback — user must open VLC once before handoff works. Worth a README/troubleshooting note at release. | same | RULE |
+| Generic chooser path: "Other apps…" fires the system intent resolver (process observed), resolves to the only handler, returns; app intact. | same | PASS |
+
 ## 2026-07-05 — Phase 3 unit 2: AutoplayController wired — 3-episode chain + delayed addon verified (session 5)
 
 | Check | Environment | Result |
