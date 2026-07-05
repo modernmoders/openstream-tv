@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +57,7 @@ private fun UpNextCard(headline: String, detail: String) {
         Column(
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
-                .background(Color(0xF0181822))
+                .background(Color(0xF0181822), RoundedCornerShape(12.dp))
                 .padding(horizontal = 28.dp, vertical = 20.dp),
         ) {
             Text(headline, style = MaterialTheme.typography.titleLarge, color = Color.White)

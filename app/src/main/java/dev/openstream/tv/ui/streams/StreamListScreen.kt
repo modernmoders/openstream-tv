@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -257,20 +259,29 @@ private fun PlayWithDialog(
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
-                .background(Color(0xF0181822))
-                .padding(32.dp),
+                .width(360.dp)
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
         ) {
             Text(
                 text = "Play with",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
+                modifier = Modifier.padding(bottom = 6.dp),
             )
+            // Full-width buttons: ragged wrap-content widths read as broken
+            // on a 10-foot UI (§5 visual polish)
             Button(
                 onClick = { onPick(null) },
-                modifier = Modifier.focusRequester(firstFocus),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(firstFocus),
             ) { Text("Internal player") }
             externalPlayers.forEach { choice ->
-                Button(onClick = { onPick(choice) }) { Text(choice.player.label) }
+                Button(
+                    onClick = { onPick(choice) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(choice.player.label) }
             }
         }
     }
@@ -296,7 +307,7 @@ private fun ResumeDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
-                .background(Color(0xF0181822))
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
                 .padding(32.dp),
         ) {
             Text(
