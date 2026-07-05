@@ -4,6 +4,16 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Discover redo: Stremio-style category tree, emulator-verified (session 8)
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew assembleDebug && testDebugUnitTest` — 165 tests (7 new: type-tree build, genre refetch, genre survives loadMore skip, genre-required auto-select, type-switch reset, discoverRefs filtering, isDiscoverable/genreOptions parsing) | macOS, JDK 17, local JVM | PASS (165/165) |
+| Type picker: dialog opens focused on current selection ("Movie ✓"); lists Movie/Series + owner AIOMetadata custom types (Trending, Genres, Collections, Charts, By Decade, Anime, Networks) | AVD `openstream_tv_api34`, app DB: Cinemeta + owner's AIOMetadata + Local Test Addon + owner's AIOStreams | PASS (screenshot-verified) |
+| Type switch Movie→Series: catalog chip resets to first series catalog (Popular·Cinemeta), grid refetches series | same | PASS |
+| Genre picker: "None ✓" default + Cinemeta genre list; picking Adventure refetches grid, chip label becomes "Adventure" | same | PASS |
+| Catalog picker: aggregates across all 4 addons with addon sublabels (incl. AIOStreams Netflix/HBO Max/Disney lists); genre-required Cinemeta "New" now offered; D-pad focus-scrolls the long list | same | PASS |
+
 ## 2026-07-04 — Owner real-box session (alpha.3, onn 4K pro): autoplay §7.2-A PASS; findings triaged (session 7)
 
 Owner-reported, Claude-recorded:

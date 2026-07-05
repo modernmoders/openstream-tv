@@ -1,13 +1,27 @@
-# STATE — updated 2026-07-04 by session 7
+# STATE — updated 2026-07-05 by session 8
 
 ## Phase
-Phase 3 — Autoplay + external players: ALL BUILD UNITS DONE. Gate (§7.2 on
-owner's onn box) is the only item left before `phase-3-done`.
+Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
+item before `phase-3-done` (check A passed 2026-07-04; B/C/D pending).
+Phase 4 started early by owner request: Discover redo SHIPPED.
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Discover redo — Stremio-style category tree (owner request, session 8):**
+  studied web.stremio.com Discover live in-browser, then replaced the
+  left-rail catalog list with Type → Catalog → Genre picker chips
+  (trapped-focus dialogs, initial focus on current selection, ✓ marker,
+  addon sublabels in the catalog picker). Upstream pick resets downstream,
+  like Stremio. Genre-required catalogs (Cinemeta "New"/year lists) are now
+  browsable in Discover via new `ManifestCatalog.isDiscoverable` +
+  auto-selected first genre; home rows still use `isBrowsableFeed`.
+  `loadMore` keeps the active genre (`genre=X&skip=N`). 165/165 unit tests
+  (7 new); full picker flow screenshot-verified on the TV emulator against
+  Cinemeta + owner's AIOMetadata/AIOStreams (TESTLOG 2026-07-05,
+  DECISIONS #16). Owner's custom AIOMetadata types (Trending, Anime,
+  Networks…) surface as first-class Types — correct per §8.
 - **Owner real-box feedback round (alpha.3):** autoplay = §7.2 check A PASS
   on real hardware (TESTLOG 2026-07-04). Full feedback triaged into
   MASTER_PLAN §10 Phase 4 backlog (scroll perf/prefetch, density default+
@@ -53,15 +67,17 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**Phase 3 gate (§7.2) — OWNER ACTION on an onn box, then tag.**
-1. Owner follows **docs/TESTING_ON_ONN.md**. BOTH onn boxes (4K pro
-   192.168.1.117, 4K Plus 192.168.1.231 — network adb is LIVE from this
-   Mac, no Downloader needed) already run **v0.3.0-alpha.3** (fixes the
-   below-the-fold preview bug the owner hit; TESTLOG 2026-07-04). Checks:
-   A (3-episode chain), B (VLC round-trip incl. §7.1.6), C (feel),
-   D (paste setup link from phone → install-all).
-   Bonus check D: Add addon → open the shown web address on a phone → paste
-   a setup link → install-all lands.
+**Push the Discover redo to the owner's boxes + Phase 3 gate (§7.2).**
+0. Deploy the new build (Discover tree) to BOTH onn boxes via live network
+   adb (`adb -s 192.168.1.117:5555 install -r
+   app/build.nosync/outputs/apk/debug/app-debug.apk`, same for .231) so the
+   owner sees the redo; consider tagging v0.3.0-alpha.5 first.
+1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes currently run
+   **v0.3.0-alpha.3/4**. Checks:
+   A (3-episode chain — already PASS 2026-07-04), B (VLC round-trip incl.
+   §7.1.6), C (feel), D (paste setup link from phone → install-all).
+   NEW: owner eyeballs the Discover tree on real hardware (type/catalog/
+   genre pickers, genre-required Cinemeta "New").
 1b. **Dreamhost upload (owner action):** upload the CONTENTS of
    `docs/reference/StremioSurfer/hosting/` (10 profiles + index.php name
    lookup + .htaccess) to a `setup/` folder on one of the owner's domains

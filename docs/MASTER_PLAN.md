@@ -329,6 +329,10 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [ ] Local profiles (separate addon sets + progress) — only if time permits; otherwise cut (YAGNI) and log it.
 
 Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 4):
+- [x] **Discover category tree** (owner request 2026-07-05): Stremio-style
+  Type → Catalog → Genre pickers replacing the left rail; genre-required
+  catalogs (Cinemeta "New"/year lists) now browsable in Discover with
+  auto-selected first genre. Emulator-verified same day (DECISIONS #16).
 - [ ] **Discover scroll performance**: laggy/uneven on onn box. Prefetch the
   next catalog page (`skip` pagination) + preload next row's images (Coil)
   before the viewport reaches them; scroll timing must feel constant (§5.7).

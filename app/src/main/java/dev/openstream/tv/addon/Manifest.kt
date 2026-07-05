@@ -144,6 +144,27 @@ data class ManifestCatalog(
      */
     val isBrowsableFeed: Boolean
         get() = extra.none { it.isRequired } && extraRequired.isEmpty()
+
+    /**
+     * Genre choices this catalog declares. Modern notation only: the legacy
+     * short notation can say "genre is supported" but never lists the options,
+     * so there is nothing to offer in a picker.
+     */
+    val genreOptions: List<String>
+        get() = extra.firstOrNull { it.name == "genre" }?.options.orEmpty()
+
+    /**
+     * True when Discover can browse this catalog: either a plain feed, or one
+     * whose only required extra is a genre we can pick from a declared option
+     * list. Stremio surfaces these genre-required catalogs (e.g. Cinemeta's
+     * year lists) in Discover only — never as home rows.
+     */
+    val isDiscoverable: Boolean
+        get() {
+            val required = extra.filter { it.isRequired }.map { it.name } + extraRequired
+            return required.isEmpty() ||
+                (required.all { it == "genre" } && genreOptions.isNotEmpty())
+        }
 }
 
 @Serializable

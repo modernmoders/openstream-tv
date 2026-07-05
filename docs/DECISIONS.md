@@ -291,3 +291,33 @@ tokens). This is family-scale obscurity, not auth — acceptable to the owner
 today; a shared PIN in index.php is the documented upgrade path if that
 changes. Generated bundle lives in the gitignored private folder; only the
 generators are tracked.
+
+## 16. 2026-07-05 — Discover is a Stremio-style category tree (Type → Catalog → Genre)
+
+**Decision:** Replaced the left-rail catalog list with the exact filter model
+web.stremio.com uses (verified in-browser this session): three pickers across
+the top — Type (distinct catalog types across enabled addons, first-seen
+order), Catalog (all catalogs of that type, addon-then-manifest order, §4.1.7
+never re-sorted), Genre (the selected catalog's declared `genre` options,
+"None" default). Picking at any level resets everything below it. State lives
+in DiscoverViewModel as a tree selection; the grid + skip pagination are
+unchanged.
+
+- **Genre-required catalogs are Discover-only.** Cinemeta's "New" (and year
+  lists) require a genre and were previously invisible everywhere. New
+  `ManifestCatalog.isDiscoverable` admits catalogs whose only *required*
+  extra is a genre with declared options; the ViewModel auto-selects the
+  first option so the fetch can't 404, and the picker offers no "None".
+  Home rows still use `isBrowsableFeed` — unchanged.
+- **Genre options come from the modern `extra` notation only.** The legacy
+  short notation can say "genre supported" but never lists options, so
+  there is nothing to put in a picker; such catalogs simply show no Genre
+  chip (fetches still work without the extra).
+- **Pickers are trapped-focus Dialogs** (same rationale as ResumeDialog,
+  §5.4): initial focus on the current selection, plain scrollable Column
+  (not lazy) because focus-scrolling a lazy list is unreliable and one
+  AIOMetadata instance declares 60+ catalogs — fine to compose once.
+- The owner's AIOMetadata instance declares custom type strings (Trending,
+  Collections, Charts, By Decade, Anime, Networks…). These appear as
+  first-class Types — correct per §8 (types are raw strings, never enums),
+  and matches real Stremio behavior.

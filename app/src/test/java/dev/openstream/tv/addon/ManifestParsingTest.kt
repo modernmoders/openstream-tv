@@ -80,6 +80,24 @@ class ManifestParsingTest {
     }
 
     @Test
+    fun `discoverability follows required extras and genre options`() {
+        val top = manifest.catalogs.first { it.id == "top" }
+        assertEquals(listOf("Action", "Comedy"), top.genreOptions)
+        assertTrue(top.isDiscoverable) // browsable feeds always are
+
+        // Requires a genre but declares the options -> Discover-only catalog.
+        val byGenre = manifest.catalogs.first { it.id == "bygenre" }
+        assertFalse(byGenre.isBrowsableFeed)
+        assertTrue(byGenre.isDiscoverable)
+
+        // Requires free-text search -> nothing to offer in a picker.
+        assertFalse(manifest.catalogs.first { it.id == "searchonly" }.isDiscoverable)
+        // Legacy notation supports genre but lists no options, and it
+        // requires search anyway.
+        assertFalse(manifest.catalogs.first { it.id == "legacy" }.isDiscoverable)
+    }
+
+    @Test
     fun `empty manifest parses but is not usable`() {
         val empty = AddonJson.decodeFromString(Manifest.serializer(), "{}")
         assertFalse(empty.isUsable)

@@ -26,10 +26,25 @@
             ]
         },
         {
+            "type": "movie",
+            "id": "bygenre",
+            "name": "Movies by Genre",
+            "extra": [
+                { "name": "genre", "isRequired": true, "options": ["Drama", "Horror"] },
+                { "name": "skip", "isRequired": false }
+            ]
+        },
+        {
             "type": "series",
             "id": "searchonly",
             "name": "Search Only",
             "extra": [ { "name": "search", "isRequired": true } ]
+        },
+        {
+            "type": "series",
+            "id": "sbygenre",
+            "name": "Series by Genre",
+            "extra": [ { "name": "genre", "isRequired": true, "options": ["Drama"] } ]
         },
         {
             "type": "tv",

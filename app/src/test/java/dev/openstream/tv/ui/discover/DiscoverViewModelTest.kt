@@ -45,7 +45,7 @@ class DiscoverViewModelTest {
     }
 
     @Test
-    fun `selects first browsable catalog and loads its first page`() = runTest(timeout = 60.seconds) {
+    fun `builds the type tree and loads the first catalog of the first type`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
         server.start()
@@ -54,8 +54,97 @@ class DiscoverViewModelTest {
         val viewModel = DiscoverViewModel(addonRepository, catalogRepository)
         val state = viewModel.uiState.first { it.items.isNotEmpty() }
 
+        // Types in first-seen manifest order; search-only catalogs contribute
+        // nothing (so no "tv" from the legacy catalog).
+        assertEquals(listOf("movie", "series"), state.types)
+        assertEquals("movie", state.selectedType)
+        assertEquals(listOf("top", "bygenre"), state.catalogs.map { it.catalog.id })
         assertEquals("top", state.selected?.catalog?.id)
+        assertEquals(listOf("Action", "Comedy"), state.genres)
+        assertEquals(null, state.selectedGenre) // optional genre starts on None
         assertEquals(5, state.items.size)
+    }
+
+    @Test
+    fun `picking a genre refetches with the genre extra`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/movie/top/genre=Action.json", Fixtures.load("catalog_mixed"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository)
+        viewModel.uiState.first { it.items.isNotEmpty() }
+
+        viewModel.selectGenre("Action")
+        val state = viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
+
+        assertTrue(server.requestedPaths.contains("/catalog/movie/top/genre=Action.json"))
+        assertEquals("Action", state.selectedGenre)
+    }
+
+    @Test
+    fun `loadMore keeps the active genre filter`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/movie/top/genre=Action.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/movie/top/genre=Action&skip=5.json", Fixtures.load("catalog_mixed"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository)
+        viewModel.uiState.first { it.items.isNotEmpty() }
+        viewModel.selectGenre("Action")
+        viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
+
+        viewModel.loadMore()
+        viewModel.uiState.first { !it.loading }
+
+        assertTrue(server.requestedPaths.contains("/catalog/movie/top/genre=Action&skip=5.json"))
+    }
+
+    @Test
+    fun `genre-required catalog auto-selects its first genre`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/movie/bygenre/genre=Drama.json", Fixtures.load("catalog_mixed"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository)
+        val first = viewModel.uiState.first { it.items.isNotEmpty() }
+
+        viewModel.select(first.catalogs.first { it.catalog.id == "bygenre" })
+        val state = viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
+
+        assertTrue(server.requestedPaths.contains("/catalog/movie/bygenre/genre=Drama.json"))
+        assertEquals("Drama", state.selectedGenre)
+        assertTrue(state.genreRequired)
+    }
+
+    @Test
+    fun `switching type resets catalog and genre to that type's first`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/catalog/movie/top.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/movie/top/genre=Action.json", Fixtures.load("catalog_mixed"))
+        server.route("/catalog/series/sbygenre/genre=Drama.json", Fixtures.load("catalog_mixed"))
+        server.start()
+        addonRepository.install(server.url("/manifest.json")).getOrThrow()
+
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository)
+        viewModel.uiState.first { it.items.isNotEmpty() }
+        viewModel.selectGenre("Action") // must not leak into the series fetch
+        viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
+
+        viewModel.selectType("series")
+        val state = viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
+
+        assertEquals("series", state.selectedType)
+        assertEquals(listOf("sbygenre"), state.catalogs.map { it.catalog.id })
+        assertEquals("sbygenre", state.selected?.catalog?.id)
+        // sbygenre requires a genre -> its first option, not the stale Action.
+        assertEquals("Drama", state.selectedGenre)
+        assertTrue(server.requestedPaths.contains("/catalog/series/sbygenre/genre=Drama.json"))
     }
 
     @Test

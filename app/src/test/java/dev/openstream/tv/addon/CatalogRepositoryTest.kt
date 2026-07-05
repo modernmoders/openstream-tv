@@ -44,12 +44,22 @@ class CatalogRepositoryTest {
                 installed("https://b.example/manifest.json", enabled = false, order = 1),
             )
         )
-        // manifest_full has 3 catalogs: "top" (browsable), "searchonly"
-        // (requires search), "legacy" (legacy extraRequired: search).
-        // Only "top" survives, and only for the enabled addon.
+        // manifest_full's catalogs: "top" (browsable), "bygenre"/"sbygenre"
+        // (require a genre), "searchonly"/"legacy" (require search).
+        // Only "top" is a browsable feed, and only for the enabled addon.
         assertEquals(1, refs.size)
         assertEquals("top", refs.single().catalog.id)
         assertEquals("https://a.example/manifest.json", refs.single().addon.manifestUrl)
+    }
+
+    @Test
+    fun `discoverRefs add genre-required catalogs but never search-only ones`() {
+        val refs = repository.discoverRefs(
+            listOf(installed("https://a.example/manifest.json"))
+        )
+        // Browsable "top" plus the two genre-required catalogs, manifest
+        // order; "searchonly"/"legacy" need free-text input and stay out.
+        assertEquals(listOf("top", "bygenre", "sbygenre"), refs.map { it.catalog.id })
     }
 
     @Test

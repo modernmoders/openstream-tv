@@ -41,6 +41,20 @@ class CatalogRepository @Inject constructor(
                     .map { CatalogRef(addon, it) }
             }
 
+    /**
+     * Discover's catalog-tree source: the browsable feeds PLUS genre-required
+     * catalogs, which become fetchable once the user picks one of their
+     * declared genres. Same sacred ordering as [catalogRefs] (§4.1.7).
+     */
+    fun discoverRefs(addons: List<InstalledAddon>): List<CatalogRef> =
+        addons
+            .filter { it.enabled }
+            .flatMap { addon ->
+                addon.manifest.catalogs
+                    .filter { it.isDiscoverable }
+                    .map { CatalogRef(addon, it) }
+            }
+
     /** Catalogs that can serve a text search (modern or legacy notation). */
     fun searchRefs(addons: List<InstalledAddon>): List<CatalogRef> =
         addons
