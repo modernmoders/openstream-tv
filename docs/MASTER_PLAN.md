@@ -338,14 +338,20 @@ Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 
   before the viewport reaches them; scroll timing must feel constant (§5.7).
 - [ ] **Density**: owner counts 6 visible posters — his own Stremio gripe.
   Ship the §5.1 column setting (4–8), reconsider the default (7?), add the
-  compact-rows toggle.
+  compact-rows toggle. *(2026-07-05: first slice shipped — Discover View
+  chip offers 6/8 columns + client-side sort, DataStore-persisted
+  (DECISIONS #18). Global setting still belongs to the settings screen.)*
 - [ ] **Search**: (a) mic/voice input via RecognizerIntent; (b) recent
   searches list; (c) focus rule — moving into a new section lands on its
   left-most item unless returning to the section you came from.
 - [ ] **Home**: a watched-history row (finished titles), distinct from
   Continue Watching.
-- [ ] **Clipping bugs**: focused episode card border clips off-screen; a
+- [x] **Clipping bugs**: focused episode card border clips off-screen; a
   focused search-result poster covers the section title above it (§5.3/§5.4).
+  *(2026-07-05: root cause = scroll containers clip hard on their scroll
+  axis; fixed app-wide with `CardSizeTokens.focusHeadroom` contentPadding on
+  every lazy list/grid/scroll dialog + details switched to contentPadding.
+  Owner to confirm on the box.)*
 - [ ] **Player controls upgrade**: seek UX (speed ramp/preview), buffering
   state, general 10-foot polish.
 - [ ] **Skip intro/credits** options: {autoskip intro, autoskip end credits,

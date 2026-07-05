@@ -161,7 +161,12 @@ fun StreamListScreen(
             )
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            // Scroll-axis headroom so the first/last stream row's focus
+            // scale isn't clipped (§5.3).
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+        ) {
             state.groups.forEach { group ->
                 item(key = "header-${group.addon.manifestUrl}") {
                     Text(

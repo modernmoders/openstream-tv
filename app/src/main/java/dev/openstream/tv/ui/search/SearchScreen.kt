@@ -74,7 +74,14 @@ fun SearchScreen(
             RowMessage("None of your addons support search")
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        LazyColumn(
+            // Rows carry ±focusHeadroom internally (§5.3); small spacing
+            // keeps the old 20dp visual rhythm.
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                vertical = CardSizeTokens.focusHeadroom,
+            ),
+        ) {
             items(state.rows, key = { it.ref.key }) { row ->
                 SearchRow(row, onItemClick)
             }
@@ -110,7 +117,11 @@ private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaI
                 } else {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
+                        // Vertical headroom: focus scale grows into this gap
+                        // instead of overlaying the row title (§5.3).
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
+                        ),
                     ) {
                         items(row.items, key = { it.id }) { item ->
                             PosterCard(item, onClick = { onItemClick(item) })

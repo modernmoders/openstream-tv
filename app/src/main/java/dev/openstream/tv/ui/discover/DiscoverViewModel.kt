@@ -7,6 +7,9 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.data.DiscoverSortMode
+import dev.openstream.tv.data.DiscoverViewPrefs
+import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -27,6 +30,7 @@ import kotlinx.coroutines.launch
 class DiscoverViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
+    private val viewPrefs: ViewPrefs,
 ) : ViewModel() {
 
     data class UiState(
@@ -47,6 +51,8 @@ class DiscoverViewModel @Inject constructor(
         /** No more pages: addon lacks `skip` support or returned nothing new. */
         val endReached: Boolean = false,
         val error: String? = null,
+        /** View options (§5.1): persisted per screen, applied at render. */
+        val view: DiscoverViewPrefs = DiscoverViewPrefs(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -58,6 +64,11 @@ class DiscoverViewModel @Inject constructor(
     private var pageJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            viewPrefs.discover.collect { prefs ->
+                _uiState.update { it.copy(view = prefs) }
+            }
+        }
         viewModelScope.launch {
             addonRepository.observeInstalled().collectLatest { addons ->
                 allRefs = catalogRepository.discoverRefs(addons)
@@ -123,6 +134,14 @@ class DiscoverViewModel @Inject constructor(
             )
         }
         loadPage(ref, genre)
+    }
+
+    fun setColumns(columns: Int) {
+        viewModelScope.launch { viewPrefs.setDiscoverColumns(columns) }
+    }
+
+    fun setSort(sort: DiscoverSortMode) {
+        viewModelScope.launch { viewPrefs.setDiscoverSort(sort) }
     }
 
     /** Called when the grid scrolls near its end. */

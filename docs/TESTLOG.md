@@ -4,6 +4,20 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — alpha.5: HTTP cache (zero-network relaunch), clipping headroom, Discover view options (session 8)
+
+Owner-reported on onn boxes (Projectivy launcher): force-stop -> relaunch "took forever"; top/bottom list highlights clipped; details-screen highlight clipped one side.
+Box audit via live network adb: BOTH boxes = Android TV 14 (API 34), 32-bit armeabi-v7a, heap 384m; 4K pro ~3 GB RAM (~1 GB avail), 4K Plus ~2 GB (~630 MB avail). targetSdk 37 / minSdk 23 fine; NOTE boxes run unoptimized DEBUG builds — R8/release build is the next perf lever.
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `testDebugUnitTest` — 174 tests (9 new: 4 cache incl. CDN-Age regression, 4 sort, 1 view-prefs) | macOS, JDK 17 | PASS (174/174) |
+| Relaunch network cost with warm cache: /proc/net/dev eth0 delta across force-stop -> relaunch -> 12s | AVD `openstream_tv_api34`, real Cinemeta + owner's AIOMetadata/AIOStreams | **0 bytes rx / 0 bytes tx** |
+| Offline relaunch (wifi disabled): home renders rows + posters from disk (stale-if-offline fallback + Coil disk cache) | same | PASS (screenshot) |
+| Live bug found: Cloudflare `Age: 5793` made entries stale on arrival -> online launches refetched while offline was instant. Fixed by stripping Age/Expires in the rewrite; regression test added | same | FIXED + tested |
+| Discover View dialog: Density (6/8 col) + "Sort loaded items"; Compact switched grid to 8 columns live; ✓ markers; persisted via DataStore | same | PASS (screenshots) |
+| Focus-scale clipping: headroom contentPadding on home rows, search rows, discover grid, details (contentPadding + season-chip edge padding), stream list, addon manager, picker dialogs | same | Emulator-verified visually on Discover grid; owner to confirm on box |
+
 ## 2026-07-05 — Discover redo: Stremio-style category tree, emulator-verified (session 8)
 
 | Check | Environment | Result |

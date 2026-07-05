@@ -64,7 +64,12 @@ fun AddonManagerScreen(
                 color = MutedText,
             )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                // Scroll-axis headroom so the first/last row's focus scale
+                // isn't clipped (§5.3).
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+            ) {
                 // Stable keys: rows animate/reuse correctly on reorder (§5.7)
                 items(addons, key = { it.manifestUrl }) { addon ->
                     AddonRow(

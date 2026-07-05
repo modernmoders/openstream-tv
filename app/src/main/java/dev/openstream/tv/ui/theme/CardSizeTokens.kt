@@ -26,4 +26,14 @@ object CardSizeTokens {
     fun posterHeight(columns: Int = DEFAULT_COLUMNS): Dp = posterWidth(columns) * 3 / 2
 
     val rowGap: Dp = gap
+
+    /**
+     * Main-axis breathing room for scrollable containers (§5.3): the TV
+     * Material focus scale (1.1×) overhangs a poster by ~10dp per side, and
+     * scroll containers clip hard on their scroll axis — without this
+     * padding the first/last item's highlight is cut off. Also used as
+     * vertical padding inside poster rows so a scaled card grows into the
+     * gap instead of overlaying the section title above it.
+     */
+    val focusHeadroom: Dp = 12.dp
 }

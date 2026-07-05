@@ -3,6 +3,7 @@ package dev.openstream.tv.ui.discover
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.data.DiscoverSortMode
+import dev.openstream.tv.data.DiscoverViewPrefs
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.theme.AppBackground
@@ -110,6 +113,11 @@ fun DiscoverScreen(
                     Text(state.selectedGenre ?: "Genre")
                 }
             }
+            if (state.types.isNotEmpty()) {
+                Button(onClick = { openPicker = Picker.VIEW }) {
+                    Text("View")
+                }
+            }
         }
 
         when {
@@ -122,11 +130,14 @@ fun DiscoverScreen(
             state.items.isEmpty() -> RowMessage("Nothing in this catalog", horizontalPadding = 0.dp)
             else -> LazyVerticalGrid(
                 state = gridState,
-                columns = GridCells.Adaptive(CardSizeTokens.posterWidth()),
+                columns = GridCells.Adaptive(CardSizeTokens.posterWidth(state.view.columns)),
                 horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                 verticalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
+                // Scroll-axis headroom for the first/last row's focus scale (§5.3).
+                contentPadding = PaddingValues(vertical = CardSizeTokens.focusHeadroom),
             ) {
-                itemsIndexed(state.items, key = { _, it -> it.id }) { _, item ->
+                val shown = DiscoverSort.apply(state.items, state.view.sort)
+                itemsIndexed(shown, key = { _, it -> it.id }) { _, item ->
                     PosterCard(item, onClick = { onItemClick(item) })
                 }
                 if (state.loading) {
@@ -172,11 +183,17 @@ fun DiscoverScreen(
                 onDismiss = { openPicker = null },
             )
         }
+        Picker.VIEW -> ViewOptionsDialog(
+            view = state.view,
+            onColumns = viewModel::setColumns,
+            onSort = viewModel::setSort,
+            onDismiss = { openPicker = null },
+        )
         null -> Unit
     }
 }
 
-private enum class Picker { TYPE, CATALOG, GENRE }
+private enum class Picker { TYPE, CATALOG, GENRE, VIEW }
 
 /** "movie" → "Movie", "tv" → "TV"; manifest types are raw strings (§8). */
 private fun typeLabel(type: String?): String = when (type) {
@@ -190,6 +207,82 @@ private data class PickerOption(
     val sublabel: String? = null,
     val selected: Boolean = false,
 )
+
+/**
+ * View options for this screen, edited in place (owner request 2026-07-05:
+ * "customizable on the same screen it's used on"). Picks apply live behind
+ * the dialog; Back closes it. Sort is a client-side lens over loaded items —
+ * addon order stays the protocol truth (§4.1.7).
+ */
+@Composable
+private fun ViewOptionsDialog(
+    view: DiscoverViewPrefs,
+    onColumns: (Int) -> Unit,
+    onSort: (DiscoverSortMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { firstFocus.requestFocus() }
+
+    @Composable
+    fun sectionLabel(text: String) = Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = Color.White,
+    )
+
+    @Composable
+    fun option(label: String, selected: Boolean, first: Boolean = false, onPick: () -> Unit) {
+        Button(
+            onClick = onPick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (first) Modifier.focusRequester(firstFocus) else Modifier),
+        ) { Text(label + if (selected) "  ✓" else "") }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .width(420.dp)
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
+        ) {
+            Text(
+                text = "View",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 8.dp),
+            ) {
+                sectionLabel("Density")
+                option("Comfortable · 6 columns", view.columns == 6, first = true) { onColumns(6) }
+                option("Compact · 8 columns", view.columns == 8) { onColumns(8) }
+
+                sectionLabel("Sort loaded items")
+                option("Addon order", view.sort == DiscoverSortMode.ADDON_ORDER) {
+                    onSort(DiscoverSortMode.ADDON_ORDER)
+                }
+                option("A–Z", view.sort == DiscoverSortMode.ALPHABETICAL) {
+                    onSort(DiscoverSortMode.ALPHABETICAL)
+                }
+                option("Newest first", view.sort == DiscoverSortMode.NEWEST) {
+                    onSort(DiscoverSortMode.NEWEST)
+                }
+                option("Top rated", view.sort == DiscoverSortMode.TOP_RATED) {
+                    onSort(DiscoverSortMode.TOP_RATED)
+                }
+            }
+        }
+    }
+}
 
 /**
  * One level of the category tree as a trapped-focus list dialog. Initial
@@ -228,7 +321,10 @@ private fun PickerDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier
                     .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    // After verticalScroll = inside the clip: scroll-axis
+                    // headroom for the first/last option's focus scale (§5.3).
+                    .padding(vertical = 8.dp),
             ) {
                 options.forEachIndexed { index, option ->
                     Button(

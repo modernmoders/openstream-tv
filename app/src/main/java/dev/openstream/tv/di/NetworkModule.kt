@@ -1,11 +1,14 @@
 package dev.openstream.tv.di
 
+import android.content.Context
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.openstream.tv.addon.AddonClient
+import dev.openstream.tv.addon.AddonHttpCache
 import dev.openstream.tv.addon.OkHttpAddonClient
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -28,21 +31,32 @@ object NetworkModule {
      *
      * Per-host concurrency is raised from OkHttp's default 5: many catalogs
      * per single addon host is this app's normal traffic shape.
+     *
+     * Catalog/meta responses disk-cache for 30 min (AddonHttpCache) so a
+     * relaunch renders from disk instead of refetching 60+ catalogs — the
+     * owner's onn boxes are 32-bit with 2–3 GB RAM and network is the
+     * dominant cold-start cost.
      */
     @Provides
     @Singleton
-    fun okHttpClient(): OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .apply {
-            dispatcher(
-                okhttp3.Dispatcher().apply {
-                    maxRequests = 32
-                    maxRequestsPerHost = 16
-                }
-            )
-        }
-        .build()
+    fun okHttpClient(@ApplicationContext context: Context): OkHttpClient {
+        val policy = AddonHttpCache()
+        return OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .cache(AddonHttpCache.diskCache(context.cacheDir))
+            .addInterceptor(policy.staleIfOffline)
+            .addNetworkInterceptor(policy.responsePolicy)
+            .apply {
+                dispatcher(
+                    okhttp3.Dispatcher().apply {
+                        maxRequests = 32
+                        maxRequestsPerHost = 16
+                    }
+                )
+            }
+            .build()
+    }
 }
 
 @Module

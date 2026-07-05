@@ -321,3 +321,39 @@ unchanged.
   Collections, Charts, By Decade, Anime, Networks…). These appear as
   first-class Types — correct per §8 (types are raw strings, never enums),
   and matches real Stremio behavior.
+
+## 17. 2026-07-05 — Addon HTTP disk cache: 30-min TTL, stale-beats-offline, streams never cached
+
+**Decision:** One OkHttp `Cache` (50 MB, cacheDir/addon_http) + two
+interceptors in `AddonHttpCache`. Catalog/meta GETs get a forced
+`Cache-Control: public, max-age=1800` stamped on successful responses (addons
+rarely send usable cache headers); within the TTL a relaunch renders with
+ZERO network traffic (measured on the emulator via /proc/net/dev: 0 bytes
+across force-stop → relaunch). On network failure, an application-level
+retry with `only-if-cached, max-stale=∞` serves the last-known copy — stale
+data beats an error chip. `/stream/` responses are stamped `no-store`:
+AIOStreams-style URLs embed expiring tokens.
+
+**Hard-earned:** CDN-fronted addons (Cinemeta = Cloudflare) send `Age` in the
+thousands; leaving it in place made our max-age stale ON ARRIVAL, so online
+launches refetched everything while offline launches (via the stale
+fallback) were instant — thoroughly confusing. The response rewrite must
+strip `Age` and `Expires` so freshness counts from our receipt time.
+Regression-tested (`CDN Age header must not make fresh responses stale`).
+
+Why not a Room snapshot (SWR): the HTTP cache is ~40 lines and already
+yields instant relaunches; render-then-refresh adds UI states for data that
+changes daily. Revisit only if >30-min-old launches still feel slow — and
+note the boxes run unoptimized DEBUG builds; R8/release is the next lever.
+
+## 18. 2026-07-05 — Per-screen view options (Discover: density + sort) behind a ViewPrefs seam
+
+**Decision:** Owner wants view/sort experiments "customizable on the same
+screen it's used on". First slice: a View chip on Discover → dialog with
+Density (6/8 columns) and Sort (addon order / A–Z / newest / top rated),
+persisted in Preferences DataStore behind a `ViewPrefs` interface (JVM tests
+use an in-memory fake). Sort is deliberately CLIENT-SIDE over loaded items —
+addons own server-side order (§4.1.7); this is a lens, not a protocol
+feature, and the dialog labels it "Sort loaded items". Picks apply live
+behind the dialog; Back closes. Grid density here is the §5.1 experiment bed;
+the global settings-screen version still lands with Phase 4 unit 1.

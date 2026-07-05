@@ -9,6 +9,19 @@ Phase 4 started early by owner request: Discover redo SHIPPED.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **alpha.5 — owner feedback round 2 (session 8, same day as the tree):**
+  (a) **Addon HTTP disk cache** (DECISIONS #17): catalog/meta cached 30 min,
+  relaunch = ZERO network bytes (measured); addon-down serves stale instead
+  of an error; streams never cached. Hard-earned: Cloudflare's `Age` header
+  made entries stale-on-arrival — must strip Age/Expires (regression-tested).
+  (b) **Focus-clip fix app-wide** (§5.3): scroll containers clip on the
+  scroll axis; every lazy list/grid/dialog now has focusHeadroom
+  contentPadding; details switched to contentPadding + season-chip edge pad.
+  (c) **Discover View chip** (DECISIONS #18): density 6/8 columns + client-
+  side sort (A–Z/newest/top-rated), DataStore-persisted behind a ViewPrefs
+  seam. (d) **Box audit**: both onn boxes = Android TV 14/API 34, 32-bit
+  armeabi-v7a, 2–3 GB RAM — DEBUG builds are the remaining perf lever
+  (R8/release next). 174/174 tests. Deployed to both boxes as alpha.5.
 - **Discover redo — Stremio-style category tree (owner request, session 8):**
   studied web.stremio.com Discover live in-browser, then replaced the
   left-rail catalog list with Type → Catalog → Genre picker chips
@@ -67,11 +80,16 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**Push the Discover redo to the owner's boxes + Phase 3 gate (§7.2).**
-0. Deploy the new build (Discover tree) to BOTH onn boxes via live network
-   adb (`adb -s 192.168.1.117:5555 install -r
-   app/build.nosync/outputs/apk/debug/app-debug.apk`, same for .231) so the
-   owner sees the redo; consider tagging v0.3.0-alpha.5 first.
+**Owner verifies alpha.5 on the boxes + Phase 3 gate (§7.2).**
+0. Owner: force-stop → relaunch on a box (should render near-instantly
+   within 30 min of last use), check list highlights no longer clip, try
+   Discover → View (density/sort). If launches still feel slow, next lever
+   is a MINIFIED RELEASE build (R8 + debug-signing for sideload): the boxes
+   run unoptimized debug builds today — needs keep-rule verification for
+   kotlinx.serialization/Hilt/media3 on the emulator first.
+   Also consider the experimental view modes vision (owner idea): per-screen
+   collapsible view controls, more modes (rows-by-genre, backdrop cards) —
+   sketch in Phase 4 once settings skeleton exists.
 1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes currently run
    **v0.3.0-alpha.3/4**. Checks:
    A (3-episode chain — already PASS 2026-07-04), B (VLC round-trip incl.

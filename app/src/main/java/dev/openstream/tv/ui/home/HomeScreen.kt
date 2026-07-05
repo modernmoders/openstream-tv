@@ -81,7 +81,9 @@ fun HomeScreen(
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                // Rows carry ±focusHeadroom internally, so the small spacing
+                // here keeps the visual rhythm of the old 20dp gap (§5.3).
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
             ) {
                 if (state.continueWatching.isNotEmpty()) {
@@ -126,7 +128,11 @@ private fun ContinueWatchingRow(
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
+            // Vertical headroom: a focused card scales into this gap instead
+            // of overlaying the row title / getting clipped (§5.3).
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
+            ),
         ) {
             items(entries, key = { "${it.ref.sourceKind}:${it.ref.externalId}" }) { p ->
                 ContinueWatchingCard(
@@ -173,7 +179,9 @@ private fun CatalogRow(row: RowState, onItemClick: (dev.openstream.tv.addon.Meta
                 } else {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
+                        ),
                     ) {
                         items(row.items, key = { it.id }) { item ->
                             PosterCard(item, onClick = { onItemClick(item) })

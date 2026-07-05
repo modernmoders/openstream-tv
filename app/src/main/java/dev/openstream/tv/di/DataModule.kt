@@ -56,6 +56,10 @@ object DataModule {
     @Provides
     fun watchProgressDao(db: OpenStreamDatabase): WatchProgressDao = db.watchProgressDao()
 
+    @Provides
+    @Singleton
+    fun viewPrefs(impl: dev.openstream.tv.data.DataStoreViewPrefs): dev.openstream.tv.data.ViewPrefs = impl
+
     /**
      * Scope for writes that must outlive a ViewModel (e.g. saving the final
      * playback position from onCleared()). SupervisorJob: one failed write

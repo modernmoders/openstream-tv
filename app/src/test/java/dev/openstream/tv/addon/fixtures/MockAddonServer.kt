@@ -28,11 +28,18 @@ class MockAddonServer {
     /** The last paths requested, for asserting URL construction. */
     val requestedPaths = mutableListOf<String>()
 
-    fun route(path: String, body: String, status: Int = 200, delayMs: Long = 0) {
+    fun route(
+        path: String,
+        body: String,
+        status: Int = 200,
+        delayMs: Long = 0,
+        headers: Map<String, String> = emptyMap(),
+    ) {
         val response = MockResponse()
             .setResponseCode(status)
             .setHeader("Content-Type", "application/json")
             .setBody(body)
+        headers.forEach { (name, value) -> response.setHeader(name, value) }
         if (delayMs > 0) response.setBodyDelay(delayMs, TimeUnit.MILLISECONDS)
         routes[path] = response
     }

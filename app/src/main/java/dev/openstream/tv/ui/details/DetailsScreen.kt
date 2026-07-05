@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -111,9 +112,11 @@ private fun DetailsContent(
     onPlayEpisode: (Video) -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 48.dp, vertical = 27.dp),
+        modifier = Modifier.fillMaxSize(),
+        // contentPadding (not outer padding): the clip boundary stays at the
+        // screen edge, so a focused item's 1.1× scale grows into the
+        // overscan gutter instead of being cut off (§5.3).
+        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 27.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item(key = "header") {
@@ -164,7 +167,13 @@ private fun DetailsContent(
         } else {
             if (seasons.isNotEmpty()) {
                 item(key = "seasons") {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // 8dp edge padding: the row clips on its scroll axis, so
+                    // the first/last chip's focus scale needs headroom. The
+                    // slight indent is invisible at 10 feet (§5.3).
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                    ) {
                         items(seasons, key = { it }) { season ->
                             Button(onClick = { onSelectSeason(season) }) {
                                 Text(
