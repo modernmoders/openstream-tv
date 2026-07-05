@@ -7,6 +7,7 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.addon.MetaRepository
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
@@ -29,7 +30,16 @@ class HomeViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
     private val progressRepository: ProgressRepository,
+    private val metaRepository: MetaRepository,
 ) : ViewModel() {
+
+    companion object {
+        /** How many Continue Watching items get their meta prefetched. */
+        private const val PREFETCH_COUNT = 2
+    }
+
+    /** metaType/metaId keys already prefetched this process — fetch once. */
+    private val prefetchedMeta = mutableSetOf<String>()
 
     sealed interface RowState {
         val ref: CatalogRef
@@ -56,6 +66,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             progressRepository.observeContinueWatching().collect { list ->
                 _uiState.update { it.copy(continueWatching = list) }
+                prefetchMeta(list)
             }
         }
         viewModelScope.launch {
@@ -88,6 +99,22 @@ class HomeViewModel @Inject constructor(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Warm the addon HTTP cache (DECISIONS #17) for the newest Continue
+     * Watching items so clicking them opens details from disk, not network
+     * (owner request 2026-07-05). Results are ignored on purpose: a failure
+     * here is a non-event — the details screen does its own error handling.
+     */
+    private fun prefetchMeta(continueWatching: List<WatchProgress>) {
+        continueWatching.take(PREFETCH_COUNT).forEach { progress ->
+            if (prefetchedMeta.add("${progress.metaType}/${progress.metaId}")) {
+                viewModelScope.launch {
+                    metaRepository.resolveMeta(progress.metaType, progress.metaId)
                 }
             }
         }

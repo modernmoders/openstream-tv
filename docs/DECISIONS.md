@@ -357,3 +357,23 @@ addons own server-side order (§4.1.7); this is a lens, not a protocol
 feature, and the dialog labels it "Sort loaded items". Picks apply live
 behind the dialog; Back closes. Grid density here is the §5.1 experiment bed;
 the global settings-screen version still lands with Phase 4 unit 1.
+
+## 19. 2026-07-05 — Player track selection: pure menu model, UP-key dialog, session-scoped picks
+
+**Decision:** Audio & subtitle selection (owner request — the family boxes
+need captions, and Stremio can't switch audio language) is split at a
+`RawTrack` seam: `buildTrackMenu`/`trackDisplayName` are pure functions
+(naming via `java.util.Locale`, "5.1"/"7.1" channel annotation, duplicate
+numbering, subtitles-off detection) with JVM tests; the media3 boundary
+(`Tracks → RawTrack`, `TrackSelectionOverride` apply, text-type disable) is
+two thin untested mappers. UI is a `TracksDialog` on DPAD_UP — same
+trapped-focus real-Dialog pattern as Discover's pickers, two side-by-side
+sections (`usePlatformDefaultWidth = false`; the platform default width
+squeezed column two into a sliver — found on the emulator).
+
+Addon subtitles were ALREADY attached as `SubtitleConfiguration`s in
+`ExoPlayerEngine.play()`; the picker was the missing half. Track picks are
+session-scoped on purpose: a persistent preferred-language setting belongs
+to the Phase 4 settings screen (record there when it lands). The fixture
+addon now serves two synthetic .srt tracks (cue every 10 s) so caption
+selection stays emulator-testable without real streams.

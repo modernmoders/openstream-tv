@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,8 +18,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -89,6 +93,8 @@ fun SearchScreen(
     }
 }
 
+// OptIn: focusRestorer — the §10 focus rule has no stable equivalent yet.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit) {
     Column {
@@ -115,6 +121,11 @@ private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaI
                 if (row.items.isEmpty()) {
                     RowMessage("No results")
                 } else {
+                    // §10 search focus rule: D-pad entry into a result row
+                    // lands on its FIRST card (owner bug 2026-07-05: geometric
+                    // focus search dropped you mid-row), while coming back
+                    // from details restores the card you left.
+                    val firstCardFocus = remember { FocusRequester() }
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                         // Vertical headroom: focus scale grows into this gap
@@ -122,9 +133,15 @@ private fun SearchRow(row: RowState, onItemClick: (dev.openstream.tv.addon.MetaI
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
                         ),
+                        modifier = Modifier.focusRestorer { firstCardFocus },
                     ) {
-                        items(row.items, key = { it.id }) { item ->
-                            PosterCard(item, onClick = { onItemClick(item) })
+                        itemsIndexed(row.items, key = { _, item -> item.id }) { index, item ->
+                            PosterCard(
+                                item,
+                                onClick = { onItemClick(item) },
+                                modifier = if (index == 0) Modifier.focusRequester(firstCardFocus)
+                                else Modifier,
+                            )
                         }
                     }
                 }

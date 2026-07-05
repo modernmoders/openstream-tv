@@ -344,6 +344,10 @@ Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 
 - [ ] **Search**: (a) mic/voice input via RecognizerIntent; (b) recent
   searches list; (c) focus rule — moving into a new section lands on its
   left-most item unless returning to the section you came from.
+  *(2026-07-05: (c) shipped for search result rows — `focusRestorer` +
+  first-card anchor; owner bug "picker starts mid-row" fixed and
+  emulator-verified. Home/Discover rows get the same rule in the Phase 4
+  focus audit.)*
 - [ ] **Home**: a watched-history row (finished titles), distinct from
   Continue Watching.
 - [x] **Clipping bugs**: focused episode card border clips off-screen; a
@@ -352,8 +356,25 @@ Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 
   axis; fixed app-wide with `CardSizeTokens.focusHeadroom` contentPadding on
   every lazy list/grid/scroll dialog + details switched to contentPadding.
   Owner to confirm on the box.)*
+- [x] **Player audio & subtitle picker** (owner request 2026-07-05): UP in
+  the player opens a two-section trapped-focus dialog — audio tracks named
+  by language/layout ("English · 5.1"), subtitles with Off + addon-provided
+  tracks (SubtitleTrack → SubtitleConfiguration was already plumbed; the UI
+  was the missing half). Language names via Locale; picks apply live.
+  Stremio can't switch audio language — differentiator (DECISIONS #19).
+  Emulator-verified incl. rendering, switching, and Off.
+- [x] **Continue Watching prefetch** (owner request 2026-07-05): metas of
+  the 2 newest Continue Watching items are prefetched at home load to warm
+  the DECISIONS #17 HTTP cache — clicking them opens details from disk.
 - [ ] **Player controls upgrade**: seek UX (speed ramp/preview), buffering
   state, general 10-foot polish.
+- [ ] **Light scrollbar indicator** (owner request 2026-07-05, "doesn't
+  have to be now"): Stremio-style thin scroll position indicator on long
+  vertical lists/grids so scrolling feels anchored.
+- [ ] **Elder-friendly audit** (owner principle 2026-07-05): the app will be
+  used by older family members — every surface simple by default, one
+  obvious action per screen, big readable labels; depth lives behind
+  optional customization (view options, settings), never in the main path.
 - [ ] **Skip intro/credits** options: {autoskip intro, autoskip end credits,
   skip-to-next before credits}. Sources to investigate: stream chapter
   metadata, AniSkip API (anime), silence/black-frame heuristics. Stremio has

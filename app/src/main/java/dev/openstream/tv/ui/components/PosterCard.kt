@@ -21,12 +21,15 @@ import dev.openstream.tv.ui.theme.MutedText
  * The one poster card used by every browse surface (home rows, discover
  * grid, search results). 2:3 ratio is contract (§5.2); size derives from
  * CardSizeTokens so the density setting stays one number (§5.1).
+ *
+ * [modifier] lands on the Card — the focusable — so callers can attach
+ * FocusRequesters for row-entry rules (§10 Phase 4 search focus rule).
  */
 @Composable
-fun PosterCard(item: MetaItem, onClick: () -> Unit = {}) {
+fun PosterCard(item: MetaItem, onClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     val width = CardSizeTokens.posterWidth()
     Column(modifier = Modifier.width(width)) {
-        Card(onClick = onClick) {
+        Card(onClick = onClick, modifier = modifier) {
             AsyncImage(
                 model = item.poster,
                 contentDescription = item.name,

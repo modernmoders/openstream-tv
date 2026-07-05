@@ -69,7 +69,37 @@ SERIES_META = {
     ],
 }
 
-STREAMS = [{"name": "Local 720p H.264", "title": "bbb_720p.mov served from host", "url": f"{BASE}/video.mov"}]
+# Synthetic captions (owner request 2026-07-05: caption picker in the player):
+# a cue every 10s so any seek position proves rendering within seconds.
+def make_srt(language_word):
+    def clock(s):
+        return f"00:{s // 60:02d}:{s % 60:02d},000"
+
+    cues = []
+    for i, start in enumerate(range(0, 590, 10), start=1):
+        cues.append(
+            f"{i}\n{clock(start)} --> {clock(start + 8)}\n"
+            f"[{language_word}] test caption #{i}\n"
+        )
+    return "\n".join(cues).encode()
+
+
+SUBS = {
+    "/subs/en.srt": make_srt("English"),
+    "/subs/es.srt": make_srt("Spanish"),
+}
+
+STREAMS = [
+    {
+        "name": "Local 720p H.264",
+        "title": "bbb_720p.mov served from host",
+        "url": f"{BASE}/video.mov",
+        "subtitles": [
+            {"id": "en", "url": f"{BASE}/subs/en.srt", "lang": "en"},
+            {"id": "es", "url": f"{BASE}/subs/es.srt", "lang": "es"},
+        ],
+    }
+]
 
 # Two streams per episode: the bingeGroup one must win tier 1 (§7.1)
 def series_streams(_video_id):
@@ -113,6 +143,13 @@ class Handler(BaseHTTPRequestHandler):
             if int(m.group(2)) > 1:
                 self.delay_streams()
             self.send_json({"streams": series_streams(m.group(1))})
+        elif p in SUBS:
+            body = SUBS[p]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/x-subrip")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif p == "/video.mov":
             self.serve_video()
         else:

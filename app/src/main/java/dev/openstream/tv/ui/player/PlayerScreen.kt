@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -33,11 +34,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
+import dev.openstream.tv.player.applyTrackOption
+import dev.openstream.tv.player.disableSubtitles
+import dev.openstream.tv.player.toTrackMenu
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.theme.MutedText
@@ -48,7 +54,8 @@ private const val OVERLAY_TIMEOUT_MS = 5_000L
 /**
  * Internal player (§6.1): Media3 PlayerView (SurfaceView) with a Compose
  * overlay for all controls. D-pad: any key wakes the overlay; CENTER
- * play/pauses; LEFT/RIGHT seek ±10s/±30s; overlay hides after 5s.
+ * play/pauses; LEFT/RIGHT seek ±10s/±30s; UP opens the audio & subtitle
+ * picker; overlay hides after 5s.
  *
  * The engine lives in PlaybackService; this screen binds once the service
  * hands it over (a few ms — a black frame, not a spinner).
@@ -85,6 +92,20 @@ fun PlayerScreen(
     var positionText by remember { mutableStateOf("") }
     var playing by remember { mutableStateOf(true) }
     val focusRequester = remember { FocusRequester() }
+
+    // Audio & subtitle menu (owner request 2026-07-05): mirrors the player's
+    // track list; onTracksChanged also fires when autoplay swaps episodes.
+    var tracksMenu by remember(engine) { mutableStateOf(engine.exoPlayer.currentTracks.toTrackMenu()) }
+    var showTracks by remember { mutableStateOf(false) }
+    DisposableEffect(engine) {
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                tracksMenu = tracks.toTrackMenu()
+            }
+        }
+        engine.exoPlayer.addListener(listener)
+        onDispose { engine.exoPlayer.removeListener(listener) }
+    }
 
     // Overlay auto-hide + position ticker (only while visible).
     LaunchedEffect(overlayVisible, lastInteractionMs) {
@@ -139,7 +160,14 @@ fun PlayerScreen(
                         player.seekTo(player.currentPosition + 30_000)
                         wake(); true
                     }
-                    AndroidKeyEvent.KEYCODE_DPAD_UP, AndroidKeyEvent.KEYCODE_DPAD_DOWN -> {
+                    AndroidKeyEvent.KEYCODE_DPAD_UP -> {
+                        // ▲ = audio & subtitles, unless a panel/card owns the screen
+                        if (autoplay == null && !state.ended && state.error == null) {
+                            showTracks = true
+                        }
+                        wake(); true
+                    }
+                    AndroidKeyEvent.KEYCODE_DPAD_DOWN -> {
                         wake(); true
                     }
                     else -> false
@@ -170,11 +198,20 @@ fun PlayerScreen(
                 Text(state.title, style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Text(
                     text = (if (playing) "▶  " else "⏸  ") + positionText +
-                        "    (OK play/pause · ◀ -10s · ▶ +30s)",
+                        "    (OK play/pause · ◀ -10s · ▶ +30s · ▲ audio & subtitles)",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MutedText,
                 )
             }
+        }
+
+        if (showTracks) {
+            TracksDialog(
+                menu = tracksMenu,
+                onPick = { engine.exoPlayer.applyTrackOption(it) },
+                onSubtitlesOff = { engine.exoPlayer.disableSubtitles() },
+                onDismiss = { showTracks = false; wake() },
+            )
         }
 
         // Up Next flow (§7.1) replaces the finished panel while it's working;

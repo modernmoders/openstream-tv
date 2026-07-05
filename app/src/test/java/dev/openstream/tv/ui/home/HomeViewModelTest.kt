@@ -2,6 +2,7 @@ package dev.openstream.tv.ui.home
 
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.CatalogRepository
+import dev.openstream.tv.addon.MetaRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
@@ -14,7 +15,10 @@ import dev.openstream.tv.ui.home.HomeViewModel.RowState
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlin.time.Duration.Companion.seconds
@@ -34,6 +38,7 @@ import org.junit.Test
 class HomeViewModelTest {
 
     private lateinit var server: MockAddonServer
+    private lateinit var client: OkHttpAddonClient
     private lateinit var addonRepository: AddonRepository
     private lateinit var catalogRepository: CatalogRepository
     private lateinit var progressRepository: ProgressRepository
@@ -42,7 +47,7 @@ class HomeViewModelTest {
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         server = MockAddonServer()
-        val client = OkHttpAddonClient(
+        client = OkHttpAddonClient(
             OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build()
         )
         addonRepository = AddonRepository(client, FakeInstalledAddonDao())
@@ -50,6 +55,16 @@ class HomeViewModelTest {
         progressRepository =
             ProgressRepository(FakeWatchProgressDao(), CoroutineScope(Dispatchers.Unconfined))
     }
+
+    /**
+     * "Cinemeta" is the same mock server under a /cine prefix (like
+     * MetaRepositoryTest); tests that expect no prefetch traffic keep the
+     * unroutable default so a stray fetch fails fast and silently.
+     */
+    private fun viewModel(cinemetaBase: String = "http://localhost:1") = HomeViewModel(
+        addonRepository, catalogRepository, progressRepository,
+        MetaRepository(client, addonRepository, cinemetaBase),
+    )
 
     @After
     fun tearDown() {
@@ -59,7 +74,7 @@ class HomeViewModelTest {
 
     @Test
     fun `no addons yields empty state, not rows`() = runTest(timeout = 60.seconds) {
-        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
+        val viewModel = viewModel()
         val state = viewModel.uiState.first { !it.initializing }
         assertTrue(state.rows.isEmpty())
         assertTrue(!state.hasAddons)
@@ -72,7 +87,7 @@ class HomeViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
+        val viewModel = viewModel()
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
         }
@@ -89,7 +104,7 @@ class HomeViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
+        val viewModel = viewModel()
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
         }
@@ -107,9 +122,44 @@ class HomeViewModelTest {
         progressRepository.save(progress("tt1", updatedAt = 1))
         progressRepository.save(progress("tt2", updatedAt = 2))
 
-        val viewModel = HomeViewModel(addonRepository, catalogRepository, progressRepository)
+        val viewModel = viewModel()
         val state = viewModel.uiState.first { it.continueWatching.isNotEmpty() }
 
         assertEquals(listOf("tt2", "tt1"), state.continueWatching.map { it.ref.externalId })
+    }
+
+    @Test
+    fun `prefetches meta for the newest two continue watching items only`() = runTest(timeout = 60.seconds) {
+        fun progress(id: String, updatedAt: Long) = WatchProgress(
+            ref = MediaRef.addon(id),
+            metaId = id, metaType = "movie", title = id, poster = null,
+            positionMs = 300_000, durationMs = 1_200_000, updatedAt = updatedAt,
+        )
+        // No installed addon declares meta -> the tt ids fall through to
+        // "Cinemeta", played by the mock server under /cine.
+        server.route("/cine/meta/movie/tt2.json", Fixtures.load("meta_series"))
+        server.route("/cine/meta/movie/tt3.json", Fixtures.load("meta_series"))
+        server.start()
+        progressRepository.save(progress("tt1", updatedAt = 1))
+        progressRepository.save(progress("tt2", updatedAt = 2))
+        progressRepository.save(progress("tt3", updatedAt = 3))
+
+        val viewModel = viewModel(cinemetaBase = server.url("/cine"))
+        viewModel.uiState.first { it.continueWatching.size == 3 }
+
+        // Prefetch rides real OkHttp threads; poll on a real dispatcher
+        // (runTest's virtual clock would skip the waiting).
+        withContext(Dispatchers.Default) {
+            withTimeout(10_000) {
+                while (!server.requestedPaths.contains("/cine/meta/movie/tt2.json") ||
+                    !server.requestedPaths.contains("/cine/meta/movie/tt3.json")
+                ) {
+                    delay(25)
+                }
+                // Settle window: a buggy third fetch would arrive about now.
+                delay(200)
+            }
+        }
+        assertTrue(server.requestedPaths.none { it.endsWith("/tt1.json") })
     }
 }

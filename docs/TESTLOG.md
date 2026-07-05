@@ -4,6 +4,22 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — alpha.6: player audio/subtitle picker, search entry-focus rule, Continue Watching prefetch (session 9)
+
+Owner feedback round 3 (via handoff message): captions in the internal player, an audio-language selector "that actually selects the right language", search results starting mid-row, and preloading the newest Continue Watching titles.
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `testDebugUnitTest` — 185 tests (11 new: 10 PlayerTracks naming/dedup/off/indices, 1 HomeViewModel prefetch newest-2-only) | macOS, JDK 17 | PASS (185/185) |
+| Tracks dialog (UP in player): opens over live playback, Audio "Track 1 · 5.1 ✓" (BBB has no language metadata — fallback + channel-layout naming correct), Subtitles Off ✓/English/Spanish from addon subtitles | AVD `openstream_tv_api34` (cold-booted — prior instance had the known black-screencap degradation), fixture addon v1.1 + 2 synthetic .srt tracks | PASS (screenshots) |
+| Caption selection: pick English → "[English] test caption #31" rendered at 5:00 (cue #31 = 5:00–5:08, correct timing); reopen shows English ✓, Off unchecked | same | PASS |
+| Caption switch + off: Spanish → "[Spanish] #34" at 5:35; Off → no caption at 6:11 | same | PASS |
+| Dialog layout bug found live: platform default Dialog width squeezed the Subtitles column into a 3-char sliver — fixed with `usePlatformDefaultWidth = false`, re-verified | same | FIXED + PASS |
+| Search focus rule (§10 (c)): query "bunny" via Cinemeta, DOWN from field → focus lands on FIRST result card (Dust Bunny), not mid-row | same, live internet | PASS (screenshot) |
+| Resume regression alongside new UP handler: resume dialog → resumed 4:31, overlay hint now "▲ audio & subtitles" | same | PASS |
+| Prefetch: newest-2 Continue Watching metas requested once, third item never fetched (MockAddonServer request log) | JVM unit test | PASS |
+| NOT verified here: audio switching with real multi-language media (fixture is single-track; no ffmpeg on this Mac to synthesize) — same apply path as subtitles; owner's real streams on the onn box will exercise it | — | owner check |
+
 ## 2026-07-05 — alpha.5: HTTP cache (zero-network relaunch), clipping headroom, Discover view options (session 8)
 
 Owner-reported on onn boxes (Projectivy launcher): force-stop -> relaunch "took forever"; top/bottom list highlights clipped; details-screen highlight clipped one side.
