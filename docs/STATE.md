@@ -8,6 +8,15 @@ owner's onn box) is the only item left before `phase-3-done`.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Setup links (DECISIONS #14):** Add-addon input (and the browser entry
+  page) now also accepts a hosted profile JSON (`openstream:1` marker) →
+  multi-addon preview → install-all in profile order. Owner tooling:
+  `tools/make_profiles.py` generated 12 per-person profiles from private
+  users.json into the gitignored `docs/reference/StremioSurfer/profiles/`
+  (NEVER commit; host privately — owner mentioned getting a domain).
+  Data gap found: every `aiometadata.manifest_url` in users.json is EMPTY,
+  so profiles currently lack AIOMetadata — owner to fill + regenerate.
+  158/158 unit tests.
 - **Add-addon browser entry (§4.1.1 QoL, DECISIONS #13):** `RemoteEntryServer`
   (found orphaned+untracked from session 6, now wired in): while the
   Add-addon screen is open, the app serves a one-form page on the LAN
