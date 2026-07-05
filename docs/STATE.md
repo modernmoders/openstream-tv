@@ -10,6 +10,21 @@ player track picker, search focus rule, CW prefetch — all SHIPPED).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **alpha.8 — owner feedback round 5 (session 10): loader replaced, movies
+  skip details, long-press fix. DEPLOYED to BOTH boxes.** Ghost loader
+  looked static/broken on real boxes → removed; ONE `LoadingMessage`
+  (faint pulsing text, layer-phase alpha) now serves every loading state.
+  Movie click → stream list directly (details was a one-button stop;
+  series keep details for episodes — AppNavHost branch). "Play with…"
+  swallows the long-press's leftover repeats/release until a fresh
+  key-down, so holding OK too long no longer auto-picks the first option.
+  All three emulator-verified on the release build (TESTLOG).
+  **OWNER GATE RESULTS (real box): §7.2 check B PASS** — VLC + MX Player
+  round-trips work, position remembered. Checks C/D still open.
+  KNOWN ISSUE: one Naruto file fails in the INTERNAL player only (VLC
+  plays it) — suspect codec (32-bit boxes); need box logcat while
+  reproducing, then decide: better error surface + suggest external
+  player, or codec fallback. 185/185 tests.
 - **alpha.7 — owner feedback round 4 (session 10, commit c578d5d): R8
   release builds + Discover perf/polish. DEPLOYED to BOTH boxes.**
   (a) `assembleRelease` is now R8-minified (18.6→3.2 MB), debug-signed so
@@ -145,17 +160,22 @@ Phase 3 gate (§7.2).**
    tokens — fine to upload to the owner's own host, never into git/chat.
    AIOMetadata URLs in users.json are still all EMPTY — owner fills, then
    regenerate profiles (same filenames survive via profiles.config.json).
-1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes now run **alpha.7 —
-   an R8 RELEASE build** (deployed + version-confirmed session 10; VLC
-   long-press explained to owner in chat: long-press OK on a stream →
-   "Play with…"). Checks:
-   A (3-episode chain — already PASS 2026-07-04), B (VLC round-trip incl.
-   §7.1.6), C (feel — NOW the R8 build; owner judges Discover smoothness,
-   ghost loader, back buttons, View chip), D (paste setup link from phone
-   → install-all). Still from alpha.6: player UP-key Audio & Subtitles on
-   a real multi-language stream. If anything R8-weird shows on real
-   hardware (crash where emulator was fine), suspect missing keep rules —
-   logcat will show ClassNotFound/serializer errors.
+1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes now run **alpha.8**
+   (R8 release, deployed + version-confirmed session 10). Gate status:
+   A PASS (2026-07-04), **B PASS (2026-07-05 — owner: VLC + MX work,
+   position remembered)**. Remaining: C (feel on the R8 build — Discover
+   smoothness, pulsing loader, movie shortcut, long-press timing) and
+   D (paste setup link from phone → install-all). Still from alpha.6:
+   player UP-key Audio & Subtitles on a real multi-language stream.
+   When C+D pass → tick §7.2 in MASTER_PLAN, tag `phase-3-done`, push.
+   If anything R8-weird shows on real hardware, suspect missing keep
+   rules — logcat shows ClassNotFound/serializer errors.
+1b. **Naruto file fails in internal player (owner-reported, plays in
+   VLC).** Get logcat from the box while reproducing:
+   `adb -s 192.168.1.x:5555 logcat | grep -iE "exo|media3|codec|decoder"`
+   Likely an unsupported codec on the 32-bit boxes (HEVC10/EAC3?).
+   Then: playback-error surface that offers "Play with VLC" (§10
+   elder-friendly) and/or codec-aware stream badges.
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
 3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start

@@ -43,7 +43,19 @@ object Routes {
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
-    val openDetails: (MetaItem) -> Unit = { navController.navigate(Routes.details(it)) }
+    // Movies skip the details screen: it held exactly one action ("View
+    // streams"), which the owner called an extra step (2026-07-05 round 5).
+    // Series/channels still need details for season & episode picking.
+    // For a movie the meta id IS the video id (§4.1 stream addressing).
+    val openDetails: (MetaItem) -> Unit = { item ->
+        if (item.type.equals("movie", ignoreCase = true)) {
+            navController.navigate(
+                Routes.streams(item.type, item.id, item.name, item.id, item.poster)
+            )
+        } else {
+            navController.navigate(Routes.details(item))
+        }
+    }
     // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
     val goBack: () -> Unit = { navController.popBackStack() }
 

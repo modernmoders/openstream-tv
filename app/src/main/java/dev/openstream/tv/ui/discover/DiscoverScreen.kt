@@ -2,6 +2,7 @@ package dev.openstream.tv.ui.discover
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -42,10 +43,9 @@ import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
 import dev.openstream.tv.ui.components.BackButton
-import dev.openstream.tv.ui.components.GhostLoadingOverlay
+import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
-import dev.openstream.tv.ui.components.SkeletonPosterCard
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 
@@ -152,11 +152,14 @@ fun DiscoverScreen(
                 horizontalPadding = 0.dp,
             )
             state.error != null -> RowMessage("⚠ ${state.error}", horizontalPadding = 0.dp)
-            state.items.isEmpty() && state.loading -> GhostLoadingOverlay(
-                Modifier
+            state.items.isEmpty() && state.loading -> Box(
+                modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                LoadingMessage(horizontalPadding = 0.dp, style = MaterialTheme.typography.titleMedium)
+            }
             state.items.isEmpty() -> RowMessage("Nothing in this catalog", horizontalPadding = 0.dp)
             else -> LazyVerticalGrid(
                 state = gridState,
@@ -178,12 +181,8 @@ fun DiscoverScreen(
                     )
                 }
                 if (state.loading) {
-                    // Next page inbound: a shimmering placeholder row.
-                    items(state.view.columns, contentType = { "skeleton" }) {
-                        SkeletonPosterCard(
-                            width = CardSizeTokens.posterWidth(state.view.columns),
-                            height = CardSizeTokens.posterHeight(state.view.columns),
-                        )
+                    item(contentType = "loading") {
+                        LoadingMessage(horizontalPadding = 0.dp)
                     }
                 }
             }

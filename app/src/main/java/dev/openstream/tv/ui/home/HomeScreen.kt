@@ -26,6 +26,7 @@ import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.ContinueWatchingCard
 import dev.openstream.tv.ui.components.PosterCard
+import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
 import dev.openstream.tv.ui.theme.AppBackground
@@ -170,7 +171,7 @@ private fun CatalogRow(row: RowState, onItemClick: (dev.openstream.tv.addon.Meta
         }
 
         when (row) {
-            is RowState.Loading -> RowMessage("Loading…")
+            is RowState.Loading -> LoadingMessage()
             // §4.1.8: a failed addon is a visible chip, never a silent gap
             is RowState.Failed -> RowMessage("⚠ ${row.ref.addon.manifest.name} failed: ${row.message}")
             is RowState.Loaded ->

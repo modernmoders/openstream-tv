@@ -4,7 +4,18 @@ Append-only. Newest entries at the top.
 
 ---
 
-## 2026-07-05 — alpha.7: R8 release build, Discover perf + ghost loader, View chip (session 10)
+## 2026-07-05 — alpha.8: pulsing loader everywhere, movies skip details, long-press fix (session 10)
+
+Owner feedback round 5 on alpha.7 (real boxes): ghost loader "has no animation and looks horrible" on the boxes — replace ALL loading with a faint/pulsing "loading"; movie details screen is an extra step — remove it; holding OK too long on a stream auto-selects the first "Play with…" option. ALSO owner-reported gate results: **VLC and MX Player round-trips WORK, position remembered after leaving VLC → §7.2 check B = PASS (owner, real onn box, 2026-07-05).** One known issue: a specific Naruto file fails ONLY in the internal player (plays in VLC) — codec suspicion, needs box logcat.
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `assembleRelease` + `testDebugUnitTest` — 185 tests | macOS, JDK 17 | PASS (185/185) |
+| Ghost loader + skeleton cards REMOVED; single `LoadingMessage` (faint pulsing "Loading…", layer-phase alpha per DECISIONS #22) now used by Home rows, Discover (first load centered + page-2 item), Details, and stream groups | AVD `openstream_tv_api34`, release APK | PASS (visible mid-fetch on stream list) |
+| Movies skip details: Discover grid movie click → stream list DIRECTLY (no "View streams" stop); series unchanged (season/episode picking needs details) | same | PASS (screenshots) |
+| Long-press fix: `--longpress` OK on a stream → "Play with…" opens and STAYS (stale release + repeats swallowed until a fresh repeatCount-0 key-down); fresh press then selects Internal player normally (played a real AIOStreams stream, exited immediately) | same | PASS (screenshots) |
+| **Deployed alpha.8 (R8 release) to BOTH onn boxes**, versionName confirmed | onn 4K pro + 4K Plus | DONE |
+| Owner still to verify on-box: pulse looks right, movie shortcut feel, the hold-to-long-press timing | — | owner check |
 
 Owner feedback round 4: Discover takes ~15 s on first click and chip focus is choppy while loading; wants loading placeholders + an "artsy full-screen loading effect with ghostly motion" that "runs screamingly well"; wants the View chip spaced out / visually distinct; couldn't see the Back button (wasn't deployed yet).
 

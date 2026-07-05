@@ -36,6 +36,7 @@ import coil3.compose.AsyncImage
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.addon.Video
 import dev.openstream.tv.ui.components.BackButton
+import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
@@ -91,7 +92,7 @@ fun DetailsScreen(
         }
 
         when {
-            state.loading -> RowMessage("Loading…")
+            state.loading -> LoadingMessage()
             state.error != null -> RowMessage("⚠ ${state.error}")
             state.meta != null -> DetailsContent(
                 onBack = onBack,

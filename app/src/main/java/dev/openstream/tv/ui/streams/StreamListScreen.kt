@@ -45,6 +45,7 @@ import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.components.BackButton
+import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
@@ -200,7 +201,7 @@ fun StreamListScreen(
                 }
                 when (group) {
                     is GroupState.Loading -> item(key = "loading-${group.addon.manifestUrl}") {
-                        RowMessage("Loading…", horizontalPadding = 0.dp)
+                        LoadingMessage(horizontalPadding = 0.dp)
                     }
                     is GroupState.Failed -> item(key = "failed-${group.addon.manifestUrl}") {
                         RowMessage("⚠ ${group.message}", horizontalPadding = 0.dp)
@@ -286,13 +287,37 @@ private fun PlayWithDialog(
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { firstFocus.requestFocus() }
 
+    // This dialog opens from a LONG-press, so the user is usually still
+    // holding OK when it appears — the held key's repeats and release land
+    // here and instantly "click" the first option (owner bug 2026-07-05:
+    // "hold too long and it selects the first option"). Ignore selection
+    // keys until a fresh press (repeatCount 0 key-down) happens inside.
+    var freshPress by remember { mutableStateOf(false) }
+
     Dialog(onDismissRequest = onDismiss) {
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(360.dp)
                 .background(Color(0xF0181822), RoundedCornerShape(16.dp))
-                .padding(28.dp),
+                .padding(28.dp)
+                .onPreviewKeyEvent { event ->
+                    val select = when (event.key.nativeKeyCode) {
+                        AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+                        AndroidKeyEvent.KEYCODE_ENTER,
+                        AndroidKeyEvent.KEYCODE_NUMPAD_ENTER -> true
+                        else -> false
+                    }
+                    when {
+                        !select -> false
+                        event.type == KeyEventType.KeyDown -> {
+                            if (event.nativeKeyEvent.repeatCount == 0) freshPress = true
+                            !freshPress // consume leftover long-press repeats
+                        }
+                        event.type == KeyEventType.KeyUp -> !freshPress // consume the stale release
+                        else -> false
+                    }
+                },
         ) {
             Text(
                 text = "Play with",
