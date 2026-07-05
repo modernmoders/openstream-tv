@@ -2,6 +2,8 @@ package dev.openstream.tv.ui.addons
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -45,9 +48,17 @@ fun AddAddonScreen(
     val remoteEntryUrl by viewModel.remoteEntryUrl.collectAsStateWithLifecycle()
     var url by rememberSaveable { mutableStateOf("") }
     val urlFieldFocus = remember { FocusRequester() }
+    val installFocus = remember { FocusRequester() }
 
     LaunchedEffect(state) {
         if (state is UiState.Installed) onInstalled()
+        // A preview may arrive while focus sits far away (browser submissions
+        // land unprompted): jump the D-pad straight onto Install, which also
+        // scrolls the panel into view. Long previews pushed the buttons
+        // off-screen otherwise — the paste-from-phone bug of 2026-07-04.
+        if (state is UiState.Preview || state is UiState.ProfilePreview) {
+            runCatching { installFocus.requestFocus() }
+        }
     }
     LaunchedEffect(Unit) {
         urlFieldFocus.requestFocus() // land the D-pad on the URL field (§5.4)
@@ -62,6 +73,7 @@ fun AddAddonScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(AppBackground)
+            .verticalScroll(rememberScrollState()) // previews can outgrow 1080p
             .padding(horizontal = 48.dp, vertical = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -109,11 +121,13 @@ fun AddAddonScreen(
                 manifest = s.manifest,
                 onInstall = viewModel::confirmInstall,
                 onCancel = viewModel::dismissPreview,
+                installFocus = installFocus,
             )
             is UiState.ProfilePreview -> ProfilePreviewPanel(
                 preview = s,
                 onInstallAll = viewModel::confirmInstallProfile,
                 onCancel = viewModel::dismissPreview,
+                installFocus = installFocus,
             )
             else -> Unit
         }
@@ -130,6 +144,7 @@ private fun ProfilePreviewPanel(
     preview: UiState.ProfilePreview,
     onInstallAll: () -> Unit,
     onCancel: () -> Unit,
+    installFocus: FocusRequester,
 ) {
     val good = preview.entries.count { it.ok }
     Column(
@@ -154,11 +169,19 @@ private fun ProfilePreviewPanel(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (good > 0) {
-                Button(onClick = onInstallAll) {
+                Button(
+                    onClick = onInstallAll,
+                    modifier = Modifier.focusRequester(installFocus),
+                ) {
                     Text(if (good == 1) "Install 1 addon" else "Install $good addons")
                 }
+                Button(onClick = onCancel) { Text("Cancel") }
+            } else {
+                Button(
+                    onClick = onCancel,
+                    modifier = Modifier.focusRequester(installFocus),
+                ) { Text("Cancel") }
             }
-            Button(onClick = onCancel) { Text("Cancel") }
         }
     }
 }
@@ -169,6 +192,7 @@ private fun ManifestPreview(
     manifest: Manifest,
     onInstall: () -> Unit,
     onCancel: () -> Unit,
+    installFocus: FocusRequester,
 ) {
     Column(
         modifier = Modifier
@@ -209,7 +233,10 @@ private fun ManifestPreview(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onInstall) { Text("Install") }
+            Button(
+                onClick = onInstall,
+                modifier = Modifier.focusRequester(installFocus),
+            ) { Text("Install") }
             Button(onClick = onCancel) { Text("Cancel") }
         }
     }

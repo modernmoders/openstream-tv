@@ -4,6 +4,19 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-04 — Add-addon: browser-submitted preview unreachable on real box → scroll + autofocus fix, emulator-verified (session 7)
+
+Owner repro on onn box (alpha.2): setup-link preview rendered below the fold
+(non-scrolling Column), D-pad couldn't reach Install → "No addons installed".
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` (158 tests incl. 9 RemoteEntryServer real-socket, 5 setup-link/remote-submit VM) | macOS, JDK 17, local JVM | PASS (158/158) |
+| Full browser round-trip: Add addon open → `adb forward` 8385 → POST setup link (Cinemeta profile via 10.0.2.2) → "Sent to the TV" page | AVD `openstream_tv_api34` | PASS |
+| ProfilePreview appears with ✓ Cinemeta v3.0.14 AND focus auto-jumps to "Install 1 addon" (screenshot: highlighted, no D-pad input) | same | PASS |
+| KEYCODE_DPAD_CENTER → install runs → navigates back to Addons list | same | PASS |
+| v0.3.0-alpha.3 (versionCode 3) sideloaded via network adb | onn 4K pro (192.168.1.117) + onn 4K Plus (192.168.1.231) | installed; owner to re-run their paste flow |
+
 ## 2026-07-05 — Phase 3 unit 3: external players (VLC/MX/generic) — launch + detection verified; video render impossible on emulator (session 6)
 
 | Check | Environment | Result |
