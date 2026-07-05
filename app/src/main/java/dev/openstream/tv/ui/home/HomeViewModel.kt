@@ -8,7 +8,9 @@ import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.addon.MetaRepository
+import dev.openstream.tv.data.HomeRowPrefsStore
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.applyTo
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
@@ -16,6 +18,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -31,6 +34,7 @@ class HomeViewModel @Inject constructor(
     private val catalogRepository: CatalogRepository,
     private val progressRepository: ProgressRepository,
     private val metaRepository: MetaRepository,
+    private val rowPrefs: HomeRowPrefsStore,
 ) : ViewModel() {
 
     companion object {
@@ -44,9 +48,25 @@ class HomeViewModel @Inject constructor(
     sealed interface RowState {
         val ref: CatalogRef
 
-        data class Loading(override val ref: CatalogRef) : RowState
-        data class Loaded(override val ref: CatalogRef, val items: List<MetaItem>) : RowState
-        data class Failed(override val ref: CatalogRef, val message: String) : RowState
+        /** Display title — the user's rename when set (Phase 4 row manager). */
+        val title: String
+
+        data class Loading(
+            override val ref: CatalogRef,
+            override val title: String,
+        ) : RowState
+
+        data class Loaded(
+            override val ref: CatalogRef,
+            override val title: String,
+            val items: List<MetaItem>,
+        ) : RowState
+
+        data class Failed(
+            override val ref: CatalogRef,
+            override val title: String,
+            val message: String,
+        ) : RowState
     }
 
     data class HomeUiState(
@@ -70,37 +90,43 @@ class HomeViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            // collectLatest: an addon change cancels in-flight fetches and
-            // restarts the fan-out against the new addon set.
-            addonRepository.observeInstalled().collectLatest { addons ->
-                val refs = catalogRepository.catalogRefs(addons)
-                // update{}, not value=: the Continue Watching collector above
-                // runs in parallel and its state must survive an addon change.
-                _uiState.update {
-                    it.copy(
-                        initializing = false,
-                        hasAddons = addons.any { a -> a.enabled },
-                        rows = refs.map { r -> RowState.Loading(r) },
-                    )
-                }
-                coroutineScope {
-                    refs.forEach { ref ->
-                        launch {
-                            val newState = catalogRepository.fetch(ref).fold(
-                                onSuccess = { RowState.Loaded(ref, it) },
-                                onFailure = { RowState.Failed(ref, it.toChipMessage()) },
-                            )
-                            // Atomic: parallel completions must not clobber
-                            // each other's row updates
-                            _uiState.update { state ->
-                                state.copy(rows = state.rows.map {
-                                    if (it.ref.key == ref.key) newState else it
-                                })
+            // collectLatest: an addon OR row-prefs change cancels in-flight
+            // fetches and restarts the fan-out. Prefs edits (row manager) make
+            // this cheap in practice — the addon HTTP cache (DECISIONS #17)
+            // answers the refetch from disk.
+            combine(addonRepository.observeInstalled(), rowPrefs.prefs, ::Pair)
+                .collectLatest { (addons, prefs) ->
+                    // Hidden rows are dropped BEFORE the fan-out: a hidden
+                    // row's catalog is never fetched, not just not drawn.
+                    val rows = prefs.applyTo(catalogRepository.catalogRefs(addons))
+                        .filterNot { it.hidden }
+                    // update{}, not value=: the Continue Watching collector above
+                    // runs in parallel and its state must survive an addon change.
+                    _uiState.update {
+                        it.copy(
+                            initializing = false,
+                            hasAddons = addons.any { a -> a.enabled },
+                            rows = rows.map { r -> RowState.Loading(r.ref, r.title) },
+                        )
+                    }
+                    coroutineScope {
+                        rows.forEach { row ->
+                            launch {
+                                val newState = catalogRepository.fetch(row.ref).fold(
+                                    onSuccess = { RowState.Loaded(row.ref, row.title, it) },
+                                    onFailure = { RowState.Failed(row.ref, row.title, it.toChipMessage()) },
+                                )
+                                // Atomic: parallel completions must not clobber
+                                // each other's row updates
+                                _uiState.update { state ->
+                                    state.copy(rows = state.rows.map {
+                                        if (it.ref.key == row.ref.key) newState else it
+                                    })
+                                }
                             }
                         }
                     }
                 }
-            }
         }
     }
 

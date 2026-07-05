@@ -14,6 +14,8 @@ import dev.openstream.tv.ui.discover.DiscoverScreen
 import dev.openstream.tv.ui.home.HomeScreen
 import dev.openstream.tv.ui.player.PlayerScreen
 import dev.openstream.tv.ui.search.SearchScreen
+import dev.openstream.tv.ui.settings.HomeRowsScreen
+import dev.openstream.tv.ui.settings.SettingsScreen
 import dev.openstream.tv.ui.streams.StreamListScreen
 
 /**
@@ -26,6 +28,8 @@ object Routes {
     const val SEARCH = "search"
     const val ADDONS = "addons"
     const val ADDONS_ADD = "addons/add"
+    const val SETTINGS = "settings"
+    const val SETTINGS_HOME_ROWS = "settings/home-rows"
 
     /** Ids contain `:` and arbitrary addon characters — always Uri.encode. */
     const val DETAILS = "details/{type}/{id}"
@@ -65,8 +69,18 @@ fun AppNavHost() {
                 onDiscover = { navController.navigate(Routes.DISCOVER) },
                 onSearch = { navController.navigate(Routes.SEARCH) },
                 onManageAddons = { navController.navigate(Routes.ADDONS) },
+                onSettings = { navController.navigate(Routes.SETTINGS) },
                 onItemClick = openDetails,
             )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                onBack = goBack,
+                onHomeRows = { navController.navigate(Routes.SETTINGS_HOME_ROWS) },
+            )
+        }
+        composable(Routes.SETTINGS_HOME_ROWS) {
+            HomeRowsScreen(onBack = goBack)
         }
         composable(Routes.DISCOVER) {
             DiscoverScreen(onBack = goBack, onItemClick = openDetails)

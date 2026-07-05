@@ -4,6 +4,28 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — Phase 4 unit 1: Settings skeleton + Home-row manager (session 11)
+
+First Phase 4 unit proper (§10): a Settings screen (skeleton for all future
+settings) whose first entry is "Home rows" — reorder (▲/▼), rename, and
+hide/show every catalog row on Home. Hidden rows are dropped BEFORE the
+fan-out (never fetched), Continue Watching stays unmanaged/always-first
+(§5.6), and addon-order remains the default for anything the user never
+touched (§4.1.7).
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `testDebugUnitTest` — 197 tests (12 new: HomeRowPrefs customizer rules ×5, HomeRowsViewModel ×4, HomeViewModel hide/rename/reorder ×3) | macOS, JDK 17 | PASS (197/197) |
+| Settings skeleton: Home header gains "Settings"; screen shows Back + one large described entry "Home rows", focus lands on it | AVD `openstream_tv_api34`, debug APK | PASS (screenshot) |
+| Row manager lists ALL rows (Cinemeta + owner's AIOMetadata) with addon · type sublabels; entry focus = first row's Rename | same | PASS (screenshot) |
+| Hide: first row → "· hidden" dimmed, button flips to Show; Home no longer renders the row and its catalog is NOT fetched (also unit-tested) | same | PASS (screenshots) |
+| Rename: dialog (trapped focus, prefilled field, Save / Use original name) → typed "Nana Picks" via on-screen IME, submitted with the IME action → list + Home both show the custom title | same | PASS (screenshots) |
+| Reorder: ▼ on the renamed row → moves below "Featured · movie" in the manager AND on Home; focus follows the row (stable keys §5.7) | same | PASS (screenshots) |
+| Empty-state flash found & fixed: manager briefly showed "No rows yet — install an addon first" before the Room read landed; rows flow is now null-until-first-emission and the body stays blank for that beat | same | FIXED + PASS |
+| adb quirk noted: with the leanback IME open, DPAD_DOWN/CENTER go to the keyboard, not the dialog buttons — submit renames with the IME action key (ENTER), not button navigation | — | note |
+| Emulator hygiene: pre-existing session went black-screencap (known ~2.5 h degradation) → cold-booted per STATE rules; test prefs reset afterwards (`run-as … rm files/datastore/home_row_prefs.preferences_pb`) so the AVD baseline is unchanged | — | note |
+| NOT deployed to the boxes — they stay on alpha.9 so the owner's §7.2 gate run (C/D) is undisturbed; ships with the next deploy | — | note |
+
 ## 2026-07-05 — alpha.9: outlined Back, voice search mic, Add-addon stays put (session 10)
 
 Owner feedback round 6 ("it's beautiful… so much faster now"): make the Back button hollow/outlined; add a microphone next to the search bar; stop bouncing back to the addon list after each install when adding several addons. Owner also confirmed the C-check sentiment (feel) — D (phone setup link) remains the last §7.2 box.

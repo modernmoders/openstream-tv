@@ -412,3 +412,21 @@ INSIDE the Canvas draw lambda / `graphicsLayer{}` block — draw/layer-phase
 invalidation only, zero per-frame recomposition or layout. On 32-bit boxes
 this is the difference between a free animation and a janky one; treat it
 as the house rule for any loader/pulse/ambient motion added later.
+
+## 23. 2026-07-05 — Home-row customization: one JSON blob, keys tolerate staleness, hidden = never fetched
+
+**Decision:** The Phase 4 row manager stores `HomeRowPrefs` (order list,
+hidden set, renames map — all keyed by `CatalogRef.key`) as ONE JSON blob
+under a single DataStore preference. The three fields always change from the
+same screen, and a future schema change degrades to defaults instead of
+needing a migration. Entries whose row no longer exists (addon removed,
+manifest changed) are simply ignored at apply time — no eager garbage
+collection. Apply rule: user-ordered rows first, everything untouched keeps
+addon order after them (§4.1.7 stays the default), so a brand-new catalog
+appears at the end instead of vanishing. A ▲/▼ move pins the FULL current
+order (predictability over freshness). Hidden rows are filtered BEFORE the
+home fan-out — a hidden row's catalog is never fetched, not just not drawn —
+and prefs changes restart the fan-out via `combine`, which the DECISIONS #17
+HTTP cache makes cheap. Continue Watching is not managed here (§5.6
+always-first is a hard rule, and elders losing that row would be a support
+call).

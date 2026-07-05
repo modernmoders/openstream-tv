@@ -60,6 +60,12 @@ object DataModule {
     @Singleton
     fun viewPrefs(impl: dev.openstream.tv.data.DataStoreViewPrefs): dev.openstream.tv.data.ViewPrefs = impl
 
+    @Provides
+    @Singleton
+    fun homeRowPrefs(
+        impl: dev.openstream.tv.data.DataStoreHomeRowPrefs,
+    ): dev.openstream.tv.data.HomeRowPrefsStore = impl
+
     /**
      * Scope for writes that must outlive a ViewModel (e.g. saving the final
      * playback position from onCleared()). SupervisorJob: one failed write

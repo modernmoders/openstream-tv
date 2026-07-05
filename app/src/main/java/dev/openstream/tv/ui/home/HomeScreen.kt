@@ -43,6 +43,7 @@ fun HomeScreen(
     onDiscover: () -> Unit,
     onSearch: () -> Unit,
     onManageAddons: () -> Unit,
+    onSettings: () -> Unit,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -72,6 +73,7 @@ fun HomeScreen(
                 Button(onClick = onDiscover) { Text("Discover") }
                 Button(onClick = onSearch) { Text("Search") }
                 Button(onClick = onManageAddons) { Text("Addons") }
+                Button(onClick = onSettings) { Text("Settings") }
             }
         }
 
@@ -159,7 +161,7 @@ private fun CatalogRow(row: RowState, onItemClick: (dev.openstream.tv.addon.Meta
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "${row.ref.title} · ${row.ref.catalog.type}",
+                text = "${row.title} · ${row.ref.catalog.type}",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
             )

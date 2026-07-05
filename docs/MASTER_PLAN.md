@@ -324,7 +324,7 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 - [ ] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner). *(Emulator half done 2026-07-05 — TESTLOG; owner's onn box run pending.)*
 
 ### Phase 4 — Customization + settings + polish
-- [ ] Row/catalog manager (reorder/rename/hide), density settings, player preference, autoplay settings, tunneling toggle, debug overlay.
+- [ ] Row/catalog manager (reorder/rename/hide), density settings, player preference, autoplay settings, tunneling toggle, debug overlay. *(2026-07-05 session 11: row/catalog manager + the Settings screen skeleton SHIPPED (DECISIONS #23) — remaining items land as further Settings entries.)*
 - [ ] Focus/UX audit of every screen against §5; performance pass on lowest-end device.
 - [ ] Local profiles (separate addon sets + progress) — only if time permits; otherwise cut (YAGNI) and log it.
 
