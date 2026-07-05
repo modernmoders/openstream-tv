@@ -11,6 +11,28 @@ build-blocked, so units continue while we wait.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Phase 4 units 2–3 — Poster size, language memory, "Always use" player
+  (session 11, same day, owner away in town).** Settings now: Home rows /
+  Poster size / Player, live current-value descriptions. (a) GLOBAL density
+  §5.1: `ViewPrefs.posterColumns` 4–8 (default 6), Home + Search rows obey
+  (Discover keeps its own chip); emulator-verified 8-up and back.
+  (b) Audio/subtitle language memory (DECISIONS #19 → #24): tracks-dialog
+  picks persist (`PlaybackPrefs`), re-applied as ExoPlayer PREFERENCES
+  before play (no override → graceful fallback); Subtitles-Off is itself
+  remembered; tag-less picks never clobber. Full emulator round-trip
+  DEFERRED (fixture movie's row sits under ~15 AIO collection rows) —
+  fold into the owner's real-media check or next session.
+  (c) §6.2 "Always use" player: internal/ask/VLC/MX stored, resolved
+  against installed-players AT CLICK TIME (pure fn, table-tested;
+  uninstalled → internal, never a dead click); Settings dialog only shows
+  detected players (VLC showed on the AVD); "Ask" verified on a real
+  AIOStreams list (OK → Play-with dialog); long-press stays the one-off
+  override; §7.1.6 chain inherits the launched player. 205/205 tests
+  (8 new). **Owner directive 2026-07-05: gate checks C/D marked
+  "skip for now" — NOT ticked, NOT faked; Dreamhost panel was signed out
+  when the browser connected (Windows machine), so step 0 still needs the
+  owner signed in (tab left on the sign-in page). Boxes untouched on
+  alpha.9.**
 - **Phase 4 unit 1 — Settings skeleton + Home-row manager (session 11).**
   Home header gains "Settings" → Settings screen (deliberately short,
   large described entries — the skeleton every future setting lands in:
@@ -177,10 +199,15 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## NEXT ACTION (start here)
 **Owner-blocked items first if the owner is present (0/1/1b below);
-otherwise continue Phase 4 units (3).** Session 11 checked: no Chrome
-extension connected (Dreamhost still blocked), both boxes adb-reachable
-but their logcat ring buffers no longer hold the Naruto failure — 1b
-needs a live repro.
+otherwise continue Phase 4 units (3).** Session 11: owner connected a
+Chrome extension (Windows PC) but panel.dreamhost.com was SIGNED OUT —
+Claude must not sign in (even via Google SSO); the tab was left on the
+sign-in page. Once the owner signs in, drive step 0 end-to-end. Owner
+deferred gate checks C/D ("skip for now") — gate stays open, not faked.
+Both boxes adb-reachable; Naruto logcat (1b) needs a live repro.
+Quick verify next session: subtitle-language persistence round-trip on
+the fixture movie (Settings → Home rows → move "Local Test" row up for a
+fast path, then pick a subtitle → exit → replay → auto-selected).
 0. **Dreamhost upload (Claude drives, owner unlocks):** the owner must have
    Chrome (the profile signed into panel.dreamhost.com, or ready to sign
    in — Claude must NEVER enter the password) with the Claude extension
@@ -212,17 +239,16 @@ needs a live repro.
    elder-friendly) and/or codec-aware stream badges.
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
-3. Continue Phase 4 units (unit 1 = settings skeleton + row manager DONE,
-   session 11). Next unit candidates, in rough owner-value order:
-   (a) **global density setting** (§5.1 columns 4–8 + compact rows — owner's
-   own Stremio gripe; Discover View chip covers Discover only, the global
-   default belongs in Settings); (b) **player preference** ("Always use"
-   external player, §6.2/§7.1.7 — per-launch dialog exists, DECISIONS #12)
-   + **preferred audio/subtitle language** persistence (DECISIONS #19) —
-   both are new Settings entries; (c) **watched-history row** (§10);
-   (d) Discover scroll perf prefetch (§10, needs box feel-testing).
-   When the next box deploy happens, bump versionCode and include
-   everything since alpha.9.
+3. Continue Phase 4 units (units 1–3 DONE session 11: settings skeleton +
+   row manager, global density, language memory, "Always use" player).
+   Next candidates, rough owner-value order: (a) **watched-history row**
+   (§10); (b) **Discover scroll perf prefetch** (§10 — skip-page +
+   next-row image prefetch; needs box feel-testing after); (c) **autoplay
+   settings** entry (§7.1.7) + tunneling toggle + debug overlay (rest of
+   the Phase 4 first bullet); (d) elder-friendly audit (§10) — Settings
+   descriptions already follow it. When the next box deploy happens,
+   bump versionCode and include everything since alpha.9 (Settings,
+   row manager, density, languages, player pref — a big alpha.10).
 
 ## Environment rules (hard-earned — do not skip)
 - **Playback testing needs a WINDOWED emulator** (`-gpu auto`, NO
