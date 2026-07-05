@@ -53,11 +53,16 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
    then checks A (3-episode chain), B (VLC round-trip incl. §7.1.6), C (feel).
    Bonus check D: Add addon → open the shown web address on a phone → paste
    a setup link → install-all lands.
-1b. Owner picks one of their unused domains + hosting for the 10 generated
-   profiles in `docs/reference/StremioSurfer/profiles/` (see
-   docs/SETUP_LINKS.md; skip list + stable filenames in
-   profiles.config.json). Claude can automate upload once told the host.
-   AIOMetadata URLs in users.json are still all EMPTY — fill + regenerate.
+1b. **Dreamhost upload (owner action):** upload the CONTENTS of
+   `docs/reference/StremioSurfer/hosting/` (10 profiles + index.php name
+   lookup + .htaccess) to a `setup/` folder on one of the owner's domains
+   (Panel → Websites → Manage Files). Then tell Claude the URL — Claude
+   verifies the page live (PHP is unlinted locally, no php CLI on this Mac;
+   the lookup logic + REQUEST_URI path handling need one live check).
+   Profiles now merge each person's LIVE Stremio collection
+   (tools/pull_stremio_addons.py → stremio_addons.json, DECISIONS #15).
+   AIOMetadata URLs in users.json are still all EMPTY — fill + regenerate
+   (same links survive via profiles.config.json).
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
 3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start

@@ -267,3 +267,27 @@ or any private URL).
   a family member's whole setup; the preview shows exactly what's broken.
 - Stremio-style accounts/sync on the owner's future domain stays a §12
   non-goal for v1; users.json is the offline source of truth until then.
+
+## 15. 2026-07-04 — Profiles mirror live Stremio accounts; name-lookup page tradeoff
+
+**Decision:** `tools/pull_stremio_addons.py` logs into each family Stremio
+account (credentials in the owner's private users.json — accounts the owner
+manages) via api.strem.io login → addonCollectionGet, and saves each
+account's real addon list. `make_profiles.py` unions: Cinemeta + curated
+catalog addons from users.json (TMDB/AIOLists/MediaFusion — present there
+but NOT in the live accounts) + the live collection in account order,
+deduped by URL. Localhost transport URLs (Stremio local-files server) are
+dropped — they can't work from a TV.
+
+**Name lookup (owner-requested UX):** `tools/make_hosting_bundle.py` emits
+an upload-ready folder (Dreamhost/any PHP host): index.php where a person
+types "first name + last initial" and gets their setup link with a copy
+button. The name→filename map stays server-side in PHP so the tokenized
+filenames are never listed; ambiguous names ("myles m") get a pick-one
+prompt; "Anna/Jay" style names answer to either first name.
+**Accepted tradeoff:** anyone who knows the domain and a family member's
+first name + initial can obtain that person's profile URL (which embeds
+tokens). This is family-scale obscurity, not auth — acceptable to the owner
+today; a shared PIN in index.php is the documented upgrade path if that
+changes. Generated bundle lives in the gitignored private folder; only the
+generators are tracked.

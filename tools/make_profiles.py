@@ -34,10 +34,14 @@ def is_manifest_url(value):
         and value.endswith("manifest.json")
 
 
-def profile_for(user, instance):
+def profile_for(user, instance, pulled=None):
     """Addon order is meaningful (§4.1.7: install order = stream-group order):
     metadata sources first (Cinemeta fallback, then AIOMetadata), extra
-    catalog addons, and AIOStreams last."""
+    catalog addons, then the person's live Stremio collection (pulled by
+    tools/pull_stremio_addons.py) — or the assembled AIOStreams URL when no
+    pull exists. Union, deduped by URL: the live account is truth for stream
+    addons, but the curated catalog addons in users.json aren't in those
+    accounts and would be lost otherwise (DECISIONS #15)."""
     addons = [{"name": "Cinemeta", "url": CINEMETA}]
 
     aiometadata = (user.get("aiometadata") or {}).get("manifest_url")
@@ -49,19 +53,28 @@ def profile_for(user, instance):
             pretty = re.sub(r"_manifest$", "", key).replace("_", " ").title()
             addons.append({"name": pretty, "url": value})
 
-    aiostreams = user.get("aiostreams") or {}
-    chosen = aiostreams.get(instance) or {}
-    url = chosen.get("manifest_url")
-    if not is_manifest_url(url):  # fall back to any instance that has one
-        for fallback, data in aiostreams.items():
-            candidate = (data or {}).get("manifest_url")
-            if is_manifest_url(candidate):
-                url, instance = candidate, fallback
-                break
-    if is_manifest_url(url):
-        addons.append({"name": f"AIOStreams ({instance})", "url": url})
+    account = (pulled or {}).get(user.get("email") or "")
+    if account and account.get("addons"):
+        addons.extend(account["addons"])  # live collection, account order
+    else:
+        aiostreams = user.get("aiostreams") or {}
+        chosen = aiostreams.get(instance) or {}
+        url = chosen.get("manifest_url")
+        if not is_manifest_url(url):  # fall back to any instance that has one
+            for fallback, data in aiostreams.items():
+                candidate = (data or {}).get("manifest_url")
+                if is_manifest_url(candidate):
+                    url, instance = candidate, fallback
+                    break
+        if is_manifest_url(url):
+            addons.append({"name": f"AIOStreams ({instance})", "url": url})
 
-    return {"openstream": 1, "name": user.get("name", "OpenStream setup"), "addons": addons}
+    seen, unique = set(), []
+    for addon in addons:
+        if addon["url"] not in seen:
+            seen.add(addon["url"])
+            unique.append(addon)
+    return {"openstream": 1, "name": user.get("name", "OpenStream setup"), "addons": unique}
 
 
 def main():
@@ -88,13 +101,16 @@ def main():
         else {"skip": [], "links": {}}
     skip = {s.lower() for s in config.get("skip", [])}
 
+    pulled_path = args.users.parent / "stremio_addons.json"
+    pulled = json.loads(pulled_path.read_text()) if pulled_path.exists() else {}
+
     data = json.loads(args.users.read_text())
     for user in data.get("users", []):
         name = user.get("name", "")
         if name.lower() in skip:
             print(f"(skipped {name})")
             continue
-        profile = profile_for(user, args.instance)
+        profile = profile_for(user, args.instance, pulled)
         filename = config["links"].get(name)
         if not filename:
             slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "user"

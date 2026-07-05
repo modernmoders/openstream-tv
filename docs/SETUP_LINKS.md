@@ -35,6 +35,26 @@ previewed on the TV and nothing installs until you confirm there.
 - `skip` — names to not generate for
 - `links` — assigned filenames, so a person's URL stays stable across runs
 
+Optional but recommended first: `tools/pull_stremio_addons.py` logs into
+each person's Stremio account (credentials from users.json) and saves their
+real installed-addon list; make_profiles then merges it in, so a profile
+mirrors what each person actually uses (DECISIONS #15).
+
+## Name-lookup page (optional)
+
+`tools/make_hosting_bundle.py` produces an upload-ready folder: the profile
+files plus an `index.php` where a person types "first name + last initial"
+and gets their setup link with a copy button. Upload the folder's contents
+to any PHP host. On Dreamhost: Panel → Websites → Manage → your domain →
+Manage Files, create a `setup` folder, upload everything into it, then the
+page is at `https://yourdomain/setup/`. Re-run the bundle script and
+re-upload whenever profiles change.
+
+Tradeoff to understand: with the lookup page, knowing the domain + a first
+name + last initial is enough to fetch that person's profile URL. That is
+deliberate convenience for a family install; add a shared PIN to index.php
+if you need more than that.
+
 ## Hosting rules (these files contain personal tokens)
 
 1. **HTTPS only**, any static host works: a plain web server, Cloudflare
