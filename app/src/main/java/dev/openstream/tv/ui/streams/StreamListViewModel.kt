@@ -8,6 +8,8 @@ import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.addon.StreamRepository
 import dev.openstream.tv.addon.toPlayableSource
+import dev.openstream.tv.autoplay.AutoplayOriginHolder
+import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.player.CurrentPlayback
@@ -29,6 +31,7 @@ class StreamListViewModel @Inject constructor(
     private val streamRepository: StreamRepository,
     private val currentPlayback: CurrentPlayback,
     private val progressRepository: ProgressRepository,
+    private val autoplayOrigin: AutoplayOriginHolder,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -66,7 +69,7 @@ class StreamListViewModel @Inject constructor(
      * Stage the stream for the player screen; returns false for sources v1
      * can't play (the UI shows those as notes, so this is belt-and-braces).
      */
-    fun stage(stream: Stream, startPositionMs: Long = 0): Boolean {
+    fun stage(addon: InstalledAddon, stream: Stream, startPositionMs: Long = 0): Boolean {
         val source = stream.toPlayableSource(title.ifBlank { stream.name ?: "Stream" })
             ?: return false
         currentPlayback.request = PlaybackRequest(
@@ -76,6 +79,8 @@ class StreamListViewModel @Inject constructor(
             metaType = type,
             poster = poster,
         )
+        // Autoplay's tier-1/2 ranking context (§7.1) — which addon, which stream
+        autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
         return true
     }
 

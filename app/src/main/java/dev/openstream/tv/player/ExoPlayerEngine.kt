@@ -76,7 +76,12 @@ class ExoPlayerEngine(context: Context) : PlayerEngine {
     override val events: Flow<PlayerEvent> = callbackFlow {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) trySend(PlayerEvent.Ended)
+                when (playbackState) {
+                    // READY also re-fires after seeks/rebuffers; consumers
+                    // treat it as "the current source did open", nothing more.
+                    Player.STATE_READY -> trySend(PlayerEvent.Ready)
+                    Player.STATE_ENDED -> trySend(PlayerEvent.Ended)
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {

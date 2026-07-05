@@ -71,7 +71,17 @@ fun AppNavHost() {
             StreamListScreen(onPlay = { navController.navigate(Routes.PLAYER) })
         }
         composable(Routes.PLAYER) {
-            PlayerScreen(onExit = { navController.popBackStack() })
+            PlayerScreen(
+                onExit = { navController.popBackStack() },
+                // Autoplay's manual fallback (§7.1 step 4): REPLACE the player
+                // with the next episode's stream list, so Back from there goes
+                // to the previous episode's list — not a dead ended player.
+                onOpenStreams = { type, videoId, title, metaId, poster ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
+                        popUpTo(Routes.PLAYER) { inclusive = true }
+                    }
+                },
+            )
         }
     }
 }

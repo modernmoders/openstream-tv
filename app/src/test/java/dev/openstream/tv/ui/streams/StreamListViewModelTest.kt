@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.StreamRepository
+import dev.openstream.tv.autoplay.AutoplayOriginHolder
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.FakeWatchProgressDao
 import dev.openstream.tv.addon.fixtures.Fixtures
@@ -58,10 +59,13 @@ class StreamListViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val autoplayOrigin = AutoplayOriginHolder()
+
     private fun viewModel(type: String, videoId: String) = StreamListViewModel(
         streamRepository,
         currentPlayback,
         progressRepository,
+        autoplayOrigin,
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
 
@@ -140,11 +144,13 @@ class StreamListViewModelTest {
 
         assertEquals(120_000L, state.resumePositionMs)
 
-        val stream = (state.groups.first() as GroupState.Loaded).streams.first()
-        assertTrue(vm.stage(stream, state.resumePositionMs!!))
+        val group = state.groups.first() as GroupState.Loaded
+        assertTrue(vm.stage(group.addon, group.streams.first(), state.resumePositionMs!!))
         val request = currentPlayback.request!!
         assertEquals(120_000L, request.source.startPositionMs)
         assertEquals(MediaRef.addon("tt1254207"), request.mediaRef)
+        // Autoplay's ranking context follows the staged stream (§7.1)
+        assertEquals(group.addon.manifestUrl, autoplayOrigin.origin?.addonUrl)
     }
 
     @Test
@@ -161,8 +167,8 @@ class StreamListViewModelTest {
 
         assertNull(state.resumePositionMs)
 
-        val stream = (state.groups.first() as GroupState.Loaded).streams.first()
-        assertTrue(vm.stage(stream))
+        val group = state.groups.first() as GroupState.Loaded
+        assertTrue(vm.stage(group.addon, group.streams.first()))
         assertEquals(0L, currentPlayback.request!!.source.startPositionMs)
     }
 }

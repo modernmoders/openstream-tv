@@ -1,6 +1,7 @@
 package dev.openstream.tv.ui.player
 
 import android.view.KeyEvent as AndroidKeyEvent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,9 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.addon.Video
+import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
+import dev.openstream.tv.autoplay.AutoplayStateMachine
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
@@ -52,14 +56,23 @@ private const val OVERLAY_TIMEOUT_MS = 5_000L
 @Composable
 fun PlayerScreen(
     onExit: () -> Unit,
+    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
+        { _, _, _, _, _ -> },
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val engineOrNull by viewModel.engine.collectAsStateWithLifecycle()
+    val autoplay by viewModel.autoplayState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.hasSource) {
         if (!state.hasSource) onExit() // process death restored this route
     }
+    LaunchedEffect(Unit) {
+        // §7.1 step 4: autoplay gave up → the next episode's manual stream list
+        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
+    }
+    // Back cancels autoplay instead of leaving the screen while the card is up
+    BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
 
     val engine = engineOrNull
     if (engine == null) {
@@ -104,8 +117,17 @@ fun PlayerScreen(
                 when (event.key.nativeKeyCode) {
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER,
                     AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                        if (player.isPlaying) player.pause() else player.play()
-                        wake(); true
+                        when {
+                            // OK on the Up Next countdown = play now (§7.1 step 2)
+                            viewModel.confirmAutoplay() -> true
+                            // Finished/error panel up: its focused Button owns
+                            // OK — swallowing it here made "Back" unreachable
+                            state.ended || state.error != null -> false
+                            else -> {
+                                if (player.isPlaying) player.pause() else player.play()
+                                wake(); true
+                            }
+                        }
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_LEFT,
                     AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
@@ -155,10 +177,27 @@ fun PlayerScreen(
             }
         }
 
-        if (state.ended) {
-            // Autoplay hooks in here in Phase 3; for now an honest end state.
-            CenterPanel("Playback finished") {
-                Button(onClick = onExit) { Text("Back") }
+        // Up Next flow (§7.1) replaces the finished panel while it's working;
+        // the panel stays the honest fallback for movies/series end/cancel.
+        when (val up = autoplay) {
+            is AutoplayStateMachine.State.Countdown -> UpNextCard(
+                headline = "Up next: ${up.next.upNextLabel()}",
+                detail = "Playing in ${up.secondsLeft}s   (OK play now · Back cancel)",
+            )
+            is AutoplayStateMachine.State.Resolving -> UpNextCard(
+                headline = "Finding next episode…",
+                detail = if (up.totalAddons > 0) {
+                    "${up.respondedAddons}/${up.totalAddons} addons responded   (Back cancel)"
+                } else "(Back cancel)",
+            )
+            is AutoplayStateMachine.State.Attempting -> UpNextCard(
+                headline = "Starting ${up.next.upNextLabel()}",
+                detail = if (up.attempt > 0) "Attempt ${up.attempt + 1}" else "",
+            )
+            else -> if (state.ended) {
+                CenterPanel("Playback finished") {
+                    Button(onClick = onExit) { Text("Back") }
+                }
             }
         }
 
@@ -169,6 +208,30 @@ fun PlayerScreen(
                     Button(onClick = viewModel::retry) { Text("Retry") }
                     Button(onClick = onExit) { Text("Back to streams") }
                 }
+            }
+        }
+    }
+}
+
+private fun Video.upNextLabel(): String {
+    val se = if (season != null && episode != null) "S${season}E$episode" else null
+    return listOfNotNull(se, displayTitle.takeIf { it.isNotBlank() && it != id }).joinToString(" · ")
+        .ifBlank { displayTitle }
+}
+
+/** The Up Next overlay (§7.1 step 2/4): visible waiting, never a dead screen. */
+@Composable
+private fun UpNextCard(headline: String, detail: String) {
+    Box(Modifier.fillMaxSize().padding(48.dp), contentAlignment = Alignment.BottomEnd) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .background(Color(0xF0181822))
+                .padding(horizontal = 28.dp, vertical = 20.dp),
+        ) {
+            Text(headline, style = MaterialTheme.typography.titleLarge, color = Color.White)
+            if (detail.isNotBlank()) {
+                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MutedText)
             }
         }
     }

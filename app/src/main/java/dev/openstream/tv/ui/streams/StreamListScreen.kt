@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.asClock
@@ -48,12 +49,12 @@ fun StreamListScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     /** Stream awaiting a Resume/Start-over decision (progress exists for this video). */
-    var pendingResume by remember { mutableStateOf<Stream?>(null) }
+    var pendingResume by remember { mutableStateOf<Pair<InstalledAddon, Stream>?>(null) }
 
-    val onStreamSelected: (Stream) -> Unit = { stream ->
+    val onStreamSelected: (InstalledAddon, Stream) -> Unit = { addon, stream ->
         if (state.resumePositionMs != null) {
-            pendingResume = stream
-        } else if (viewModel.stage(stream)) {
+            pendingResume = addon to stream
+        } else if (viewModel.stage(addon, stream)) {
             onPlay()
         }
     }
@@ -108,7 +109,7 @@ fun StreamListScreen(
                             // Index in key: addons may return near-identical rows
                             group.streams.forEachIndexed { index, stream ->
                                 item(key = "s-${group.addon.manifestUrl}-$index") {
-                                    StreamRow(stream, onClick = { onStreamSelected(stream) })
+                                    StreamRow(stream, onClick = { onStreamSelected(group.addon, stream) })
                                 }
                             }
                         }
@@ -117,16 +118,16 @@ fun StreamListScreen(
         }
     }
 
-    pendingResume?.let { stream ->
+    pendingResume?.let { (addon, stream) ->
         ResumeDialog(
             resumePositionMs = state.resumePositionMs ?: 0,
             onResume = {
                 pendingResume = null
-                if (viewModel.stage(stream, state.resumePositionMs ?: 0)) onPlay()
+                if (viewModel.stage(addon, stream, state.resumePositionMs ?: 0)) onPlay()
             },
             onStartOver = {
                 pendingResume = null
-                if (viewModel.stage(stream)) onPlay()
+                if (viewModel.stage(addon, stream)) onPlay()
             },
             onDismiss = { pendingResume = null },
         )

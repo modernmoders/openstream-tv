@@ -15,6 +15,9 @@ interface PlayerEngine {
 }
 
 sealed interface PlayerEvent {
+    /** Media prepared and playable — an autoplay attempt is a success (§7.1). */
+    data object Ready : PlayerEvent
+
     /** Playback reached the end of the media — autoplay's trigger (§7.1). */
     data object Ended : PlayerEvent
 
