@@ -1,15 +1,35 @@
-# STATE — updated 2026-07-05 by session 10
+# STATE — updated 2026-07-05 by session 11
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
-item before `phase-3-done` (check A passed 2026-07-04; B/C/D pending).
-Phase 4 items landing early by owner request (Discover redo, view options,
-player track picker, search focus rule, CW prefetch — all SHIPPED).
+item before `phase-3-done` (A PASS 2026-07-04, B PASS 2026-07-05, C
+effectively passing on sentiment; D = last box). Phase 4 build work has
+STARTED (unit 1 shipped, session 11) — the gate is owner-blocked, not
+build-blocked, so units continue while we wait.
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Phase 4 unit 1 — Settings skeleton + Home-row manager (session 11).**
+  Home header gains "Settings" → Settings screen (deliberately short,
+  large described entries — the skeleton every future setting lands in:
+  player preference §6.2, autoplay §7.1.7, languages DECISIONS #19,
+  global density §5.1). First entry "Home rows": reorder ▲/▼ / rename
+  (trapped-focus dialog, "Use original name" restores) / hide-show every
+  catalog row. `HomeRowPrefs` = one JSON blob in DataStore keyed by
+  `CatalogRef.key`, stale keys ignored, untouched rows keep addon order
+  (§4.1.7), moves pin the full order, hidden rows filtered BEFORE the home
+  fan-out (never fetched) — all DECISIONS #23. Continue Watching stays
+  unmanaged/always-first. 197/197 tests (12 new). Full flow
+  screenshot-verified on the TV emulator (TESTLOG session 11): hide →
+  gone from Home, rename "Nana Picks" → shows on Home, ▼ → order changes
+  on Home; test prefs then reset so the AVD baseline is unchanged.
+  Found+fixed: empty-state flash before the Room read (rows flow now
+  null-until-first-emission). adb quirk: with the leanback IME open,
+  DPAD_DOWN/CENTER hit the keyboard — submit dialog text with ENTER.
+  **NOT deployed** — boxes stay on alpha.9 for the owner's gate run;
+  ships with the next deploy (bump versionCode then).
 - **alpha.9 — owner feedback round 6 (session 10): outlined Back, voice
   search mic, Add-addon stays put. DEPLOYED to BOTH boxes.** BackButton →
   OutlinedButton. Search gets a 🎤 (system RECOGNIZE_SPEECH via
@@ -156,8 +176,11 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**Finish the Dreamhost upload with the owner, then owner verifies alpha.6 +
-Phase 3 gate (§7.2).**
+**Owner-blocked items first if the owner is present (0/1/1b below);
+otherwise continue Phase 4 units (3).** Session 11 checked: no Chrome
+extension connected (Dreamhost still blocked), both boxes adb-reachable
+but their logcat ring buffers no longer hold the Naruto failure — 1b
+needs a live repro.
 0. **Dreamhost upload (Claude drives, owner unlocks):** the owner must have
    Chrome (the profile signed into panel.dreamhost.com, or ready to sign
    in — Claude must NEVER enter the password) with the Claude extension
@@ -171,16 +194,16 @@ Phase 3 gate (§7.2).**
    tokens — fine to upload to the owner's own host, never into git/chat.
    AIOMetadata URLs in users.json are still all EMPTY — owner fills, then
    regenerate profiles (same filenames survive via profiles.config.json).
-1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes now run **alpha.8**
+1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes run **alpha.9**
    (R8 release, deployed + version-confirmed session 10). Gate status:
    A PASS (2026-07-04), **B PASS (2026-07-05 — owner: VLC + MX work,
-   position remembered)**. Remaining: C (feel on the R8 build — Discover
-   smoothness, pulsing loader, movie shortcut, long-press timing) and
-   D (paste setup link from phone → install-all). Still from alpha.6:
-   player UP-key Audio & Subtitles on a real multi-language stream.
-   When C+D pass → tick §7.2 in MASTER_PLAN, tag `phase-3-done`, push.
-   If anything R8-weird shows on real hardware, suspect missing keep
-   rules — logcat shows ClassNotFound/serializer errors.
+   position remembered)**, C effectively passing on owner sentiment.
+   Remaining: **D (paste setup link from phone → install-all) is the
+   LAST §7.2 box.** Still from alpha.6: player UP-key Audio & Subtitles
+   on a real multi-language stream. When D passes → tick §7.2 in
+   MASTER_PLAN, tag `phase-3-done`, push. If anything R8-weird shows on
+   real hardware, suspect missing keep rules — logcat shows
+   ClassNotFound/serializer errors.
 1b. **Naruto file fails in internal player (owner-reported, plays in
    VLC).** Get logcat from the box while reproducing:
    `adb -s 192.168.1.x:5555 logcat | grep -iE "exo|media3|codec|decoder"`
@@ -189,12 +212,17 @@ Phase 3 gate (§7.2).**
    elder-friendly) and/or codec-aware stream badges.
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
-3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start
-   with the settings screen skeleton it and the player-preference /
-   autoplay-settings items all need (§10 Phase 4, §7.1.7, §6.2 "Always
-   use" setting; per-launch dialog exists, DECISIONS #12). The settings
-   screen is also where the preferred audio/subtitle language persistence
-   goes (DECISIONS #19) and the elder-friendly audit begins (§10).
+3. Continue Phase 4 units (unit 1 = settings skeleton + row manager DONE,
+   session 11). Next unit candidates, in rough owner-value order:
+   (a) **global density setting** (§5.1 columns 4–8 + compact rows — owner's
+   own Stremio gripe; Discover View chip covers Discover only, the global
+   default belongs in Settings); (b) **player preference** ("Always use"
+   external player, §6.2/§7.1.7 — per-launch dialog exists, DECISIONS #12)
+   + **preferred audio/subtitle language** persistence (DECISIONS #19) —
+   both are new Settings entries; (c) **watched-history row** (§10);
+   (d) Discover scroll perf prefetch (§10, needs box feel-testing).
+   When the next box deploy happens, bump versionCode and include
+   everything since alpha.9.
 
 ## Environment rules (hard-earned — do not skip)
 - **Playback testing needs a WINDOWED emulator** (`-gpu auto`, NO
