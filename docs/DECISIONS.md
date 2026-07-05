@@ -236,3 +236,34 @@ never installs anything).
   URL, a human types it — `:8385` is typeable, `:59371` is a typo farm.
 - Off-network or all five ports taken → the hint simply doesn't render; the
   on-screen keyboard path is always there.
+
+## 14. 2026-07-04 — Setup links instead of baked-in addons or a desktop client
+
+**Context:** The owner wants family installs pre-configured with their
+AIOStreams/AIOMetadata instances. Hardcoding those URLs is impossible — the
+repo is public and the URLs embed personal tokens (CLAUDE.md security rule,
+§4.2 "nothing AIOStreams-specific in code"). A desktop configuration client
+is a second codebase for a one-time task (YAGNI).
+
+**Decision:** A "setup link" — a privately-hosted JSON
+(`{"openstream":1,"name":…,"addons":[{name,url}…]}`) the Add-addon input
+accepts alongside manifest URLs. The TV fetches it, previews every addon
+(name+version or per-entry error, URLs never rendered on screen), and
+installs the good ones in profile order on one confirm. Combined with the
+browser entry page (#13), a fresh box is configured by pasting one short
+link on a phone. `tools/make_profiles.py` generates one profile per person
+from the owner's private users.json (script is tracked and secret-free;
+output goes to the gitignored private folder — host on the owner's domain
+or any private URL).
+
+**Non-obvious choices:**
+- Sniffing order: URLs ending in `manifest.json` take the single-addon path;
+  anything else http(s) is fetched as a profile candidate. The explicit
+  `"openstream": 1` marker rejects arbitrary JSON that lenient parsing would
+  otherwise coerce into an empty profile.
+- Install order = profile order (metadata addons first, AIOStreams last),
+  because §4.1.7 makes install order the stream-group order.
+- Partial failure installs the good entries — one dead addon must not brick
+  a family member's whole setup; the preview shows exactly what's broken.
+- Stremio-style accounts/sync on the owner's future domain stays a §12
+  non-goal for v1; users.json is the offline source of truth until then.

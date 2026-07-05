@@ -3,6 +3,7 @@ package dev.openstream.tv.ui.addons
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.RemoteEntryServer
+import dev.openstream.tv.addon.SetupProfileClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
@@ -37,10 +38,11 @@ class AddAddonViewModelTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         server = MockAddonServer()
         dao = FakeInstalledAddonDao()
-        val client = OkHttpAddonClient(
-            OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build()
+        val http = OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build()
+        val client = OkHttpAddonClient(http)
+        viewModel = AddAddonViewModel(
+            client, AddonRepository(client, dao), RemoteEntryServer(), SetupProfileClient(http)
         )
-        viewModel = AddAddonViewModel(client, AddonRepository(client, dao), RemoteEntryServer())
     }
 
     @After
@@ -117,6 +119,64 @@ class AddAddonViewModelTest {
         assertTrue(outcome is RemoteEntryServer.Outcome.Rejected)
         assertTrue((outcome as RemoteEntryServer.Outcome.Rejected).message.contains("manifest.json"))
         assertEquals(UiState.Idle, viewModel.state.value)
+    }
+
+    @Test
+    fun `setup link previews all addons and installs them in profile order`() = runTest(timeout = 60.seconds) {
+        server.route("/a/manifest.json", Fixtures.load("manifest_full"))
+        server.route("/b/manifest.json", Fixtures.load("manifest_full"))
+        server.start()
+        val urlA = server.url("/a/manifest.json")
+        val urlB = server.url("/b/manifest.json")
+        server.route(
+            "/profile.json",
+            """{"openstream":1,"name":"Family setup","addons":[
+                 {"name":"First","url":"$urlA"},
+                 {"name":"Second","url":"$urlB"}]}"""
+        )
+
+        viewModel.fetchPreview(server.url("/profile.json"))
+        val preview = settledState() as UiState.ProfilePreview
+        assertEquals("Family setup", preview.profileName)
+        assertEquals(listOf("First", "Second"), preview.entries.map { it.displayName })
+        assertTrue(preview.entries.all { it.ok })
+        assertTrue(dao.getAll().isEmpty()) // still confirm-on-TV first (§4.1.1)
+
+        viewModel.confirmInstallProfile()
+        assertEquals(UiState.Installed, settledState())
+        val installed = dao.getAll().sortedBy { it.sortOrder }.map { it.manifestUrl }
+        assertEquals(listOf(urlA, urlB), installed) // §4.1.7: profile order kept
+    }
+
+    @Test
+    fun `setup link with a broken entry still installs the good ones`() = runTest(timeout = 60.seconds) {
+        server.route("/a/manifest.json", Fixtures.load("manifest_full"))
+        server.start()
+        val urlA = server.url("/a/manifest.json")
+        server.route(
+            "/profile.json",
+            """{"openstream":1,"addons":[
+                 {"name":"Good","url":"$urlA"},
+                 {"name":"Broken","url":"not a url"}]}"""
+        )
+
+        viewModel.fetchPreview(server.url("/profile.json"))
+        val preview = settledState() as UiState.ProfilePreview
+        assertEquals(listOf(true, false), preview.entries.map { it.ok })
+
+        viewModel.confirmInstallProfile()
+        assertEquals(UiState.Installed, settledState())
+        assertEquals(listOf(urlA), dao.getAll().map { it.manifestUrl })
+    }
+
+    @Test
+    fun `link that is neither addon nor profile yields friendly error`() = runTest(timeout = 60.seconds) {
+        server.route("/nonsense", """{"hello":"world"}""")
+        server.start()
+
+        viewModel.fetchPreview(server.url("/nonsense"))
+        val error = settledState() as UiState.Error
+        assertTrue(error.message.contains("isn't an addon or a setup link"))
     }
 
     @Test

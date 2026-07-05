@@ -71,7 +71,8 @@ fun AddAddonScreen(
             color = Color.White,
         )
         Text(
-            text = "Paste the addon's manifest URL (ends in manifest.json; stremio:// links work too)",
+            text = "Paste an addon manifest URL (ends in manifest.json; stremio:// works too) " +
+                "or a setup link that installs a whole set at once",
             style = MaterialTheme.typography.bodyLarge,
             color = MutedText,
         )
@@ -109,7 +110,55 @@ fun AddAddonScreen(
                 onInstall = viewModel::confirmInstall,
                 onCancel = viewModel::dismissPreview,
             )
+            is UiState.ProfilePreview -> ProfilePreviewPanel(
+                preview = s,
+                onInstallAll = viewModel::confirmInstallProfile,
+                onCancel = viewModel::dismissPreview,
+            )
             else -> Unit
+        }
+    }
+}
+
+/**
+ * Setup-link confirmation (DECISIONS #14): every addon the link resolves to,
+ * good or broken, before anything installs. URLs are deliberately absent —
+ * they embed personal tokens and a TV screen is a semi-public place.
+ */
+@Composable
+private fun ProfilePreviewPanel(
+    preview: UiState.ProfilePreview,
+    onInstallAll: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val good = preview.entries.count { it.ok }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1A1A28), RoundedCornerShape(8.dp))
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = preview.profileName,
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+        )
+        preview.entries.forEach { entry ->
+            Text(
+                text = (if (entry.ok) "✓  " else "✗  ") + entry.displayName +
+                    "  ·  " + entry.detail,
+                color = if (entry.ok) MutedText else Color(0xFFFF6B6B),
+                maxLines = 1,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (good > 0) {
+                Button(onClick = onInstallAll) {
+                    Text(if (good == 1) "Install 1 addon" else "Install $good addons")
+                }
+            }
+            Button(onClick = onCancel) { Text("Cancel") }
         }
     }
 }

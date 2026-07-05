@@ -9,8 +9,13 @@ import dev.openstream.tv.addon.AddonRequestException
 import dev.openstream.tv.addon.AddonUrls
 import dev.openstream.tv.addon.Manifest
 import dev.openstream.tv.addon.RemoteEntryServer
+import dev.openstream.tv.addon.SetupProfile
+import dev.openstream.tv.addon.SetupProfileClient
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -25,6 +30,7 @@ class AddAddonViewModel @Inject constructor(
     private val client: AddonClient,
     private val repository: AddonRepository,
     private val remoteEntryServer: RemoteEntryServer,
+    private val profileClient: SetupProfileClient,
 ) : ViewModel() {
 
     sealed interface UiState {
@@ -32,10 +38,29 @@ class AddAddonViewModel @Inject constructor(
         data object Fetching : UiState
         /** Manifest fetched and valid — waiting for the user to confirm. */
         data class Preview(val manifestUrl: String, val manifest: Manifest) : UiState
+        /** A setup link resolved — waiting to confirm installing the lot. */
+        data class ProfilePreview(
+            val profileName: String,
+            val entries: List<ProfileEntry>,
+        ) : UiState
         data object Installing : UiState
         /** Terminal: the screen should navigate back. */
         data object Installed : UiState
         data class Error(val message: String) : UiState
+    }
+
+    /**
+     * One row of a setup-link preview. Never carries the manifest URL into
+     * display text — addon URLs stay off the screen (they embed tokens).
+     */
+    data class ProfileEntry(
+        val displayName: String,
+        /** Normalized manifest URL to install, or null when not installable. */
+        val manifestUrl: String?,
+        /** "v1.2.3" for good entries, a friendly error for bad ones. */
+        val detail: String,
+    ) {
+        val ok: Boolean get() = manifestUrl != null
     }
 
     private val _state = MutableStateFlow<UiState>(UiState.Idle)
@@ -75,12 +100,16 @@ class AddAddonViewModel @Inject constructor(
 
     /** Called on the server's IO thread. Internal so tests can drive it directly. */
     internal fun onRemoteSubmit(rawUrl: String): RemoteEntryServer.Outcome {
-        if (AddonUrls.normalizeManifestUrl(rawUrl) == null) {
+        val trimmed = rawUrl.trim()
+        val plausible = AddonUrls.normalizeManifestUrl(trimmed) != null ||
+            trimmed.startsWith("https://") || trimmed.startsWith("http://")
+        if (!plausible) {
             return RemoteEntryServer.Outcome.Rejected(
-                "That doesn't look like an addon URL — it should end in manifest.json"
+                "That doesn't look like a link — paste an addon URL " +
+                    "(ends in manifest.json) or a setup link."
             )
         }
-        fetchPreview(rawUrl)
+        fetchPreview(trimmed) // setup links resolve on the TV, like any input
         return RemoteEntryServer.Outcome.Accepted
     }
 
@@ -90,17 +119,63 @@ class AddAddonViewModel @Inject constructor(
 
     fun fetchPreview(rawUrl: String) {
         val manifestUrl = AddonUrls.normalizeManifestUrl(rawUrl)
-        if (manifestUrl == null) {
+        if (manifestUrl != null) {
+            _state.value = UiState.Fetching
+            viewModelScope.launch {
+                client.fetchManifest(manifestUrl)
+                    .onSuccess { _state.value = UiState.Preview(manifestUrl, it) }
+                    .onFailure { _state.value = UiState.Error(it.toUserMessage()) }
+            }
+            return
+        }
+        // Not a manifest URL — maybe a setup link (DECISIONS #14).
+        val trimmed = rawUrl.trim()
+        if (!trimmed.startsWith("https://") && !trimmed.startsWith("http://")) {
             _state.value = UiState.Error(
-                "That doesn't look like an addon URL — it should end in manifest.json"
+                "That doesn't look like a link — paste an addon URL " +
+                    "(ends in manifest.json) or a setup link"
             )
             return
         }
         _state.value = UiState.Fetching
         viewModelScope.launch {
-            client.fetchManifest(manifestUrl)
-                .onSuccess { _state.value = UiState.Preview(manifestUrl, it) }
-                .onFailure { _state.value = UiState.Error(it.toUserMessage()) }
+            profileClient.fetch(trimmed)
+                .onSuccess { profile -> _state.value = previewProfile(profile) }
+                .onFailure { _state.value = UiState.Error(it.toProfileUserMessage()) }
+        }
+    }
+
+    /** Fetch every entry's manifest in parallel; keep the profile's order. */
+    private suspend fun previewProfile(profile: SetupProfile): UiState = coroutineScope {
+        val entries = profile.addons.mapIndexed { index, entry ->
+            async {
+                val fallbackName = entry.name.ifBlank { "Addon ${index + 1}" }
+                val url = AddonUrls.normalizeManifestUrl(entry.url)
+                    ?: return@async ProfileEntry(fallbackName, null, "Not a valid addon URL")
+                client.fetchManifest(url).fold(
+                    onSuccess = {
+                        ProfileEntry(entry.name.ifBlank { it.name }, url, "v${it.version}")
+                    },
+                    onFailure = { ProfileEntry(fallbackName, null, it.toUserMessage()) },
+                )
+            }
+        }.awaitAll()
+        UiState.ProfilePreview(profile.name.ifBlank { "Setup link" }, entries)
+    }
+
+    /** Install every good entry from the previewed setup link, in order. */
+    fun confirmInstallProfile() {
+        val preview = _state.value as? UiState.ProfilePreview ?: return
+        _state.value = UiState.Installing
+        viewModelScope.launch {
+            val results = preview.entries
+                .mapNotNull { it.manifestUrl }
+                .map { repository.install(it) } // sequential: §4.1.7 order = install order
+            _state.value = if (results.any { it.isSuccess }) {
+                UiState.Installed
+            } else {
+                UiState.Error("Couldn't install any addons from that setup link")
+            }
         }
     }
 
@@ -132,4 +207,13 @@ class AddAddonViewModel @Inject constructor(
             "That doesn't look like an addon URL — it should end in manifest.json"
         null -> "Something went wrong: $message"
     }
+
+    /** Same mapping, reworded for the setup-link path (INVALID_MANIFEST there
+     *  means "responded, but not with a profile", not a bad manifest). */
+    private fun Throwable.toProfileUserMessage(): String =
+        if ((this as? AddonRequestException)?.reason == AddonRequestException.Reason.INVALID_MANIFEST) {
+            "That link answered, but it isn't an addon or a setup link"
+        } else {
+            toUserMessage()
+        }
 }

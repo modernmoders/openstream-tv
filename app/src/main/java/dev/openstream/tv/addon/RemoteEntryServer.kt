@@ -135,11 +135,11 @@ class RemoteEntryServer @Inject constructor() {
           .msg{padding:12px;border-radius:8px;background:#181822}
         </style></head><body><main>
         <h1>OpenStream TV — Add addon</h1>
-        <p>Paste the addon's manifest URL. The preview appears on your TV;
-           confirm the install there.</p>
+        <p>Paste an addon manifest URL or a setup link. The preview appears
+           on your TV; confirm the install there.</p>
         <form method="post" action="/add">
           <input name="url" autofocus autocomplete="off"
-                 placeholder="https://…/manifest.json">
+                 placeholder="https://…/manifest.json or setup link">
           <button>Send to TV</button>
         </form>
         ${message?.let { "<div class=\"msg\">$it</div>" } ?: ""}
