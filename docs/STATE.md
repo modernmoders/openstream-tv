@@ -1,14 +1,34 @@
-# STATE — updated 2026-07-05 by session 8
+# STATE — updated 2026-07-05 by session 9
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
 item before `phase-3-done` (check A passed 2026-07-04; B/C/D pending).
-Phase 4 started early by owner request: Discover redo SHIPPED.
+Phase 4 items landing early by owner request (Discover redo, view options,
+player track picker, search focus rule, CW prefetch — all SHIPPED).
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **alpha.6 — owner feedback round 3 (session 9): player audio & subtitle
+  picker, search focus fix, Continue Watching prefetch.** DPAD_UP in the
+  player opens a two-section trapped-focus dialog: audio tracks named by
+  language/layout, subtitles Off/tracks incl. addon-provided .srt
+  (DECISIONS #19; pure RawTrack menu model, 10 new JVM tests). Full caption
+  loop emulator-verified: select English → cues render on time → switch
+  Spanish → Off (TESTLOG 2026-07-05 alpha.6). Search results now enter on
+  the FIRST card (`focusRestorer` + first-card anchor — owner's "picker
+  starts mid-row" bug; §10 (c) done for search rows). Home prefetches the 2
+  newest Continue Watching metas into the DECISIONS #17 HTTP cache.
+  Fixture addon now serves 2 synthetic subtitle tracks (cue every 10 s).
+  185/185 tests. **Deployed to BOTH onn boxes as alpha.6** (network adb,
+  versions confirmed). NOT yet verified: audio switching with real
+  multi-language media (fixture is single-track) — owner's real streams
+  will exercise it.
+- **Dreamhost upload attempt (session 9):** Claude CAN drive the panel via
+  the Chrome extension, but panel.dreamhost.com was signed out and Claude
+  must not enter passwords. Owner was connecting the right browser when
+  usage/session ended — see NEXT ACTION 0.
 - **alpha.5 — owner feedback round 2 (session 8, same day as the tree):**
   (a) **Addon HTTP disk cache** (DECISIONS #17): catalog/meta cached 30 min,
   relaunch = ZERO network bytes (measured); addon-down serves stale instead
@@ -80,38 +100,38 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**Owner verifies alpha.5 on the boxes + Phase 3 gate (§7.2).**
-0. Owner: force-stop → relaunch on a box (should render near-instantly
-   within 30 min of last use), check list highlights no longer clip, try
-   Discover → View (density/sort). If launches still feel slow, next lever
-   is a MINIFIED RELEASE build (R8 + debug-signing for sideload): the boxes
-   run unoptimized debug builds today — needs keep-rule verification for
-   kotlinx.serialization/Hilt/media3 on the emulator first.
-   Also consider the experimental view modes vision (owner idea): per-screen
-   collapsible view controls, more modes (rows-by-genre, backdrop cards) —
-   sketch in Phase 4 once settings skeleton exists.
-1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes currently run
-   **v0.3.0-alpha.3/4**. Checks:
+**Finish the Dreamhost upload with the owner, then owner verifies alpha.6 +
+Phase 3 gate (§7.2).**
+0. **Dreamhost upload (Claude drives, owner unlocks):** the owner must have
+   Chrome (the profile signed into panel.dreamhost.com, or ready to sign
+   in — Claude must NEVER enter the password) with the Claude extension
+   CONNECTED (`list_connected_browsers` must show it; last session it
+   showed [] after the owner switched windows). Then: Panel → Websites →
+   Manage Files → create `setup/` on the chosen domain → upload the
+   CONTENTS of `docs/reference/StremioSurfer/hosting/` (10 profile JSONs +
+   index.php + .htaccess) → open `https://<domain>/setup/` and live-check
+   the PHP name lookup (type "myles m" → link appears; REQUEST_URI path
+   handling is the untested part). SECURITY: those JSONs embed real addon
+   tokens — fine to upload to the owner's own host, never into git/chat.
+   AIOMetadata URLs in users.json are still all EMPTY — owner fills, then
+   regenerate profiles (same filenames survive via profiles.config.json).
+1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes now run **alpha.6**
+   (deployed + version-confirmed this session). Checks:
    A (3-episode chain — already PASS 2026-07-04), B (VLC round-trip incl.
    §7.1.6), C (feel), D (paste setup link from phone → install-all).
-   NEW: owner eyeballs the Discover tree on real hardware (type/catalog/
-   genre pickers, genre-required Cinemeta "New").
-1b. **Dreamhost upload (owner action):** upload the CONTENTS of
-   `docs/reference/StremioSurfer/hosting/` (10 profiles + index.php name
-   lookup + .htaccess) to a `setup/` folder on one of the owner's domains
-   (Panel → Websites → Manage Files). Then tell Claude the URL — Claude
-   verifies the page live (PHP is unlinted locally, no php CLI on this Mac;
-   the lookup logic + REQUEST_URI path handling need one live check).
-   Profiles now merge each person's LIVE Stremio collection
-   (tools/pull_stremio_addons.py → stremio_addons.json, DECISIONS #15).
-   AIOMetadata URLs in users.json are still all EMPTY — fill + regenerate
-   (same links survive via profiles.config.json).
+   NEW for alpha.6: player UP-key Audio & Subtitles dialog on a real
+   stream — captions on/off/switch, and audio-language switching on any
+   multi-language title (emulator could only test single-audio media).
+   Still pending from alpha.5: clip-fix eyeball, Discover tree/View, and
+   relaunch speed (if still slow → R8 minified-debug build is the lever).
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
 3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start
    with the settings screen skeleton it and the player-preference /
    autoplay-settings items all need (§10 Phase 4, §7.1.7, §6.2 "Always
-   use" setting; per-launch dialog exists, DECISIONS #12).
+   use" setting; per-launch dialog exists, DECISIONS #12). The settings
+   screen is also where the preferred audio/subtitle language persistence
+   goes (DECISIONS #19) and the elder-friendly audit begins (§10).
 
 ## Environment rules (hard-earned — do not skip)
 - **Playback testing needs a WINDOWED emulator** (`-gpu auto`, NO
@@ -135,8 +155,9 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - Real addon URLs are secrets. Emulator app-DB has Cinemeta + owner's
   AIOMetadata + Local Test Addon v1.1.0 + owner's AIOStreams (that order).
   Fixture: `python3 tools/test_addon_server.py` (port 8090; bbb_720p.mov
-  present locally, gitignored). Fast path to the fixture series: home →
-  Continue Watching → "S1E2 · Episode 2" card (while progress rows last).
+  present locally, gitignored; movie stream now carries 2 synthetic .srt
+  subtitle tracks for caption testing — cue every 10 s). Fast path to the
+  fixture series: home → Continue Watching (while progress rows last).
 - Focus warts for Phase 4 audit: Addons screen initial focus lands on first
   row's toggle (UP reaches "Add addon"); home header needs one UP per row;
   stream list initial focus misses the first card (send DOWN then UP to
