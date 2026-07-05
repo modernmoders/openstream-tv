@@ -29,14 +29,11 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## NEXT ACTION (start here)
 **Phase 3 gate (§7.2) — OWNER ACTION on an onn box, then tag.**
-1. Owner runs on an onn 1080p/4K box (real VLC works there):
-   a. 3-episode autoplay chain, zero presses (internal player) — repeat of
-      the emulator run vs a real AIOStreams instance;
-   b. delayed-addon variant if practical;
-   c. NEW: external round-trip — long-press a stream → VLC → exit mid-way →
-      resume dialog shows VLC's exit position; watch an episode to the end
-      in VLC → Up Next card appears in-app (§7.1.6). Note: open VLC once
-      first (first-run onboarding swallows the first handoff — TESTLOG).
+1. Owner follows **docs/TESTING_ON_ONN.md** (written for a non-technical
+   run-through): install via Downloader from the GitHub pre-release
+   (v0.3.0-alpha.1, `gh` is authed on this machine for future builds) or
+   adb-over-network so Claude can drive; then checks A (3-episode chain),
+   B (VLC round-trip incl. §7.1.6), C (feel).
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
 3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start
