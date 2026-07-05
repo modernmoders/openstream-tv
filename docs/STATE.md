@@ -46,11 +46,12 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## NEXT ACTION (start here)
 **Phase 3 gate (§7.2) — OWNER ACTION on an onn box, then tag.**
-1. Owner follows **docs/TESTING_ON_ONN.md** (written for a non-technical
-   run-through): install via Downloader from the GitHub pre-release
-   (**v0.3.0-alpha.2** — includes browser entry + setup links; versionCode 2
-   so it upgrades over alpha.1) or adb-over-network so Claude can drive;
-   then checks A (3-episode chain), B (VLC round-trip incl. §7.1.6), C (feel).
+1. Owner follows **docs/TESTING_ON_ONN.md**. BOTH onn boxes (4K pro
+   192.168.1.117, 4K Plus 192.168.1.231 — network adb is LIVE from this
+   Mac, no Downloader needed) already run **v0.3.0-alpha.3** (fixes the
+   below-the-fold preview bug the owner hit; TESTLOG 2026-07-04). Checks:
+   A (3-episode chain), B (VLC round-trip incl. §7.1.6), C (feel),
+   D (paste setup link from phone → install-all).
    Bonus check D: Add addon → open the shown web address on a phone → paste
    a setup link → install-all lands.
 1b. **Dreamhost upload (owner action):** upload the CONTENTS of
