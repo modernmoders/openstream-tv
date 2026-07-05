@@ -10,6 +10,25 @@ player track picker, search focus rule, CW prefetch — all SHIPPED).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **alpha.7 — owner feedback round 4 (session 10, commit c578d5d): R8
+  release builds + Discover perf/polish. DEPLOYED to BOTH boxes.**
+  (a) `assembleRelease` is now R8-minified (18.6→3.2 MB), debug-signed so
+  `install -r` upgrades boxes in place, data kept (DECISIONS #20) — this is
+  the "boxes run unoptimized debug builds" perf lever from the alpha.5 box
+  audit, and it carries the back buttons the owner asked to see.
+  (b) **R8 smoke test caught a real bug:** cleartext HTTP was blocked in
+  release AND (outside the emulator) in debug — http addon streams (§8
+  Live-TV) would silently fail. `usesCleartextTraffic=true` app-wide now
+  (DECISIONS #21). Full release smoke on emulator: home/Discover/streams/
+  resume/playback frames all PASS.
+  (c) Ghost loader: figure-8 comet traces the logo while Discover loads
+  (draw-phase-only animation — house rule, DECISIONS #22); skeleton shimmer
+  cards for page-2+; posters paint placeholder-first (no pop-in jank);
+  Discover sort memoized (was re-sorting per recomposition); PosterCard
+  honors density. (d) View chip → far-edge OutlinedButton "⚙ View".
+  15s first-Discover-load = addon-server latency; now masked by the ghost,
+  NOT eliminated — candidate fix: prefetch default Discover catalog at app
+  start (like CW prefetch). 185/185 tests.
 - **On-screen Back button on every screen below Home (session 10, commit
   6919cbc):** shared `BackButton` component; pops exactly one level, same
   as remote BACK (§10 elder-friendly). Back never takes initial focus —
@@ -126,15 +145,17 @@ Phase 3 gate (§7.2).**
    tokens — fine to upload to the owner's own host, never into git/chat.
    AIOMetadata URLs in users.json are still all EMPTY — owner fills, then
    regenerate profiles (same filenames survive via profiles.config.json).
-1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes now run **alpha.6**
-   (deployed + version-confirmed this session). Checks:
+1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes now run **alpha.7 —
+   an R8 RELEASE build** (deployed + version-confirmed session 10; VLC
+   long-press explained to owner in chat: long-press OK on a stream →
+   "Play with…"). Checks:
    A (3-episode chain — already PASS 2026-07-04), B (VLC round-trip incl.
-   §7.1.6), C (feel), D (paste setup link from phone → install-all).
-   NEW for alpha.6: player UP-key Audio & Subtitles dialog on a real
-   stream — captions on/off/switch, and audio-language switching on any
-   multi-language title (emulator could only test single-audio media).
-   Still pending from alpha.5: clip-fix eyeball, Discover tree/View, and
-   relaunch speed (if still slow → R8 minified-debug build is the lever).
+   §7.1.6), C (feel — NOW the R8 build; owner judges Discover smoothness,
+   ghost loader, back buttons, View chip), D (paste setup link from phone
+   → install-all). Still from alpha.6: player UP-key Audio & Subtitles on
+   a real multi-language stream. If anything R8-weird shows on real
+   hardware (crash where emulator was fine), suspect missing keep rules —
+   logcat will show ClassNotFound/serializer errors.
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
 3. Then Phase 4 unit 1: row/catalog manager (reorder/rename/hide) — start
@@ -163,6 +184,9 @@ Phase 3 gate (§7.2).**
 - Build outputs in `app/build.nosync/` (iCloud-proofing, DECISIONS #8).
   APK: app/build.nosync/outputs/apk/debug/app-debug.apk
 - JAVA_HOME=/opt/homebrew/opt/openjdk@17; SDK/adb per CLAUDE.md.
+- **Box deploys are now `assembleRelease`** (R8, debug-signed — DECISIONS
+  #20): `install -r` upgrades in place. Bump versionCode EVERY deploy.
+  Release APK: app/build.nosync/outputs/apk/release/app-release.apk
 - Real addon URLs are secrets. Emulator app-DB has Cinemeta + owner's
   AIOMetadata + Local Test Addon v1.1.0 + owner's AIOStreams (that order).
   Fixture: `python3 tools/test_addon_server.py` (port 8090; bbb_720p.mov
