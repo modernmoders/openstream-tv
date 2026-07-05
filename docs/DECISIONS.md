@@ -211,3 +211,28 @@ edge is `ExternalPlayerLauncher` behind an `ExternalPlayerPort` seam
 - GENERIC always goes through `Intent.createChooser` — "Other apps…" must
   never silently bind to a previous "always" choice; it is only offered when
   PackageManager finds another video/* handler (no empty choosers, §5.4).
+
+## 13. 2026-07-04 — Add-addon browser entry: hand-rolled ~100-line HTTP server
+
+**Decision:** Typing a long manifest URL with a D-pad is the worst moment of
+setup, so the Add-addon screen also serves a one-form web page on the LAN
+(`RemoteEntryServer`, ports 8385–8389, first free wins). The browser is only
+a long-range keyboard: the submitted URL feeds the exact same
+fetch → preview → confirm flow on the TV (§4.1.1 stays on-screen; the server
+never installs anything).
+
+**Non-obvious choices:**
+- Hand-rolled on `ServerSocket` instead of NanoHTTPD/Ktor: two routes,
+  form-encoded bodies, `Connection: close` — a dependency would be bigger
+  than the feature (KISS). Pure JVM, so tests hit it with real
+  `HttpURLConnection` HTTP.
+- SECURITY: manifest URLs are secrets. The page never echoes the submitted
+  URL back (all response text is ours), nothing is logged, and there is no
+  read endpoint — a LAN peer can submit but never enumerate installed
+  addons. Test-covered (`never echoes the url`).
+- Lifetime = screen lifetime: `DisposableEffect` start/stop, `onCleared` as
+  the safety net. No background service listening forever.
+- Fixed guessable port range instead of an ephemeral port: the TV shows the
+  URL, a human types it — `:8385` is typeable, `:59371` is a typo farm.
+- Off-network or all five ports taken → the hint simply doesn't render; the
+  on-screen keyboard path is always there.

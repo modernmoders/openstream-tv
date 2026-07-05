@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,7 @@ fun AddAddonScreen(
     viewModel: AddAddonViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val remoteEntryUrl by viewModel.remoteEntryUrl.collectAsStateWithLifecycle()
     var url by rememberSaveable { mutableStateOf("") }
     val urlFieldFocus = remember { FocusRequester() }
 
@@ -49,6 +51,11 @@ fun AddAddonScreen(
     }
     LaunchedEffect(Unit) {
         urlFieldFocus.requestFocus() // land the D-pad on the URL field (§5.4)
+    }
+    // Browser entry page lives exactly as long as this screen (RemoteEntryServer KDoc).
+    DisposableEffect(Unit) {
+        viewModel.startRemoteEntry()
+        onDispose { viewModel.stopRemoteEntry() }
     }
 
     Column(
@@ -82,6 +89,15 @@ fun AddAddonScreen(
                 onClick = { viewModel.fetchPreview(url) },
                 enabled = state !is UiState.Fetching && state !is UiState.Installing,
             ) { Text("Fetch addon") }
+        }
+
+        remoteEntryUrl?.let { entryUrl ->
+            Text(
+                text = "Tired of typing? On a phone or computer on this network, " +
+                    "open  $entryUrl  and paste the link there.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MutedText,
+            )
         }
 
         when (val s = state) {

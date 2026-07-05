@@ -2,6 +2,7 @@ package dev.openstream.tv.ui.addons
 
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
+import dev.openstream.tv.addon.RemoteEntryServer
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
@@ -39,7 +40,7 @@ class AddAddonViewModelTest {
         val client = OkHttpAddonClient(
             OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build()
         )
-        viewModel = AddAddonViewModel(client, AddonRepository(client, dao))
+        viewModel = AddAddonViewModel(client, AddonRepository(client, dao), RemoteEntryServer())
     }
 
     @After
@@ -96,6 +97,26 @@ class AddAddonViewModelTest {
         viewModel.fetchPreview(deadUrl)
         val error = settledState() as UiState.Error
         assertTrue(error.message.contains("Couldn't reach"))
+    }
+
+    @Test
+    fun `remote submission drives the normal preview flow`() = runTest(timeout = 60.seconds) {
+        server.route("/manifest.json", Fixtures.load("manifest_full"))
+        server.start()
+
+        val outcome = viewModel.onRemoteSubmit(server.url("/manifest.json"))
+        assertEquals(RemoteEntryServer.Outcome.Accepted, outcome)
+        val preview = settledState() as UiState.Preview
+        assertEquals("Fixture Addon", preview.manifest.name)
+        assertTrue(dao.getAll().isEmpty()) // still needs on-TV confirmation (§4.1.1)
+    }
+
+    @Test
+    fun `remote submission with junk is rejected and leaves state alone`() = runTest(timeout = 60.seconds) {
+        val outcome = viewModel.onRemoteSubmit("not a url")
+        assertTrue(outcome is RemoteEntryServer.Outcome.Rejected)
+        assertTrue((outcome as RemoteEntryServer.Outcome.Rejected).message.contains("manifest.json"))
+        assertEquals(UiState.Idle, viewModel.state.value)
     }
 
     @Test
