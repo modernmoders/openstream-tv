@@ -1,8 +1,13 @@
 package dev.openstream.tv.ui.search
 
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,11 +29,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.PosterCard
@@ -73,13 +80,51 @@ fun SearchScreen(
                     color = Color.White,
                 )
             }
-            TvTextField(
-                value = query,
-                onValueChange = { query = it },
-                onSubmit = { viewModel.search(query) },
-                focusRequester = fieldFocus,
-                imeAction = ImeAction.Search,
-            )
+            // Voice search (§10 backlog "mic"): the system speech recognizer
+            // does the listening — no RECORD_AUDIO permission on our side.
+            // The button only appears when a recognizer exists on the device.
+            val context = LocalContext.current
+            val voiceIntent = remember {
+                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                )
+            }
+            val voiceAvailable = remember {
+                voiceIntent.resolveActivity(context.packageManager) != null
+            }
+            val voiceLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                    ?.firstOrNull()
+                    ?.let { spoken ->
+                        query = spoken
+                        viewModel.search(spoken)
+                    }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(Modifier.weight(1f)) {
+                    TvTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        onSubmit = { viewModel.search(query) },
+                        focusRequester = fieldFocus,
+                        imeAction = ImeAction.Search,
+                    )
+                }
+                if (voiceAvailable) {
+                    OutlinedButton(onClick = {
+                        // Recognizer can vanish between resolve and click
+                        // (app updates) — a dead mic must not crash Search.
+                        runCatching { voiceLauncher.launch(voiceIntent) }
+                    }) { Text("🎤") }
+                }
+            }
         }
 
         if (state.searched && state.rows.isEmpty()) {

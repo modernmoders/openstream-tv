@@ -81,7 +81,9 @@ fun AppNavHost() {
             )
         }
         composable(Routes.ADDONS_ADD) {
-            AddAddonScreen(onBack = goBack, onInstalled = { navController.popBackStack() })
+            // No auto-navigation on install: the screen stays for the next
+            // paste and confirms inline; Back returns to the addon list.
+            AddAddonScreen(onBack = goBack)
         }
         composable(Routes.DETAILS) {
             DetailsScreen(

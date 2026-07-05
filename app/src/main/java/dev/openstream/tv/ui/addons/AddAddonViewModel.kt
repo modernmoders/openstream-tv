@@ -44,8 +44,12 @@ class AddAddonViewModel @Inject constructor(
             val entries: List<ProfileEntry>,
         ) : UiState
         data object Installing : UiState
-        /** Terminal: the screen should navigate back. */
-        data object Installed : UiState
+        /**
+         * One install round done. The screen STAYS here showing [summary] so
+         * the user can paste the next addon without a round-trip through the
+         * addon list (owner request 2026-07-05 round 6); Back leaves.
+         */
+        data class Installed(val summary: String) : UiState
         data class Error(val message: String) : UiState
     }
 
@@ -171,8 +175,9 @@ class AddAddonViewModel @Inject constructor(
             val results = preview.entries
                 .mapNotNull { it.manifestUrl }
                 .map { repository.install(it) } // sequential: §4.1.7 order = install order
-            _state.value = if (results.any { it.isSuccess }) {
-                UiState.Installed
+            val ok = results.count { it.isSuccess }
+            _state.value = if (ok > 0) {
+                UiState.Installed(if (ok == 1) "1 addon installed" else "$ok addons installed")
             } else {
                 UiState.Error("Couldn't install any addons from that setup link")
             }
@@ -184,7 +189,9 @@ class AddAddonViewModel @Inject constructor(
         _state.value = UiState.Installing
         viewModelScope.launch {
             repository.install(preview.manifestUrl)
-                .onSuccess { _state.value = UiState.Installed }
+                .onSuccess {
+                    _state.value = UiState.Installed("${preview.manifest.name} installed")
+                }
                 .onFailure { _state.value = UiState.Error(it.toUserMessage()) }
         }
     }

@@ -10,6 +10,17 @@ player track picker, search focus rule, CW prefetch — all SHIPPED).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **alpha.9 — owner feedback round 6 (session 10): outlined Back, voice
+  search mic, Add-addon stays put. DEPLOYED to BOTH boxes.** BackButton →
+  OutlinedButton. Search gets a 🎤 (system RECOGNIZE_SPEECH via
+  ActivityResult — no RECORD_AUDIO needed; hidden when no recognizer;
+  both boxes have one). Installing an addon no longer bounces to the
+  addon list: `UiState.Installed(summary)` keeps the screen up with
+  "✓ <name> installed — paste another…", clears + refocuses the field
+  (§10 mic backlog item DONE; recent-searches still open). Verified on
+  the release build incl. a REAL browser-entry POST. Owner sentiment on
+  feel: "beautiful… so much faster" → C effectively passing; **D (phone
+  setup link) is the LAST §7.2 box** — then tag phase-3-done.
 - **alpha.8 — owner feedback round 5 (session 10): loader replaced, movies
   skip details, long-press fix. DEPLOYED to BOTH boxes.** Ghost loader
   looked static/broken on real boxes → removed; ONE `LoadingMessage`

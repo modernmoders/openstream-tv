@@ -44,7 +44,6 @@ import dev.openstream.tv.ui.theme.MutedText
 @Composable
 fun AddAddonScreen(
     onBack: () -> Unit,
-    onInstalled: () -> Unit,
     viewModel: AddAddonViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -54,7 +53,13 @@ fun AddAddonScreen(
     val installFocus = remember { FocusRequester() }
 
     LaunchedEffect(state) {
-        if (state is UiState.Installed) onInstalled()
+        // Install done → STAY here, clear the field, and put the D-pad back
+        // on it for the next paste (owner request 2026-07-05 round 6: adding
+        // several addons kept bouncing through the addon list). Back leaves.
+        if (state is UiState.Installed) {
+            url = ""
+            runCatching { urlFieldFocus.requestFocus() }
+        }
         // A preview may arrive while focus sits far away (browser submissions
         // land unprompted): jump the D-pad straight onto Install, which also
         // scrolls the panel into view. Long previews pushed the buttons
@@ -125,6 +130,11 @@ fun AddAddonScreen(
         when (val s = state) {
             is UiState.Fetching -> Text("Fetching manifest…", color = MutedText)
             is UiState.Installing -> Text("Installing…", color = MutedText)
+            is UiState.Installed -> Text(
+                text = "✓ ${s.summary} — paste another, or press Back when you're done",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFF7BE0A0),
+            )
             is UiState.Error -> Text(s.message, color = Color(0xFFFF6B6B))
             is UiState.Preview -> ManifestPreview(
                 manifest = s.manifest,

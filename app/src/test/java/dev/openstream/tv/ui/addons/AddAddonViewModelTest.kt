@@ -73,7 +73,8 @@ class AddAddonViewModelTest {
         assertTrue(dao.getAll().isEmpty()) // §4.1.1: nothing persisted before confirm
 
         viewModel.confirmInstall()
-        assertEquals(UiState.Installed, settledState())
+        val installed = settledState() as UiState.Installed
+        assertEquals("Fixture Addon installed", installed.summary)
         assertEquals(1, dao.getAll().size)
     }
 
@@ -143,7 +144,7 @@ class AddAddonViewModelTest {
         assertTrue(dao.getAll().isEmpty()) // still confirm-on-TV first (§4.1.1)
 
         viewModel.confirmInstallProfile()
-        assertEquals(UiState.Installed, settledState())
+        assertEquals("2 addons installed", (settledState() as UiState.Installed).summary)
         val installed = dao.getAll().sortedBy { it.sortOrder }.map { it.manifestUrl }
         assertEquals(listOf(urlA, urlB), installed) // §4.1.7: profile order kept
     }
@@ -165,7 +166,7 @@ class AddAddonViewModelTest {
         assertEquals(listOf(true, false), preview.entries.map { it.ok })
 
         viewModel.confirmInstallProfile()
-        assertEquals(UiState.Installed, settledState())
+        assertEquals("1 addon installed", (settledState() as UiState.Installed).summary)
         assertEquals(listOf(urlA), dao.getAll().map { it.manifestUrl })
     }
 

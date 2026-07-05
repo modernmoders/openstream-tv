@@ -27,6 +27,10 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="video/*" />
         </intent>
+        <!-- Voice search: lets resolveActivity() see the system recognizer -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
     </queries>
 
     <!-- usesCleartextTraffic: Stremio addons routinely serve plain-HTTP

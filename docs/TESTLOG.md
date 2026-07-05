@@ -4,6 +4,19 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-05 — alpha.9: outlined Back, voice search mic, Add-addon stays put (session 10)
+
+Owner feedback round 6 ("it's beautiful… so much faster now"): make the Back button hollow/outlined; add a microphone next to the search bar; stop bouncing back to the addon list after each install when adding several addons. Owner also confirmed the C-check sentiment (feel) — D (phone setup link) remains the last §7.2 box.
+
+| Check | Environment | Result |
+|---|---|---|
+| `assembleDebug` + `assembleRelease` + `testDebugUnitTest` — 185 tests (3 updated: `UiState.Installed` now carries a summary string) | macOS, JDK 17 | PASS (185/185) |
+| BackButton → OutlinedButton: hollow chrome on every screen below Home | AVD, release APK | PASS (screenshot) |
+| Voice search: 🎤 OutlinedButton right of the query field, shown only when `RECOGNIZE_SPEECH` resolves (new manifest `<queries>` entry); result feeds query + search. Recognizer PRESENT on both onn boxes (`pm resolve-activity`) — spoken end-to-end is owner's to try (emulator has no mic audio) | AVD + both boxes | PASS (visible; resolution confirmed on boxes) |
+| Add addon: install no longer navigates away — field clears, focus returns to it, green "✓ Local Test Addon installed — paste another, or press Back when you're done". Exercised via the REAL browser-entry path (adb-forwarded POST to the LAN form, §4.1.1) | AVD, release APK | PASS (screenshots) |
+| adb quirk noted: `input text` mangles `.`/`:` on this AVD — use the browser-entry server for URL entry in emulator tests | — | note |
+| **Deployed alpha.9 (R8 release) to BOTH onn boxes**, versionName confirmed | onn 4K pro + 4K Plus | DONE |
+
 ## 2026-07-05 — alpha.8: pulsing loader everywhere, movies skip details, long-press fix (session 10)
 
 Owner feedback round 5 on alpha.7 (real boxes): ghost loader "has no animation and looks horrible" on the boxes — replace ALL loading with a faint/pulsing "loading"; movie details screen is an extra step — remove it; holding OK too long on a stream auto-selects the first "Play with…" option. ALSO owner-reported gate results: **VLC and MX Player round-trips WORK, position remembered after leaving VLC → §7.2 check B = PASS (owner, real onn box, 2026-07-05).** One known issue: a specific Naruto file fails ONLY in the internal player (plays in VLC) — codec suspicion, needs box logcat.
