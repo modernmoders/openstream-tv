@@ -1,4 +1,4 @@
-# STATE — updated 2026-07-05 by session 6
+# STATE — updated 2026-07-04 by session 7
 
 ## Phase
 Phase 3 — Autoplay + external players: ALL BUILD UNITS DONE. Gate (§7.2 on
@@ -8,6 +8,14 @@ owner's onn box) is the only item left before `phase-3-done`.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Add-addon browser entry (§4.1.1 QoL, DECISIONS #13):** `RemoteEntryServer`
+  (found orphaned+untracked from session 6, now wired in): while the
+  Add-addon screen is open, the app serves a one-form page on the LAN
+  (ports 8385–8389); pasting a manifest URL in a phone/computer browser
+  feeds the normal on-TV fetch → preview → confirm flow. Never echoes the
+  secret URL, no read endpoint, screen-lifetime only. 155/155 unit tests
+  (9 real-socket server tests + 2 ViewModel remote-submit tests). NOT in the
+  v0.3.0-alpha.1 pre-release — include in the next build for the owner.
 - **Phase 3 unit 3: external players** (commit 5c85e64 + docs, TESTLOG,
   DECISIONS #12): pure `ExternalPlayers.kt` (VLC/MX intent dialects, result
   → Progress/Finished/Unknown mapping, §7.1.6 near-complete rule) behind an
