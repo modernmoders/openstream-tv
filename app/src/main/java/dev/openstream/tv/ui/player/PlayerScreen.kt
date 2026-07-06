@@ -97,6 +97,9 @@ fun PlayerScreen(
     // track list; onTracksChanged also fires when autoplay swaps episodes.
     var tracksMenu by remember(engine) { mutableStateOf(engine.exoPlayer.currentTracks.toTrackMenu()) }
     var showTracks by remember { mutableStateOf(false) }
+    // "Try another server" confirm (owner request 2026-07-06): for streams
+    // that are broken in ways the player can't detect (frozen, wrong file).
+    var showTryNext by remember { mutableStateOf(false) }
     DisposableEffect(engine) {
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
@@ -168,6 +171,12 @@ fun PlayerScreen(
                         wake(); true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_DOWN -> {
+                        // ▼ = try another server, when there is one to try
+                        if (autoplay == null && !state.ended && state.error == null &&
+                            state.canTryNext
+                        ) {
+                            showTryNext = true
+                        }
                         wake(); true
                     }
                     else -> false
@@ -198,11 +207,37 @@ fun PlayerScreen(
                 Text(state.title, style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Text(
                     text = (if (playing) "▶  " else "⏸  ") + positionText +
-                        "    (OK play/pause · ◀ -10s · ▶ +30s · ▲ audio & subtitles)",
+                        "    (OK play/pause · ◀ -10s · ▶ +30s · ▲ audio & subtitles" +
+                        (if (state.canTryNext) " · ▼ try another server" else "") + ")",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MutedText,
                 )
             }
+        }
+
+        if (state.switching) {
+            // Quiet server-switch notice (elder rule: friendly, never raw errors)
+            Text(
+                text = "Trying another server…",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 32.dp)
+                    .background(Color(0xB0000000), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 24.dp, vertical = 10.dp),
+            )
+        }
+
+        if (showTryNext) {
+            TryAnotherServerDialog(
+                onConfirm = {
+                    showTryNext = false
+                    viewModel.tryNextStream()
+                    wake()
+                },
+                onDismiss = { showTryNext = false; wake() },
+            )
         }
 
         if (showTracks) {
@@ -234,9 +269,47 @@ fun PlayerScreen(
             // §6.1: no dead-end error states — every error offers actions.
             CenterPanel("⚠ $message") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (state.canTryNext) {
+                        Button(onClick = { viewModel.tryNextStream() }) {
+                            Text("Try another server")
+                        }
+                    }
                     Button(onClick = viewModel::retry) { Text("Retry") }
                     Button(onClick = onExit) { Text("Back to streams") }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * ▼ confirm for "Try another server": a real Dialog so D-pad focus is
+ * trapped (§5.4) and an accidental ▼ press is a harmless Back/Cancel away.
+ */
+@Composable
+private fun TryAnotherServerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val confirmFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { confirmFocus.requestFocus() } }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(32.dp),
+        ) {
+            Text(
+                text = "Not playing right?",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onConfirm,
+                    modifier = Modifier.focusRequester(confirmFocus),
+                ) { Text("Try another server") }
+                Button(onClick = onDismiss) { Text("Keep watching") }
             }
         }
     }

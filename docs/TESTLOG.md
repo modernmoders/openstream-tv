@@ -4,6 +4,28 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Phase 4 unit 5: Auto-play first stream + Try another server (session 12)
+
+Owner request same day: picking a movie/episode should just play (first
+stream in the list), broken streams should quietly advance, and a "Try
+another server" control covers what the player can't detect (frozen,
+wrong file). DECISIONS #26.
+
+| Check | Environment | Result |
+|---|---|---|
+| `./gradlew testDebugUnitTest` — 226 tests (10 new: settled-prefix selection table, alternatives walk order/no-wrap, VM auto-start fires once with resume position + walk index) | macOS, JDK 17, local JVM | PASS (226/226) |
+| `./gradlew assembleDebug` | same | PASS |
+| Settings → "Auto-play first stream" toggles On/Off, live description | TV emulator (windowed, cold boot) | PASS (screenshots) |
+| Toggle ON → click Continue Watching movie → player opened ITSELF, resumed at 17:46, no stream list interaction, no resume dialog; hint line shows "▼ try another server" | same, real movie via owner's AIOStreams | PASS |
+| ▼ → "Not playing right?" dialog (Try another server / Keep watching), trapped focus | same | PASS |
+| Confirm → "Trying another server…" banner, position carried (~18:35), second server rendering video 8s later | same | PASS |
+| Toggle restored OFF after the run (AVD baseline unchanged) | same | PASS |
+
+NOT emulator-tested (needs a stream that errors): the capped auto-skip on
+PlayerEvent.Error — logic is the same tryNextStream() path the button
+exercises, cap/reset covered by design (MAX_ERROR_SKIPS=3, Ready resets);
+fold a real broken-stream check into the next owner box run.
+
 ## 2026-07-05 — Phase 4 units 2–3: Poster size, language memory, "Always use" player (session 11)
 
 Three new Settings-backed features while the owner was out (gate checks

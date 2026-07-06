@@ -23,6 +23,7 @@ import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.player.ExternalOutcome
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.player.PlaybackRequest
+import dev.openstream.tv.player.StreamAlternatives
 import dev.openstream.tv.player.buildExternalLaunch
 import dev.openstream.tv.player.interpretExternalResult
 import dev.openstream.tv.ui.components.toChipMessage
@@ -31,6 +32,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,6 +55,7 @@ class StreamListViewModel @Inject constructor(
     private val autoplayOrigin: AutoplayOriginHolder,
     private val externalLauncher: ExternalPlayerPort,
     private val autoplay: AutoplayController,
+    private val alternatives: StreamAlternatives,
     playbackPrefs: PlaybackPrefs,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -102,6 +106,19 @@ class StreamListViewModel @Inject constructor(
     val openStreams: SharedFlow<OpenStreams> get() = _openStreams
     private val _openStreams = MutableSharedFlow<OpenStreams>(extraBufferCapacity = 1)
 
+    /**
+     * Auto-play-first-stream (owner request 2026-07-06): fired at most once
+     * per screen when the pref is on and the top stream is settled. Carries
+     * the resume position so playback continues hands-free — no dialogs.
+     */
+    data class AutoStart(val addon: InstalledAddon, val stream: Stream, val startPositionMs: Long)
+    val autoStart: SharedFlow<AutoStart> get() = _autoStart
+    private val _autoStart = MutableSharedFlow<AutoStart>(extraBufferCapacity = 1)
+
+    /** True once anything launched from this screen — auto or manual. Back
+     *  from the player must land on a calm list, never relaunch (§5.4). */
+    private var playbackStarted = false
+
     /** The external launch a result is pending for (player + which episode). */
     private data class PendingExternal(
         val choice: ExternalPlayerPort.Choice,
@@ -135,6 +152,11 @@ class StreamListViewModel @Inject constructor(
         )
         // Autoplay's tier-1/2 ranking context (§7.1) — which addon, which stream
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
+        // "Try another server" walks from HERE, whatever stream was picked.
+        playbackStarted = true
+        alternatives.currentIndex = alternatives.list.indexOf(
+            StreamAlternatives.Alternative(addon.manifestUrl, stream)
+        )
         return true
     }
 
@@ -151,6 +173,7 @@ class StreamListViewModel @Inject constructor(
         val playTitle = title.ifBlank { stream.name ?: "Stream" }
         val source = stream.toPlayableSource(playTitle)?.copy(startPositionMs = startPositionMs)
             ?: return null
+        playbackStarted = true
         pendingExternal = PendingExternal(choice, mediaRef, playTitle)
         lastExternalChoice = choice
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
@@ -248,6 +271,25 @@ class StreamListViewModel @Inject constructor(
             playbackPrefs.preferredPlayer.collect { pref ->
                 _uiState.update { it.copy(playerPref = pref) }
             }
+        }
+        viewModelScope.launch {
+            // Keep the shared "Try another server" list in step with the
+            // fan-out — the player may need it while groups are still loading.
+            _uiState.collect { alternatives.list = orderedAlternatives(it.groups) }
+        }
+        viewModelScope.launch {
+            // Auto-play first stream (owner request 2026-07-06): wait until
+            // the top of the list can no longer change, then launch it once.
+            if (!playbackPrefs.autoPlayFirstStream.first()) return@launch
+            // Resume position first — Room answers long before the fan-out,
+            // and auto-start must resume where the person left off.
+            val resume = progressRepository.observeResumePosition(mediaRef).first()
+            val result = _uiState
+                .map { firstPlayableWhenSettled(it.initializing, it.groups) }
+                .first { it !is AutoStartResult.Waiting }
+            val found = result as? AutoStartResult.Found ?: return@launch
+            if (playbackStarted) return@launch // user beat us to it
+            _autoStart.tryEmit(AutoStart(found.addon, found.stream, resume ?: 0))
         }
         viewModelScope.launch {
             // Collect, don't read once: this ViewModel survives on the back

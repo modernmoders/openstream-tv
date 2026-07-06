@@ -118,6 +118,17 @@ fun StreamListScreen(
         }
     }
 
+    // Auto-play first stream: launch hands-free, resuming automatically.
+    // "Ask every time" can't ask silently — auto-start uses the internal
+    // player then; a real "Always use VLC/MX" preference is honored.
+    LaunchedEffect(Unit) {
+        viewModel.autoStart.collect { auto ->
+            val s = viewModel.uiState.value
+            val external = (resolvePreferredPlayer(s.playerPref, s.externalPlayers)
+                as? PlayerDecision.External)?.choice
+            launch(PendingPlay(auto.addon, auto.stream, external), auto.startPositionMs)
+        }
+    }
     // §7.1.6 chain: the next episode plays in the same external player
     LaunchedEffect(Unit) { viewModel.launchExternal.collect(::fireExternal) }
     LaunchedEffect(Unit) {

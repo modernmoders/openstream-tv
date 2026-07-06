@@ -55,6 +55,7 @@ fun SettingsScreen(
 ) {
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
+    val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
 
@@ -99,6 +100,17 @@ fun SettingsScreen(
                 description = "Pressing OK on a stream uses: " +
                     playerPrefLabel(playerPref, viewModel.installedPlayers),
                 onClick = { pickingPlayer = true },
+            )
+            // OK toggles directly — an on/off needs no picker dialog.
+            SettingEntry(
+                title = "Auto-play first stream",
+                description = if (autoPlay) {
+                    "On — picking a movie or episode starts playing right away; " +
+                        "a broken stream quietly tries the next server"
+                } else {
+                    "Off — picking a movie or episode shows the list of streams"
+                },
+                onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
             )
         }
     }

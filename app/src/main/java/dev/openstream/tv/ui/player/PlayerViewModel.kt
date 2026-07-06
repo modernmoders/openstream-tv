@@ -23,6 +23,7 @@ import dev.openstream.tv.player.PlaybackRequest
 import dev.openstream.tv.player.PlaybackService
 import dev.openstream.tv.player.PlayerEvent
 import dev.openstream.tv.player.PlayerHolder
+import dev.openstream.tv.player.StreamAlternatives
 import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
@@ -39,6 +40,9 @@ import kotlinx.coroutines.launch
 
 private const val PROGRESS_SAVE_INTERVAL_MS = 10_000L
 
+/** Consecutive broken streams auto-skipped before giving up with the panel. */
+private const val MAX_ERROR_SKIPS = 3
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -47,6 +51,7 @@ class PlayerViewModel @Inject constructor(
     private val autoplay: AutoplayController,
     private val autoplayOrigin: AutoplayOriginHolder,
     private val playbackPrefs: PlaybackPrefs,
+    private val alternatives: StreamAlternatives,
     playerHolder: PlayerHolder,
 ) : ViewModel() {
 
@@ -62,6 +67,10 @@ class PlayerViewModel @Inject constructor(
         val hasSource: Boolean = true,
         val ended: Boolean = false,
         val error: String? = null,
+        /** More streams to walk — shows the "Try another server" affordances. */
+        val canTryNext: Boolean = false,
+        /** Friendly banner while a server switch spins up (elder rule: no raw errors). */
+        val switching: Boolean = false,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -78,14 +87,24 @@ class PlayerViewModel @Inject constructor(
     /** var, not val: autoplay replaces the request when it advances episodes. */
     private var request = currentPlayback.request
 
+    /** Auto-play-first-stream is also "auto-skip a broken stream" (owner
+     *  request 2026-07-06) — read once; a mid-playback settings change is fine
+     *  to pick up next playback. */
+    private var autoAdvanceOnError = false
+
+    /** Consecutive error-driven server switches; capped so a dead video id
+     *  can't cycle every server forever. A successful Ready resets it. */
+    private var errorSkips = 0
+
     init {
         val req = request
         if (req == null) {
             _uiState.value = UiState(hasSource = false)
         } else {
-            _uiState.value = UiState(title = req.source.title)
+            _uiState.value = UiState(title = req.source.title, canTryNext = alternatives.hasNext())
             context.startService(Intent(context, PlaybackService::class.java))
             viewModelScope.launch {
+                autoAdvanceOnError = playbackPrefs.autoPlayFirstStream.first()
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
                 // Remembered languages (DECISIONS #19) go on BEFORE play so the
                 // first track selection already honors them. Parameters stick
@@ -110,7 +129,11 @@ class PlayerViewModel @Inject constructor(
         engine.events.collect { event ->
             val req = request ?: return@collect
             when (event) {
-                is PlayerEvent.Ready -> autoplay.onPlaybackReady()
+                is PlayerEvent.Ready -> {
+                    errorSkips = 0
+                    _uiState.value = _uiState.value.copy(switching = false)
+                    autoplay.onPlaybackReady()
+                }
                 is PlayerEvent.Ended -> {
                     // Finished = no longer resumable
                     req.mediaRef?.let { progressRepository.clearAsync(it) }
@@ -123,12 +146,17 @@ class PlayerViewModel @Inject constructor(
                         origin = autoplayOrigin.origin,
                     )
                 }
-                is PlayerEvent.Error ->
+                is PlayerEvent.Error -> when {
                     // While autoplay is attempting, an open failure is its
                     // fallthrough signal (§7.1 step 5), not an error panel.
-                    if (!autoplay.onPlaybackError(viewModelScope)) {
-                        _uiState.value = _uiState.value.copy(error = event.message)
-                    }
+                    autoplay.onPlaybackError(viewModelScope) -> Unit
+                    // Auto-skip a broken stream to the next server (owner
+                    // request 2026-07-06) — quietly, like a human would.
+                    autoAdvanceOnError && errorSkips < MAX_ERROR_SKIPS && tryNextStream() ->
+                        errorSkips++
+                    else -> _uiState.value =
+                        _uiState.value.copy(error = event.message, switching = false)
+                }
             }
         }
     }
@@ -165,8 +193,42 @@ class PlayerViewModel @Inject constructor(
         request = newRequest
         currentPlayback.request = newRequest
         autoplayOrigin.origin = StreamCascade.CurrentStream(candidate.addonUrl, candidate.stream)
-        _uiState.value = _uiState.value.copy(title = source.title, ended = false, error = null)
+        // The alternatives list belonged to the finished episode; the new
+        // one's list is unknown until its own stream screen loads it.
+        alternatives.clear()
+        _uiState.value = _uiState.value.copy(
+            title = source.title, ended = false, error = null, canTryNext = false,
+        )
         engine.play(source)
+    }
+
+    /**
+     * Walk to the next stream for the SAME video (owner request 2026-07-06):
+     * the "Try another server" button, and the quiet auto-skip on errors.
+     * Playback continues from where the broken stream left off. False when
+     * the list is exhausted — the caller falls back to the error panel.
+     */
+    fun tryNextStream(): Boolean {
+        val req = request ?: return false
+        val engine = engine.value ?: return false
+        while (true) {
+            val alt = alternatives.advance() ?: return false
+            val source = alt.stream.toPlayableSource(req.source.title) ?: continue
+            // Mid-play death keeps the position; an open failure has none, so
+            // the original start (e.g. the auto-resume point) carries over.
+            val position = engine.exoPlayer.currentPosition.takeIf { it > 0 }
+                ?: req.source.startPositionMs
+            val newRequest = req.copy(source = source.copy(startPositionMs = position))
+            request = newRequest
+            currentPlayback.request = newRequest
+            autoplayOrigin.origin = StreamCascade.CurrentStream(alt.addonUrl, alt.stream)
+            _uiState.value = _uiState.value.copy(
+                error = null, ended = false,
+                switching = true, canTryNext = alternatives.hasNext(),
+            )
+            engine.play(newRequest.source)
+            return true
+        }
     }
 
     private fun episodeTitle(next: Video): String {

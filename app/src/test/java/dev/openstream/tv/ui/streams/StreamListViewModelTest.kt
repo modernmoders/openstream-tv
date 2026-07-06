@@ -74,6 +74,8 @@ class StreamListViewModelTest {
         override fun resultExtras(data: Intent?) = emptyMap<String, Any?>()
     }
 
+    private val alternatives = dev.openstream.tv.player.StreamAlternatives()
+
     private fun viewModel(
         type: String,
         videoId: String,
@@ -85,6 +87,7 @@ class StreamListViewModelTest {
         autoplayOrigin,
         noExternalPlayers,
         AutoplayController(NeverAutoplayGateway),
+        alternatives,
         playbackPrefs,
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
@@ -201,4 +204,33 @@ class StreamListViewModelTest {
         assertTrue(vm.stage(group.addon, group.streams.first()))
         assertEquals(0L, currentPlayback.request!!.source.startPositionMs)
     }
+
+    @Test
+    fun `auto-play pref fires once with the first playable stream and resume position`() =
+        runTest(timeout = 60.seconds) {
+            server.route("/manifest.json", Fixtures.load("manifest_full"))
+            server.route("/stream/movie/tt1254207.json", Fixtures.load("streams_full"))
+            server.start()
+            addonRepository.install(server.url("/manifest.json")).getOrThrow()
+            progressRepository.save(
+                WatchProgress(
+                    ref = MediaRef.addon("tt1254207"),
+                    metaId = "tt1254207", metaType = "movie", title = "T", poster = null,
+                    positionMs = 120_000, durationMs = 600_000, updatedAt = 1,
+                )
+            )
+            val prefs = FakePlaybackPrefs().apply { autoPlayState.value = true }
+
+            val vm = viewModel("movie", "tt1254207", prefs)
+            val auto = vm.autoStart.first()
+
+            assertEquals("Fixture 4K", auto.stream.name) // §4.1.7 top of the list
+            assertEquals(120_000L, auto.startPositionMs) // hands-free resume
+            // The shared walk list is ready for "Try another server", and
+            // staging the auto-start stream points the walk at it.
+            assertTrue(vm.stage(auto.addon, auto.stream, auto.startPositionMs))
+            assertEquals(0, alternatives.currentIndex)
+            assertTrue(alternatives.hasNext())
+        }
+
 }

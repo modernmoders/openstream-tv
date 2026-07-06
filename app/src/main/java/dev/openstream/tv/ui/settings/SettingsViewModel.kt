@@ -29,6 +29,9 @@ class SettingsViewModel @Inject constructor(
     val playerPref: StateFlow<String> = playbackPrefs.preferredPlayer
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PLAYER_INTERNAL)
 
+    val autoPlayFirstStream: StateFlow<Boolean> = playbackPrefs.autoPlayFirstStream
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /**
      * Concrete players installed right now (§6.2: only show what exists).
      * GENERIC is excluded — "always ask the system chooser" is just Ask.
@@ -42,5 +45,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setPlayerPref(value: String) {
         viewModelScope.launch { playbackPrefs.setPreferredPlayer(value) }
+    }
+
+    fun setAutoPlayFirstStream(enabled: Boolean) {
+        viewModelScope.launch { playbackPrefs.setAutoPlayFirstStream(enabled) }
     }
 }

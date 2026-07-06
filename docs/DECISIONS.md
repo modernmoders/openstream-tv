@@ -472,3 +472,32 @@ live in app-private DataStore and are never logged (counts only).
 server); accounts with cloud sync (KISS, and the owner IS the server);
 sync-on-timer while running (launch-time only is enough for a TV app that
 gets fully backgrounded/killed between sessions).
+
+## 26. 2026-07-06 — Auto-play first stream: settled-prefix rule, shared walk list, no wrap-around
+
+**Decision:** The "Auto-play first stream" setting (default OFF, one toggle
+in Settings) launches the §4.1.7 top-of-list stream hands-free: no stream
+list to understand, no resume dialog (existing progress resumes
+automatically — the elder flow is "click the show, keep watching"). Timing
+is the **settled-prefix rule** (`firstPlayableWhenSettled`, pure): the top
+stream is only final when every addon-order group BEFORE the first playable
+result has settled (loaded/failed) — the fan-out renders incrementally and
+a slow FIRST addon must not lose its top spot to a fast second. Auto-start
+fires at most once per screen (`playbackStarted`, also set by manual picks)
+so Back from the player lands on a calm list. "Always use VLC/MX" is
+honored; "Ask every time" falls back to the internal player (can't ask
+hands-free). The same setting doubles as auto-skip-on-error in the player:
+up to MAX_ERROR_SKIPS(3) consecutive PlayerEvent.Errors advance to the next
+stream (autoplay's §7.1 error handling keeps precedence), a Ready resets
+the count, then the error panel. Manual "Try another server" (▼ in the
+player → confirm dialog; also on the error panel) walks the same shared
+`StreamAlternatives` list (singleton hand-off like CurrentPlayback: addon
+order, playable only, position carried over, NO wrap-around — a full lap of
+broken streams must end at an honest error, not spin). Autoplay episode
+swaps clear the list (next episode's alternatives are unknown until its
+own screen loads).
+
+**Rejected:** wrap-around walking (infinite loop of broken streams);
+auto-start racing on the literal first Loaded group (top spot not stable);
+a focusable overlay button in the player (D-pad ownership conflicts with
+play/pause — ▼ + trapped dialog instead).

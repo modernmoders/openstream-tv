@@ -12,6 +12,21 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 12 (cont., 2026-07-06) — Phase 4 unit 5: Auto-play first
+  stream + "Try another server" (owner request, DECISIONS #26).**
+  Settings toggle (default off): picking a movie/episode auto-plays the
+  §4.1.7 top stream once the addon-order prefix settles (pure
+  `firstPlayableWhenSettled`), auto-resumes (no dialogs), fires once per
+  screen; errors auto-advance up to 3 consecutive streams (autoplay §7.1
+  keeps precedence, Ready resets); ▼ in the player → "Not playing right?"
+  confirm → next stream from the shared `StreamAlternatives` walk (addon
+  order, no wrap, position carried); error panel gains the same button.
+  "Ask every time" + auto-start = internal player. 226/226 tests (10 new).
+  FULL emulator verify (TESTLOG): toggle → CW movie auto-played + resumed
+  17:46 via owner's real AIOStreams → ▼ dialog → server switch banner →
+  second server rendering at ~18:35. AVD toggle restored OFF. NOT
+  deployed — alpha.10 bundle. Auto-skip-on-real-error folded into next
+  owner box run.
 - **Session 12 (cont., 2026-07-06) — gate-D failure root-caused: NOT the
   hosting, NOT the app.** Owner reported clarence's setup link installs but
   adam's shows "response this app couldn't read". Re-verified adam's file

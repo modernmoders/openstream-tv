@@ -421,6 +421,14 @@ Owner directives 2026-07-05 (session 12 — REQUIRED, not nice-to-have):
   audio/subtitle language memory, DECISIONS #24).
 
 Owner asks 2026-07-06 (session 12 continued):
+- [x] **Auto-play first stream + "Try another server".** Picking a movie or
+  episode starts the top §4.1.7 stream hands-free (auto-resume, no
+  dialogs); broken streams quietly advance (capped); ▼ in the player (and
+  the error panel) offers "Try another server" for failures the player
+  can't detect, continuing from the same position. One Settings toggle,
+  default off. *(SHIPPED same day — DECISIONS #26, TESTLOG 2026-07-06:
+  full emulator run against a real addon incl. mid-play server switch.
+  Ships to boxes with alpha.10.)*
 - [ ] **Owner dashboard for the hosted profiles.** A password-protected
   single-file PHP admin page next to the setup page: list every person,
   add/remove/reorder their addons (name + URL rows), write the profile

@@ -8,9 +8,11 @@ import kotlinx.coroutines.flow.update
 class FakePlaybackPrefs : PlaybackPrefs {
     val languagesState = MutableStateFlow(LanguagePrefs())
     val playerState = MutableStateFlow(PLAYER_INTERNAL)
+    val autoPlayState = MutableStateFlow(false)
 
     override val languages: Flow<LanguagePrefs> = languagesState
     override val preferredPlayer: Flow<String> = playerState
+    override val autoPlayFirstStream: Flow<Boolean> = autoPlayState
 
     override suspend fun setAudioLanguage(languageTag: String) {
         languagesState.update { it.copy(audio = languageTag) }
@@ -22,5 +24,9 @@ class FakePlaybackPrefs : PlaybackPrefs {
 
     override suspend fun setPreferredPlayer(value: String) {
         playerState.value = value
+    }
+
+    override suspend fun setAutoPlayFirstStream(enabled: Boolean) {
+        autoPlayState.value = enabled
     }
 }

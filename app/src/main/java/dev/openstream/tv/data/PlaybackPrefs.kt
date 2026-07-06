@@ -1,6 +1,7 @@
 package dev.openstream.tv.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -34,11 +35,19 @@ interface PlaybackPrefs {
 
     /** [PLAYER_INTERNAL] (default), [PLAYER_ASK], or an ExternalPlayer name. */
     val preferredPlayer: Flow<String>
+
+    /**
+     * Owner request 2026-07-06 (§10 elder-friendly): picking a movie/episode
+     * starts the first stream automatically — no stream list to understand —
+     * and a broken stream quietly advances to the next one. Default off.
+     */
+    val autoPlayFirstStream: Flow<Boolean>
     suspend fun setAudioLanguage(languageTag: String)
 
     /** A real language tag, or [SUBTITLES_OFF]. */
     suspend fun setSubtitleLanguage(languageTag: String)
     suspend fun setPreferredPlayer(value: String)
+    suspend fun setAutoPlayFirstStream(enabled: Boolean)
 }
 
 private val Context.playbackPrefsStore by preferencesDataStore("playback_prefs")
@@ -68,9 +77,17 @@ class DataStorePlaybackPrefs @Inject constructor(
         context.playbackPrefsStore.edit { it[PLAYER] = value }
     }
 
+    override val autoPlayFirstStream: Flow<Boolean> =
+        context.playbackPrefsStore.data.map { it[AUTO_PLAY_FIRST] ?: false }
+
+    override suspend fun setAutoPlayFirstStream(enabled: Boolean) {
+        context.playbackPrefsStore.edit { it[AUTO_PLAY_FIRST] = enabled }
+    }
+
     private companion object {
         val AUDIO_LANG = stringPreferencesKey("audio_language")
         val SUBTITLE_LANG = stringPreferencesKey("subtitle_language")
         val PLAYER = stringPreferencesKey("preferred_player")
+        val AUTO_PLAY_FIRST = booleanPreferencesKey("auto_play_first_stream")
     }
 }
