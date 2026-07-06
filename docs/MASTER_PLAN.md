@@ -451,22 +451,26 @@ Owner asks 2026-07-06 (session 12 continued):
   Fan out at playback like streams, merge with stream-embedded tracks.
 
 Owner asks 2026-07-06 (session 13):
-- [~] **One-step name setup (no link copying).** People type ONLY their name
+- [x] **One-step name setup (no link copying).** People type ONLY their name
   and the app does the rest — lookup, profile fetch, install. Nobody sees or
-  pastes a URL. *(BUILT session 13, DECISIONS #27 — code complete, 236 tests
-  green, but NOT yet emulator-verified end-to-end and NOT deployed. The live
-  <setup-domain>/setup/index.php still runs the OLD HTML-only page — the
-  regenerated index.php with the JSON `api=1` mode MUST be re-uploaded before
-  the name flow works on real boxes. See STATE.md NEXT ACTION.)*
-- [~] **Welcome Guide on first launch.** Fresh install (nothing installed +
+  pastes a URL. *(BUILT session 13, DECISIONS #27. EMULATOR-VERIFIED end-to-end
+  session 14 against a contract mock of the `api=1` JSON mode: fresh install →
+  Welcome → "adam s" → "Hi Adam Savoy!" → Finish setup → both addons install →
+  Home rows. NOT deployed. The live <setup-domain>/setup/index.php still runs
+  the OLD HTML-only page — the regenerated index.php with the JSON `api=1` mode
+  MUST be re-uploaded by the owner before the name flow works on real boxes.)*
+- [x] **Welcome Guide on first launch.** Fresh install (nothing installed +
   a setup site configured) opens a friendly illustrated Welcome/Connect
   screen — three simple steps, then type-your-name — instead of Home.
-  *(BUILT session 13, same verification caveat as above.)*
-- [~] **Normal/Expert mode + hide technical UI.** `ViewPrefs.expertMode`
+  *(BUILT session 13, EMULATOR-VERIFIED session 14 — routing + focus + IME
+  submit all correct.)*
+- [x] **Normal/Expert mode + hide technical UI.** `ViewPrefs.expertMode`
   (default OFF). Home header no longer shows "Addons"; the addon manager now
   lives in Settings → Expert mode → Addons, visible only when Expert is on.
   Friendly copy pass on user-facing strings. Future diagnostics/logs land
-  behind the same toggle. *(BUILT session 13, same verification caveat.)*
+  behind the same toggle. *(BUILT session 13, EMULATOR-VERIFIED session 14:
+  brand title + no Addons button on Home; toggling Expert on reveals the
+  addon manager in Settings.)*
 - [ ] **App-store / code distribution.** Owner is publishing the app on
   Aptoide (and another store that installs via an entered code — owner to
   supply names). Track store listing + the "enter a code" install path;

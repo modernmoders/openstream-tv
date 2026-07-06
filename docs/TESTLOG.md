@@ -4,6 +4,40 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — One-step name setup + Welcome Guide + Expert mode, emulator verify (session 14)
+
+Session 13 shipped the one-step setup blind (ran out of budget before an
+emulator run). This is that verification. The live setup site still serves
+the OLD HTML index.php, so tested against a **contract mock** of the new
+`api=1` JSON mode (`scratchpad/mock_setup_site.py`): POST name → JSON
+Found/Ambiguous/NoMatch, plus a GET-served `openstream:1` profile listing
+NON-SECRET addons only (Cinemeta + the local fixture addon). No owner
+secrets touched — this proves the runtime wiring (lookup → plan → install →
+Home rows), which was the actual risk. `setup.url` temporarily pointed at
+`http://10.0.2.2:8095/`, build installed to the emulator only (real onn
+boxes at .117/.231 were connected via adb and never touched — every command
+pinned to `-s emulator-5554`), then `setup.url` restored to the real domain.
+
+| Check | Environment | Result |
+|---|---|---|
+| Fresh install (`pm clear`) launches on the Welcome/Connect screen, not Home | TV emulator (windowed, cold boot) | PASS (screenshot) |
+| Welcome Guide: "Welcome to SavoyStreams!", 3-step guide, name prompt, field auto-focused with IME open | same | PASS |
+| Type "adam s" + ENTER (IME submit) → lookup → "Hi Adam Savoy!" with "✓ Cinemeta / ✓ Local Test Addon", Finish setup focused, no URLs shown | same, mock lookup + real Cinemeta + fixture manifest fetch | PASS |
+| Finish setup → installs both → "You're all set, Adam Savoy!" (ProfileSync self-update copy) | same | PASS |
+| Start watching → Home with clean back stack, brand title "SavoyStreams", Discover/Search/Settings header, **no Addons button**, Cinemeta "Popular · movie/series" rows populated | same | PASS |
+| Settings scrollable; shows Home rows / Poster size / Player / Auto-play / Connect this TV / Expert mode | same | PASS |
+| Expert mode toggles ON ("technical tools are shown") → Addons entry appears (expert-only) | same | PASS |
+| Addons manager lists both installed addons in profile order (Cinemeta v3.0.14, Local Test Addon v1.1.0), both Enabled | same | PASS |
+| `./gradlew assembleDebug` (mock URL baked into BuildConfig, then rebuilt with real URL) | macOS, JDK 17 | PASS |
+
+No bugs found — session-13 runtime wiring (nav routing, name lookup, focus,
+IME submit, install order, ProfileSync-link save) is correct.
+
+Note: this reset the emulator's addon baseline (was Cinemeta + owner's
+AIOMetadata + Local Test + owner's AIOStreams) to Cinemeta + Local Test.
+Re-seed the owner's AIO addons on the AVD if a future playback test needs
+them (their manifest URLs are secret — not stored here).
+
 ## 2026-07-06 — Phase 4 unit 5: Auto-play first stream + Try another server (session 12)
 
 Owner request same day: picking a movie/episode should just play (first

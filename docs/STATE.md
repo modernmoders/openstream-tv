@@ -1,13 +1,14 @@
-# STATE — updated 2026-07-06 by session 13
+# STATE — updated 2026-07-06 by session 14
 
-## ⚠️ READ FIRST (session 13 handoff — Fable 5 ran out mid-task)
-Session 13's big feature (one-step name setup + Welcome Guide + Expert mode)
-is **built, committed, and pushed**, 236 tests green — BUT it was **never
-emulator-verified** and the live setup site still runs the OLD page. It is
-NOT proven working on real hardware. **Do not treat it as done.** Start at
-NEXT ACTION 0 below: verify the Connect flow on the emulator, then fix
-whatever's broken. Everything compiles and unit-tests pass; the risk is in
-the runtime wiring (nav routing, name lookup against the real site, focus).
+## ⚠️ READ FIRST (session 14 — session-13 feature now emulator-verified)
+Session 13's one-step name setup + Welcome Guide + Expert mode was shipped
+blind (built + committed + pushed, 236 tests green, but never run on a
+device). **Session 14 emulator-verified the whole flow end-to-end against a
+contract mock of the new `api=1` site — PASS, no bugs found** (TESTLOG
+2026-07-06 session 14; screenshots in that session's scratchpad). The
+runtime wiring (routing, name lookup, focus/IME, install order, ProfileSync
+save) is proven correct. **What remains is entirely owner-side / gate D** —
+see NEXT ACTION. The app side of alpha.10 is done and trustworthy.
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
@@ -21,6 +22,29 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 (2026-07-06) — EMULATOR-VERIFIED the session-13 one-step setup
+  (NEXT ACTION 0a). PASS end-to-end, no bugs found; docs + gate updated.**
+  Session 13 shipped it without a device run; this was the verification.
+  Live site still runs the OLD HTML index.php, so tested against a fresh
+  contract mock (`scratchpad/mock_setup_site.py`) of the `api=1` JSON mode +
+  a GET-served `openstream:1` profile listing NON-SECRET addons only
+  (Cinemeta + the local fixture addon) — no owner secrets touched; the risk
+  was the runtime wiring, not the specific profile. Temporarily set
+  `setup.url=http://10.0.2.2:8095/`, built, installed to the emulator ONLY
+  (both real onn boxes were connected via adb — every command pinned to
+  `-s emulator-5554`, boxes untouched), then restored `setup.url` to the real
+  domain and rebuilt. Verified (screenshots + TESTLOG): fresh install →
+  Welcome/Connect (not Home) → 3-step guide + name field auto-focused →
+  "adam s" + ENTER → "Hi Adam Savoy!" with "✓ Cinemeta / ✓ Local Test Addon"
+  (no URLs) → Finish setup → both install → "You're all set!" → Start
+  watching → Home (brand title "SavoyStreams", NO Addons button, Cinemeta
+  rows) → Settings scrollable → Expert mode ON reveals the Addons manager,
+  which lists both addons in profile order, both Enabled. MASTER_PLAN §10:
+  the three session-13 directives ticked [x] (emulator-verified). 236/236
+  tests still green (re-ran, no HomeViewModelTest flake this time). NOT
+  deployed. Side effect: the AVD addon baseline is now Cinemeta + Local Test
+  (was + owner's AIOMetadata/AIOStreams) — re-seed if a playback test needs
+  them (their URLs are secret, not stored).
 - **Session 13 (2026-07-06) — One-step name setup + Welcome Guide + Expert
   mode (owner directive, DECISIONS #27). BUILT + COMMITTED + PUSHED, 236
   tests green, NOT emulator-verified, NOT deployed. alpha.10 (versionCode 10).**
@@ -296,34 +320,31 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**0a below is THE priority — session 13 shipped a big feature blind (ran out
-of budget before emulator verify). Prove it, then fix it.** After that, the
-owner-blocked gate items (0b/1/1b), then continue Phase 4 (3).
+**The app side of alpha.10 is DONE and emulator-verified (0a below, session
+14). Everything remaining is OWNER-SIDE** — the owner must (a) re-upload the
+regenerated index.php so the real site speaks `api=1`, (b) deploy alpha.10 to
+both boxes, (c) reconnect each box once so ProfileSync learns the link, then
+run gate D. After that, continue Phase 4 (3).
 
-0a. **VERIFY + FIX the session-13 one-step setup on the emulator.** It
-   compiles and unit-tests pass but has NEVER run on a device — assume
-   something in the runtime wiring needs fixing.
-   The live <setup-domain>/setup/ still serves the OLD HTML index.php, so the
-   name lookup will FAIL against it as-is. Two ways to test:
-   (i) **Re-upload first** the regenerated `docs/reference/StremioSurfer/
-   hosting/index.php` (gitignored — has the JSON `api=1` mode) to
-   <setup-domain>/setup/, then test against the real site; OR
-   (ii) **Local mock:** last session left `scratchpad/mock_setup_site.py`
-   (may be gone — the scratchpad is session-scoped; re-create if needed: a
-   tiny http.server answering POST api=1 with `{"ok":true,"name":"Adam
-   Savoy","link":"<adam's REAL .json link>"}` for "adam", the ambiguous
-   `choices` shape for "myles"). Then in local.properties set
-   `setup.url=http://10.0.2.2:8095/`, `assembleDebug`, install, and after
-   the run RESTORE `setup.url=<setup-domain>/setup/`.
-   Flow to verify on a FRESH install (clear app data or uninstall first):
-   launch → Welcome/Connect screen (not Home) → type "adam s" → "Hi Adam!"
-   with the addon list → Finish setup → addons install → "Start watching" →
-   Home shows rows. Also check: Settings → Expert mode toggle reveals Addons;
-   Home header shows "SavoyStreams" and has no Addons button. Fix focus/nav/
-   copy issues as they show up (emulator D-pad + IME quirks are in the
-   Environment rules below). TESTLOG the result. adam's real link is in the
-   owner's message history / the hosted adam-savoy-*.json.
-0b. Gate D is CLOSE: hosting is 9/10 verified (session 12) — one file re-drag
+0a. ✅ **DONE (session 14) — session-13 one-step setup EMULATOR-VERIFIED,
+   no bugs.** Full flow passed against a contract mock of the `api=1` site
+   (TESTLOG 2026-07-06 session 14). No code changes were needed — the runtime
+   wiring was correct as shipped. MASTER_PLAN §10 directives ticked [x].
+   The reusable mock is `scratchpad/mock_setup_site.py` (session-scoped —
+   re-create from the TESTLOG description if a future session needs it: POST
+   `api=1` → Found/Ambiguous/NoMatch, GET `/adam.json` → an `openstream:1`
+   profile of NON-SECRET addons). To re-test: set
+   `setup.url=http://10.0.2.2:8095/`, run both the mock and
+   `tools/test_addon_server.py`, `assembleDebug`, install to `emulator-5554`,
+   `pm clear dev.openstream.tv`, then RESTORE `setup.url` to the real domain.
+0b. **OWNER: re-upload the regenerated `api=1` index.php.** The name-setup
+   flow works in the app but the LIVE <setup-domain>/setup/index.php is still
+   the OLD HTML-only page. Until the owner re-uploads the regenerated
+   `docs/reference/StremioSurfer/hosting/index.php` (gitignored — has the JSON
+   `api=1` mode, built with `tools/make_hosting_bundle.py --brand SavoyStreams`),
+   real boxes can't do the name lookup. This is the one thing gating the
+   name flow on hardware.
+0c. Gate D is CLOSE: hosting is 9/10 verified (session 12) — one file re-drag
    + a clean retest away.
 Quick verify next session: subtitle-language persistence round-trip on
 the fixture movie (Settings → Home rows → move "Local Test" row up for a
