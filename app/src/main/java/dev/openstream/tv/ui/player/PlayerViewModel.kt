@@ -19,11 +19,13 @@ import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.player.ExoPlayerEngine
+import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.player.PlaybackRequest
 import dev.openstream.tv.player.PlaybackService
 import dev.openstream.tv.player.PlayerEvent
 import dev.openstream.tv.player.PlayerHolder
 import dev.openstream.tv.player.StreamAlternatives
+import dev.openstream.tv.player.buildExternalLaunch
 import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
@@ -52,8 +54,15 @@ class PlayerViewModel @Inject constructor(
     private val autoplayOrigin: AutoplayOriginHolder,
     private val playbackPrefs: PlaybackPrefs,
     private val alternatives: StreamAlternatives,
+    private val externalLauncher: ExternalPlayerPort,
     playerHolder: PlayerHolder,
 ) : ViewModel() {
+
+    /** Installed external players (VLC/MX) for the "Play in another app"
+     *  escape — the fix for streams that play wrong in ExoPlayer (no audio,
+     *  no video, codec gaps on the 32-bit boxes). Empty = the button hides. */
+    val externalPlayers: List<ExternalPlayerPort.Choice> = externalLauncher.installedPlayers()
+        .filter { it.packageName != null } // a real app to hand off to
 
     /**
      * The service-owned engine (§6.1); null until [PlaybackService] is up.
@@ -293,6 +302,22 @@ class PlayerViewModel @Inject constructor(
         val engine = engine.value ?: return
         _uiState.value = _uiState.value.copy(error = null, ended = false)
         engine.play(req.source)
+    }
+
+    /**
+     * Hand the CURRENT stream to VLC/MX at the current position ("Play in
+     * another app"). We pause our own engine first so two players don't fight
+     * over the audio. Null if nothing is playing.
+     */
+    fun externalIntentForCurrent(choice: ExternalPlayerPort.Choice): Intent? {
+        val req = request ?: return null
+        val position = engine.value?.exoPlayer?.currentPosition?.takeIf { it > 0 }
+            ?: req.source.startPositionMs
+        engine.value?.exoPlayer?.pause()
+        val source = req.source.copy(startPositionMs = position)
+        return externalLauncher.intentFor(
+            buildExternalLaunch(choice.player, choice.packageName, source)
+        )
     }
 
     override fun onCleared() {

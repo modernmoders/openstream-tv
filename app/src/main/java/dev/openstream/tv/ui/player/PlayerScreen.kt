@@ -2,14 +2,19 @@ package dev.openstream.tv.ui.player
 
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -22,14 +27,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -44,21 +53,24 @@ import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
 import dev.openstream.tv.player.applyTrackOption
 import dev.openstream.tv.player.disableSubtitles
 import dev.openstream.tv.player.toTrackMenu
+import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
 
 private const val OVERLAY_TIMEOUT_MS = 5_000L
+private const val SEEK_STEP_MS = 10_000L
 
 /**
- * Internal player (§6.1): Media3 PlayerView (SurfaceView) with a Compose
- * overlay for all controls. D-pad: any key wakes the overlay; CENTER
- * play/pauses; LEFT/RIGHT seek ±10s/±30s; UP opens the audio & subtitle
- * picker; overlay hides after 5s.
- *
- * The engine lives in PlaybackService; this screen binds once the service
- * hands it over (a few ms — a black frame, not a spinner).
+ * Internal player (§6.1): Media3 PlayerView (SurfaceView) under a Compose
+ * control bar (owner UX 2026-07-06). While playing, the screen is clean; any
+ * key "wakes" the controls and lands focus on the scrub bar. On the scrub bar,
+ * ◀▶ rewind/fast-forward and OK play/pauses; below it sit clearly-labelled
+ * buttons — Audio & subtitles, Try a different stream, Play in another app —
+ * so an older viewer always has an obvious, jargon-free way out when a stream
+ * won't play or plays wrong. The bar auto-hides after 5s.
  */
 @Composable
 fun PlayerScreen(
@@ -75,10 +87,8 @@ fun PlayerScreen(
         if (!state.hasSource) onExit() // process death restored this route
     }
     LaunchedEffect(Unit) {
-        // §7.1 step 4: autoplay gave up → the next episode's manual stream list
         viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
     }
-    // Back cancels autoplay instead of leaving the screen while the card is up
     BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
 
     val engine = engineOrNull
@@ -89,17 +99,16 @@ fun PlayerScreen(
 
     var overlayVisible by remember { mutableStateOf(true) }
     var lastInteractionMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var positionText by remember { mutableStateOf("") }
+    var positionMs by remember { mutableLongStateOf(0L) }
+    var durationMs by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
-    val focusRequester = remember { FocusRequester() }
 
-    // Audio & subtitle menu (owner request 2026-07-05): mirrors the player's
-    // track list; onTracksChanged also fires when autoplay swaps episodes.
+    val outerFocus = remember { FocusRequester() }
+    val scrubFocus = remember { FocusRequester() }
+
     var tracksMenu by remember(engine) { mutableStateOf(engine.exoPlayer.currentTracks.toTrackMenu()) }
     var showTracks by remember { mutableStateOf(false) }
-    // "Try another server" confirm (owner request 2026-07-06): for streams
-    // that are broken in ways the player can't detect (frozen, wrong file).
-    var showTryNext by remember { mutableStateOf(false) }
+    var showPlayerPicker by remember { mutableStateOf(false) }
     DisposableEffect(engine) {
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
@@ -110,115 +119,128 @@ fun PlayerScreen(
         onDispose { engine.exoPlayer.removeListener(listener) }
     }
 
-    // Overlay auto-hide + position ticker (only while visible).
-    LaunchedEffect(overlayVisible, lastInteractionMs) {
-        while (overlayVisible) {
-            val player = engine.exoPlayer
-            positionText = "${player.currentPosition.asClock()} / ${player.duration.asClock()}"
-            playing = player.isPlaying
-            if (System.currentTimeMillis() - lastInteractionMs > OVERLAY_TIMEOUT_MS) {
-                overlayVisible = false
-            }
-            delay(500)
+    // Fire an external player with the current stream (VLC/MX). Our engine is
+    // paused inside externalIntentForCurrent so the two don't both play.
+    val externalResult = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { /* returned from the other app; our player is paused and still here */ }
+    fun playInAnotherApp(choice: dev.openstream.tv.player.ExternalPlayerPort.Choice) {
+        viewModel.externalIntentForCurrent(choice)?.let { runCatching { externalResult.launch(it) } }
+    }
+    fun onPlayInAnotherApp() {
+        val players = viewModel.externalPlayers
+        when {
+            players.isEmpty() -> Unit
+            players.size == 1 -> playInAnotherApp(players.first())
+            else -> showPlayerPicker = true
         }
     }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     fun wake() {
         lastInteractionMs = System.currentTimeMillis()
         overlayVisible = true
     }
 
+    // Position ticker + auto-hide (only while the bar is up).
+    LaunchedEffect(overlayVisible, lastInteractionMs) {
+        while (overlayVisible) {
+            val p = engine.exoPlayer
+            positionMs = p.currentPosition
+            durationMs = p.duration
+            playing = p.isPlaying
+            if (System.currentTimeMillis() - lastInteractionMs > OVERLAY_TIMEOUT_MS) overlayVisible = false
+            delay(300)
+        }
+    }
+    // Focus follows the bar: on it when shown, back to the full-screen catcher
+    // when hidden (so the next key wakes it rather than seeking blindly).
+    LaunchedEffect(overlayVisible) {
+        runCatching { if (overlayVisible) scrubFocus.requestFocus() else outerFocus.requestFocus() }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .focusRequester(focusRequester)
+            .focusRequester(outerFocus)
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                val player = engine.exoPlayer
-                when (event.key.nativeKeyCode) {
-                    AndroidKeyEvent.KEYCODE_DPAD_CENTER,
-                    AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                        when {
-                            // OK on the Up Next countdown = play now (§7.1 step 2)
-                            viewModel.confirmAutoplay() -> true
-                            // Finished/error panel up: its focused Button owns
-                            // OK — swallowing it here made "Back" unreachable
-                            state.ended || state.error != null -> false
-                            else -> {
-                                if (player.isPlaying) player.pause() else player.play()
-                                wake(); true
-                            }
-                        }
-                    }
-                    AndroidKeyEvent.KEYCODE_DPAD_LEFT,
-                    AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
-                        player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0))
-                        wake(); true
-                    }
-                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT,
-                    AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                        player.seekTo(player.currentPosition + 30_000)
-                        wake(); true
-                    }
-                    AndroidKeyEvent.KEYCODE_DPAD_UP -> {
-                        // ▲ = audio & subtitles, unless a panel/card owns the screen
-                        if (autoplay == null && !state.ended && state.error == null) {
-                            showTracks = true
-                        }
-                        wake(); true
-                    }
-                    AndroidKeyEvent.KEYCODE_DPAD_DOWN -> {
-                        // ▼ = try another server, when there is one to try
-                        if (autoplay == null && !state.ended && state.error == null &&
-                            state.canTryNext
-                        ) {
-                            showTryNext = true
-                        }
-                        wake(); true
-                    }
-                    else -> false
+                val code = event.key.nativeKeyCode
+                // Up Next countdown: OK plays now (§7.1 step 2).
+                if ((code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+                        code == AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) &&
+                    viewModel.confirmAutoplay()
+                ) return@onPreviewKeyEvent true
+                // Panels (finished/error/Up Next) own their own buttons.
+                if (state.ended || state.error != null || autoplay != null) {
+                    return@onPreviewKeyEvent false
                 }
+                if (!overlayVisible) {
+                    // Controls asleep: any key but Back wakes them and is
+                    // swallowed, so the same press doesn't also seek/pause.
+                    if (code == AndroidKeyEvent.KEYCODE_BACK) return@onPreviewKeyEvent false
+                    wake()
+                    return@onPreviewKeyEvent true
+                }
+                // Bar is up: keep it alive; let the focused control act.
+                lastInteractionMs = System.currentTimeMillis()
+                false
             },
     ) {
         AndroidView(
-            factory = { context ->
-                PlayerView(context).apply {
-                    useController = false // Compose overlay owns all controls
-                }
-            },
-            // update, not factory: the service engine can arrive after the
-            // first composition and must still get the surface.
+            factory = { context -> PlayerView(context).apply { useController = false } },
             update = { view -> view.player = engine.exoPlayer },
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (overlayVisible && state.error == null) {
+        if (overlayVisible && state.error == null && !state.ended && autoplay == null) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .background(Color(0xB0000000))
-                    .padding(horizontal = 48.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .background(Color(0xC0000000))
+                    .padding(horizontal = 48.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Text(state.title, style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Text(
-                    text = (if (playing) "▶  " else "⏸  ") + positionText +
-                        "    (OK play/pause · ◀ -10s · ▶ +30s · ▲ audio & subtitles" +
-                        (if (state.canTryNext) " · ▼ try another server" else "") + ")",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedText,
+                    state.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                ScrubBar(
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    playing = playing,
+                    onSeek = { delta ->
+                        val target = (engine.exoPlayer.currentPosition + delta)
+                            .coerceIn(0, engine.exoPlayer.duration.coerceAtLeast(0))
+                        engine.exoPlayer.seekTo(target)
+                        wake()
+                    },
+                    onTogglePlay = {
+                        if (engine.exoPlayer.isPlaying) engine.exoPlayer.pause() else engine.exoPlayer.play()
+                        wake()
+                    },
+                    focusRequester = scrubFocus,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SurfacePill("Audio & subtitles", onClick = { showTracks = true; wake() })
+                    if (state.canTryNext) {
+                        SurfacePill("Try a different stream", onClick = { viewModel.tryNextStream(); wake() })
+                    }
+                    if (viewModel.externalPlayers.isNotEmpty()) {
+                        SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
+                    }
+                }
             }
         }
 
         if (state.switching) {
-            // Quiet server-switch notice (elder rule: friendly, never raw errors)
             Text(
-                text = "Trying another server…",
+                text = "Trying another stream…",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 modifier = Modifier
@@ -229,23 +251,12 @@ fun PlayerScreen(
             )
         }
 
-        if (showTryNext) {
-            TryAnotherServerDialog(
-                onConfirm = {
-                    showTryNext = false
-                    viewModel.tryNextStream()
-                    wake()
-                },
-                onDismiss = { showTryNext = false; wake() },
-            )
-        }
-
         if (showTracks) {
             TracksDialog(
                 menu = tracksMenu,
                 onPick = {
                     engine.exoPlayer.applyTrackOption(it)
-                    viewModel.rememberTrackPick(it) // DECISIONS #19
+                    viewModel.rememberTrackPick(it)
                 },
                 onSubtitlesOff = {
                     engine.exoPlayer.disableSubtitles()
@@ -255,27 +266,34 @@ fun PlayerScreen(
             )
         }
 
-        // Up Next flow (§7.1) replaces the finished panel while it's working;
-        // the panel stays the honest fallback for movies/series end/cancel.
+        if (showPlayerPicker) {
+            AnotherAppDialog(
+                players = viewModel.externalPlayers,
+                onPick = { showPlayerPicker = false; playInAnotherApp(it) },
+                onDismiss = { showPlayerPicker = false; wake() },
+            )
+        }
+
         if (autoplay != null) {
             UpNextOverlay(autoplay)
         } else if (state.ended) {
-            CenterPanel("Playback finished") {
+            CenterPanel("All done") {
                 Button(onClick = onExit) { Text("Back") }
             }
         }
 
         state.error?.let { message ->
-            // §6.1: no dead-end error states — every error offers actions.
-            CenterPanel("⚠ $message") {
+            // §6.1: no dead-end errors — always an obvious, plain-word way out.
+            CenterPanel("Hmm, that one won't play.\n$message") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (state.canTryNext) {
-                        Button(onClick = { viewModel.tryNextStream() }) {
-                            Text("Try another server")
-                        }
+                        Button(onClick = { viewModel.tryNextStream() }) { Text("Try a different stream") }
                     }
-                    Button(onClick = viewModel::retry) { Text("Retry") }
-                    Button(onClick = onExit) { Text("Back to streams") }
+                    if (viewModel.externalPlayers.isNotEmpty()) {
+                        Button(onClick = ::onPlayInAnotherApp) { Text("Play in another app") }
+                    }
+                    Button(onClick = viewModel::retry) { Text("Try again") }
+                    Button(onClick = onExit) { Text("Back") }
                 }
             }
         }
@@ -283,33 +301,98 @@ fun PlayerScreen(
 }
 
 /**
- * ▼ confirm for "Try another server": a real Dialog so D-pad focus is
- * trapped (§5.4) and an accidental ▼ press is a harmless Back/Cancel away.
+ * The scrub bar: a focusable progress track with play state + times. On focus,
+ * ◀▶ seek ±10s and OK play/pauses; an accent ring shows it holds the cursor.
  */
 @Composable
-private fun TryAnotherServerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val confirmFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { confirmFocus.requestFocus() } }
+private fun ScrubBar(
+    positionMs: Long,
+    durationMs: Long,
+    playing: Boolean,
+    onSeek: (Long) -> Unit,
+    onTogglePlay: () -> Unit,
+    focusRequester: FocusRequester,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .border(
+                width = if (focused) 2.dp else 0.dp,
+                color = if (focused) Accent else Color.Transparent,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (e.key.nativeKeyCode) {
+                    AndroidKeyEvent.KEYCODE_DPAD_LEFT, AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
+                        onSeek(-SEEK_STEP_MS); true
+                    }
+                    AndroidKeyEvent.KEYCODE_DPAD_RIGHT, AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                        onSeek(SEEK_STEP_MS); true
+                    }
+                    AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                        onTogglePlay(); true
+                    }
+                    else -> false
+                }
+            },
+    ) {
+        Text(if (playing) "⏸" else "▶", style = MaterialTheme.typography.titleLarge, color = Color.White)
+        Text(positionMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = Color.White)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color.White.copy(alpha = if (focused) 0.30f else 0.18f)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(progress)
+                    .fillMaxHeight()
+                    .background(Accent),
+            )
+        }
+        Text(durationMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = MutedText)
+    }
+}
 
+/** Pick which other app to hand the stream to, when more than one is installed. */
+@Composable
+private fun AnotherAppDialog(
+    players: List<dev.openstream.tv.player.ExternalPlayerPort.Choice>,
+    onPick: (dev.openstream.tv.player.ExternalPlayerPort.Choice) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .background(Color(0xF0181822), RoundedCornerShape(16.dp))
-                .padding(32.dp),
+                .padding(28.dp),
         ) {
             Text(
-                text = "Not playing right?",
+                text = "Play in another app",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
+                modifier = Modifier.padding(bottom = 6.dp),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = onConfirm,
-                    modifier = Modifier.focusRequester(confirmFocus),
-                ) { Text("Try another server") }
-                Button(onClick = onDismiss) { Text("Keep watching") }
+            players.forEachIndexed { index, choice ->
+                SurfacePill(
+                    label = choice.player.label,
+                    onClick = { onPick(choice) },
+                    modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
+                )
             }
         }
     }

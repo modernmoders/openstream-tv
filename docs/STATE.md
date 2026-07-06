@@ -41,6 +41,23 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 day 2 (cont., 2026-07-06) — Player control-bar REBUILT +
+  no-flash auto (alpha.14, DECISIONS #32). Emulator-verified.** Owner-confirmed
+  "build the full bar". PlayerScreen.kt rewritten: clean while playing → any
+  key wakes a control bar with a focusable scrub bar (accent ring; ◀▶ seek
+  ±10s; OK play/pause) → DOWN to plain-word buttons "Audio & subtitles" /
+  "Try a different stream" (only if another stream) / "Play in another app"
+  (only if VLC/MX installed); auto-hides 5s; error panel carries the same two
+  escapes. PlayerViewModel gained externalPlayers + externalIntentForCurrent
+  (hands the current stream to VLC at the current position; pauses our engine).
+  Auto mode no longer flashes the stream list (UiState.autoStarting → calm
+  "Starting…"). VERIFIED on cold-booted AVD w/ the Local Test fixture:
+  autoplay-no-flash, wake, scrub+seek (0:30→1:22), play/pause, focus nav,
+  labelled buttons (screenshots). TracksDialog + external launch reuse proven
+  code (VLC unrenderable on the AVD). 236 tests, release built. versionCode 14.
+  **STILL PENDING a cold-boot visual pass (emulator re-degraded to black
+  mid-session): the round-7 Details refinement, and the Home hold-UP scroll
+  glitch (not yet reproduced/fixed).**
 - **Session 14 day 2 (cont., 2026-07-06) — Owner feedback round 7 (partial).**
   Shipped the code-safe subset: (a) "E1/E2/S1E2" spelled out to "Episode N" /
   "Season N · Episode N" everywhere (Details, Up Next, both autoplay title

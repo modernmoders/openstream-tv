@@ -4,6 +4,31 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Player control-bar rebuild (session 14 day 2, alpha.14)
+
+Owner-confirmed rebuild (round 8): wake-then-navigate controls. Verified on a
+cold-booted emulator with the Local Test H.264 fixture (ExoPlayer; VLC vout
+can't render on goldfish, so external launch is intent-only there).
+
+| Check | Result |
+|---|---|
+| Auto-play a movie → straight to video, NO stream-list flash (the auto-mode "Starting…" fix + autoplay-default-ON) | PASS (screenshot) |
+| Controls asleep while playing; any key wakes them and lands focus on the scrub bar | PASS |
+| Scrub bar: accent focus ring, play glyph, current/total time, blue progress fill | PASS (screenshot) |
+| ◀▶ on the scrub bar seek ±10s (0:30 → 1:22 after two ▶ + play) | PASS (screenshot) |
+| OK on the scrub bar toggles play/pause (glyph flipped ▶/⏸) | PASS |
+| DOWN moves focus to the button row; accent ring on the focused button; LEFT/RIGHT between buttons | PASS (screenshot) |
+| Buttons are plain-word + labeled: "Audio & subtitles", "Play in another app" ("Try a different stream" correctly hidden — fixture has one stream) | PASS (screenshot) |
+| Bar auto-hides after 5s; re-wakes on any key (observed repeatedly between adb steps) | PASS |
+| `testDebugUnitTest` 236 + `assembleDebug` + `assembleRelease` (real URL, versionCode 14 / alpha.14) | PASS |
+
+Reused, already-proven, not re-screenshot this run (emulator re-degraded to
+black frames mid-session): the Audio/subtitles dialog (existing TracksDialog,
+proven alpha.6) and "Play in another app" launch (existing buildExternalLaunch/
+intentFor, proven in StreamListScreen; VLC unrenderable on the AVD anyway).
+Also still pending a cold-boot visual pass: the round-7 Details refinement +
+the Home hold-UP scroll glitch (unchanged this run).
+
 ## 2026-07-06 — Owner feedback round 7: naming, autoplay default, episode UI (session 14 day 2)
 
 Owner feedback batch. This entry covers the code-safe subset (the bigger

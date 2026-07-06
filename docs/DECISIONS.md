@@ -645,3 +645,29 @@ already consistent. `BackButton` stays outlined so "back" reads distinct.
 **Rejected:** per-screen motion overrides (one shared spec is calmer and
 cheaper); sliding page transitions (read as heavy on a 10-foot UI — a fade +
 micro-scale is the "refined, not dramatic" choice).
+
+## 32. 2026-07-06 (session 14) — Player control bar: wake-then-navigate + plain-word escapes
+
+Owner (round 8) found the old player cryptic ("▲ audio settings") and wanted a
+modern control bar. Rebuilt PlayerScreen.kt: while playing the screen is clean;
+ANY key wakes the bar and lands focus on a scrub bar (accent focus ring). On
+the scrub bar ◀▶ seek ±10s and OK play/pauses; DOWN drops to a row of
+plainly-LABELLED buttons — "Audio & subtitles", "Try a different stream" (only
+when another stream exists), "Play in another app" (only when VLC/MX is
+installed). Auto-hides after 5s. The error panel carries the same two escapes.
+
+Failure model (owner's real-world cases — plays-but-no-audio / no-video /
+wrong-language / ExoPlayer codec gaps on the 32-bit boxes): auto still tries
+the next STREAM first (up to 3, silent), because "won't play" is the common
+case; the manual "Play in another app" hands the CURRENT stream to VLC for the
+"plays wrong" cases ExoPlayer can't detect. We do NOT auto-launch VLC (if it
+also failed it would bounce a non-technical viewer out into a foreign app) —
+it's one obvious, labelled tap instead. PlayerViewModel gained
+externalPlayers + externalIntentForCurrent (pauses our engine, hands off at the
+current position). Also: auto-mode no longer flashes the stream list — the
+list screen shows a calm "Starting…" until play or give-up (UiState.autoStarting).
+
+**Rejected:** OK-pauses-immediately-when-hidden (owner explicitly wanted
+wake-first, "bring up the menu"); auto-falling-back to VLC (magic + risky exit);
+a floating seek cursor separate from play focus (one scrub-bar focus that both
+seeks and toggles is simpler on a D-pad).
