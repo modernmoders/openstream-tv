@@ -1,16 +1,45 @@
-# STATE — updated 2026-07-05 by session 11
+# STATE — updated 2026-07-05 by session 12
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
 item before `phase-3-done` (A PASS 2026-07-04, B PASS 2026-07-05, C
-effectively passing on sentiment; D = last box). Phase 4 build work has
-STARTED (unit 1 shipped, session 11) — the gate is owner-blocked, not
-build-blocked, so units continue while we wait.
+effectively passing on sentiment; D = last box — setup hosting now 9/10
+verified, see below). Phase 4 units 1–4 shipped (sessions 11–12); new
+owner directives recorded in MASTER_PLAN §10 (remote management SHIPPED,
+addons-screen guard / error logging / language switcher pending).
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 12 — setup hosting FIXED (9/10) + Phase 4 unit 4: remote addon
+  management (ProfileSync, DECISIONS #25).**
+  (a) **Hosting saga resolved:** owner's drag-and-drop had landed in the
+  DOMAIN ROOT, not `setup/` — root copies were byte-perfect, `setup/` still
+  held the robot-session's corrupt/empty files. Owner then moved them
+  server-side; verified byte-for-byte via curl+sha256 against
+  `docs/reference/StremioSurfer/hosting/`: **9/10 profile JSONs + index.php
+  in `setup/` are now EXACT; `toby-savoy-*.json` is 404 EVERYWHERE (lost in
+  the move — owner must re-drag that one file into setup/); a few JSON
+  leftovers still sit in the domain root (owner should delete).** Name
+  lookup POST verified live (jody m → correct link). Directory listing off
+  (index.php + Options -Indexes), .htaccess 403 over HTTP. The owner's onn
+  box error ("response this app couldn't read") was tested against the then-
+  broken setup/ copies AND/OR by pasting the PAGE URL — the app needs the
+  personal `.json` link the page hands out, not the page address itself.
+  (b) **ProfileSync (Phase 4 unit 4, owner directive):** the box saves the
+  setup link on a confirmed install-all (`ProfileLink` DataStore blob); on
+  every app start `ProfileSync.syncIfDue` re-fetches the hosted profile and
+  aligns installed addons (pure `planSync` diff: add new, remove dropped,
+  NEVER touch hand-added addons; profile wins over local removals).
+  15-min throttle counts only successful syncs — unreachable profile = no-op
+  + retry next launch, so "I fixed it, restart the app" works. Failures
+  silent-but-logged (elder rule), no URLs in logs (tokens). 216/216 tests
+  (11 new). NOT deployed — needs alpha.10 versionCode bump; existing boxes
+  must re-paste their setup link once so the box learns it.
+  Flake note: one HomeViewModelTest Main-dispatcher failure appeared ONCE in
+  a full suite run, passed in isolation and on two clean full reruns —
+  watch, don't chase yet.
 - **Phase 4 units 2–3 — Poster size, language memory, "Always use" player
   (session 11, same day, owner away in town).** Settings now: Home rows /
   Poster size / Player, live current-value descriptions. (a) GLOBAL density
@@ -199,28 +228,29 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## NEXT ACTION (start here)
 **Owner-blocked items first if the owner is present (0/1/1b below);
-otherwise continue Phase 4 units (3).** Session 11: owner connected a
-Chrome extension (Windows PC) but panel.dreamhost.com was SIGNED OUT —
-Claude must not sign in (even via Google SSO); the tab was left on the
-sign-in page. Once the owner signs in, drive step 0 end-to-end. Owner
-deferred gate checks C/D ("skip for now") — gate stays open, not faked.
-Both boxes adb-reachable; Naruto logcat (1b) needs a live repro.
+otherwise continue Phase 4 units (3).** Gate D is CLOSE: hosting is 9/10
+verified (session 12) — one file re-drag + a clean retest away.
 Quick verify next session: subtitle-language persistence round-trip on
 the fixture movie (Settings → Home rows → move "Local Test" row up for a
 fast path, then pick a subtitle → exit → replay → auto-selected).
-0. **Dreamhost upload (Claude drives, owner unlocks):** the owner must have
-   Chrome (the profile signed into panel.dreamhost.com, or ready to sign
-   in — Claude must NEVER enter the password) with the Claude extension
-   CONNECTED (`list_connected_browsers` must show it; last session it
-   showed [] after the owner switched windows). Then: Panel → Websites →
-   Manage Files → create `setup/` on the chosen domain → upload the
-   CONTENTS of `docs/reference/StremioSurfer/hosting/` (10 profile JSONs +
-   index.php + .htaccess) → open `https://<domain>/setup/` and live-check
-   the PHP name lookup (type "myles m" → link appears; REQUEST_URI path
-   handling is the untested part). SECURITY: those JSONs embed real addon
-   tokens — fine to upload to the owner's own host, never into git/chat.
+0. **Finish the setup hosting (owner, 1 minute; Claude verifies):**
+   (a) drag `docs/reference/StremioSurfer/hosting/toby-savoy-*.json` into
+   the `setup/` folder on the owner's domain (it's 404 everywhere — lost
+   during the root→setup move); (b) delete the leftover profile `.json`
+   files from the DOMAIN ROOT (duplicates from the mis-placed upload);
+   (c) confirm `.htaccess` is present in `setup/` (show hidden files).
+   Then Claude re-verifies all 10 byte-for-byte with the curl+sha256 loop
+   (session 12 transcript / one cheap command).
+   Retest on the box: on the PHONE open `<domain>/setup/`, type the name,
+   COPY THE LINK IT RETURNS (ends in `.json`) — that link, not the page
+   address, is what goes into the app via Addons → Add addon → browser
+   entry. Pasting the page URL is exactly the "response this app couldn't
+   read" error the owner hit. When install-all works → gate check D PASS →
+   tick §7.2, tag `phase-3-done`, push.
    AIOMetadata URLs in users.json are still all EMPTY — owner fills, then
-   regenerate profiles (same filenames survive via profiles.config.json).
+   regenerate profiles (same filenames survive via profiles.config.json)
+   and re-upload; boxes then follow automatically via ProfileSync (#25)
+   once they run alpha.10+ and have re-pasted their link once.
 1. Owner follows **docs/TESTING_ON_ONN.md**. Boxes run **alpha.9**
    (R8 release, deployed + version-confirmed session 10). Gate status:
    A PASS (2026-07-04), **B PASS (2026-07-05 — owner: VLC + MX work,
@@ -239,16 +269,20 @@ fast path, then pick a subtitle → exit → replay → auto-selected).
    elder-friendly) and/or codec-aware stream badges.
 2. Record results in TESTLOG (owner dictates, Claude writes), tick the gate
    in MASTER_PLAN §10, tag `phase-3-done`, push.
-3. Continue Phase 4 units (units 1–3 DONE session 11: settings skeleton +
-   row manager, global density, language memory, "Always use" player).
-   Next candidates, rough owner-value order: (a) **watched-history row**
-   (§10); (b) **Discover scroll perf prefetch** (§10 — skip-page +
-   next-row image prefetch; needs box feel-testing after); (c) **autoplay
-   settings** entry (§7.1.7) + tunneling toggle + debug overlay (rest of
-   the Phase 4 first bullet); (d) elder-friendly audit (§10) — Settings
-   descriptions already follow it. When the next box deploy happens,
-   bump versionCode and include everything since alpha.9 (Settings,
-   row manager, density, languages, player pref — a big alpha.10).
+3. Continue Phase 4 units (units 1–4 DONE sessions 11–12: settings skeleton +
+   row manager, global density, language memory, "Always use" player,
+   ProfileSync remote management). Next candidates, owner-value order —
+   the owner's session-12 directives FIRST (MASTER_PLAN §10):
+   (a) **guard the Addons screen** (off the main path, e.g. into Settings —
+   but NOT before gate D passes, its instructions say "Addons → Add addon");
+   (b) **error suppression + on-device log** (friendly fallbacks
+   everywhere, diagnostics to a log the owner reads in Settings);
+   (c) **interface-language switcher** (Stremio/Nuvio parity);
+   then (d) watched-history row; (e) Discover scroll perf prefetch;
+   (f) autoplay settings + tunneling toggle + debug overlay. When the next
+   box deploy happens, bump versionCode and include everything since
+   alpha.9 (Settings suite + ProfileSync — a big alpha.10); after upgrade
+   each box re-pastes its setup link ONCE so ProfileSync learns it.
 
 ## Environment rules (hard-earned — do not skip)
 - **Playback testing needs a WINDOWED emulator** (`-gpu auto`, NO
