@@ -671,3 +671,32 @@ list screen shows a calm "Starting…" until play or give-up (UiState.autoStarti
 wake-first, "bring up the menu"); auto-falling-back to VLC (magic + risky exit);
 a floating seek cursor separate from play focus (one scrub-bar focus that both
 seeks and toggles is simpler on a D-pad).
+
+## 33. 2026-07-06 (session 14) — Home header lives INSIDE the scroll (hold-UP stick fix)
+
+Owner: scrolled deep in Home, HOLDING UP sticks partway (hero half-shown)
+until a Down+Up. Mechanism: the brand/pills header was pinned OUTSIDE the
+LazyColumn, so during key-repeat focus could escape the list onto the pinned
+pills while the list's bring-into-view animation was still mid-flight; the
+escape cancels the animation, and because the pinned header itself needs no
+scrolling, nothing ever finished the scroll — Home rested half-scrolled.
+
+Fix: the header is now the LazyColumn's item 0 (plus a branch-aware entry
+focus request, since each Home branch composes its own header instance).
+Reaching the header now forces the list to finish scrolling to the very top —
+the stuck-partway state cannot persist. Side effect (accepted, standard TV
+pattern): the header scrolls away while browsing rows, giving content the
+full screen.
+
+Verified on the emulator: entry lands on Discover with the hero fully in
+view; rapid 12×UP from 6 rows deep settles at the true top. Genuine remote
+key-repeat is NOT reproducible via adb (`input keyevent` sends discrete
+down/up pairs; InputDispatcher only synthesizes repeats for real driver-held
+keys; `emu event send EV_KEY` never reaches the input pipeline on this AVD —
+verified via dumpsys input RecentQueue), so the hold-UP fix itself needs the
+owner's remote for final confirmation.
+
+**Rejected:** pivot-style BringIntoViewSpec tuning (treats the symptom —
+focus could still escape to a pinned header and cancel the scroll);
+key-repeat throttling via onPreviewKeyEvent (fights the framework, breaks
+fast browsing).

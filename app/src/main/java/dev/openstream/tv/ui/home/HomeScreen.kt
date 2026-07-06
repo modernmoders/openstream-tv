@@ -73,9 +73,12 @@ fun HomeScreen(
 
     // Predictable entry point (§10): land on the header so Home opens at the
     // very top — the featured hero stays in view instead of the list auto-
-    // scrolling to a focusable poster deeper down.
+    // scrolling to a focusable poster deeper down. Re-request when the screen
+    // switches branches (initializing → loaded): each branch composes its own
+    // header instance, and the old focused node is disposed with the branch.
     val headerFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { headerFocus.requestFocus() } }
+    val showingRows = !state.initializing && state.hasAddons
+    LaunchedEffect(showingRows) { runCatching { headerFocus.requestFocus() } }
 
     Column(
         modifier = Modifier
@@ -85,33 +88,13 @@ fun HomeScreen(
             // padding so posters can scroll edge-to-edge (§5.3).
             .padding(vertical = 27.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 48.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                // The family-facing brand ("SavoyStreams" on the owner's
-                // boxes); addon management now lives in Settings behind
-                // Expert mode — the home header stays friendly-only
-                // (owner directive 2026-07-06).
-                text = BuildConfig.SETUP_BRAND,
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White,
-                modifier = Modifier.weight(1f),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SurfacePill("Discover", onDiscover, Modifier.focusRequester(headerFocus))
-                SurfacePill("Search", onSearch)
-                SurfacePill("Settings", onSettings)
-            }
-        }
-
         when {
-            state.initializing -> Unit // Room read takes ~ms; avoid a flash
+            state.initializing -> HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
 
-            !state.hasAddons -> EmptyHome()
+            !state.hasAddons -> {
+                HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
+                EmptyHome()
+            }
 
             else -> {
                 // Featured = the first item of the first catalog that answered
@@ -123,10 +106,10 @@ fun HomeScreen(
                     ?.items?.firstOrNull()
 
                 // A LazyColumn anchors its scroll to the first item, so when the
-                // hero is inserted at the top (rows load after the first frame)
-                // it lands just above the viewport. Snap to the top once, the
-                // moment the hero first appears — after that the user's own
-                // scrolling is left alone.
+                // hero is inserted just under the header (rows load after the
+                // first frame) it can land above the viewport. Snap to the top
+                // once, the moment the hero first appears — after that the
+                // user's own scrolling is left alone.
                 val listState = rememberLazyListState()
                 LaunchedEffect(featured != null) {
                     if (featured != null) listState.scrollToItem(0)
@@ -140,6 +123,16 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
                 ) {
+                    // The header is a LIST ITEM, not pinned above the list: when
+                    // it was outside, holding UP could land focus on the pinned
+                    // pills while the list's bring-into-view scroll was still
+                    // mid-flight — the cancelled animation left Home stuck
+                    // half-scrolled (owner's hold-UP glitch, 2026-07-06). As
+                    // item 0, reaching the header forces the list to finish
+                    // scrolling to the very top.
+                    item(key = "header") {
+                        HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
+                    }
                     if (featured != null) {
                         item(key = "featured") {
                             FeaturedHero(featured, onItemClick)
@@ -155,6 +148,37 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeHeader(
+    onDiscover: () -> Unit,
+    onSearch: () -> Unit,
+    onSettings: () -> Unit,
+    headerFocus: FocusRequester,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            // The family-facing brand ("SavoyStreams" on the owner's
+            // boxes); addon management now lives in Settings behind
+            // Expert mode — the home header stays friendly-only
+            // (owner directive 2026-07-06).
+            text = BuildConfig.SETUP_BRAND,
+            style = MaterialTheme.typography.headlineMedium,
+            color = Color.White,
+            modifier = Modifier.weight(1f),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SurfacePill("Discover", onDiscover, Modifier.focusRequester(headerFocus))
+            SurfacePill("Search", onSearch)
+            SurfacePill("Settings", onSettings)
         }
     }
 }

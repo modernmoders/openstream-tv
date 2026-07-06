@@ -4,6 +4,23 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Round-7 Details verified + Home header-in-list fix (session 14 day 2, alpha.15)
+
+Cold-booted emulator (the two items alpha.14 left pending), fixture addon on
+port 8090, both real boxes untouched (every command pinned to emulator-5554).
+
+| Check | Result |
+|---|---|
+| Round-7 Details on "Bunny: The Series": season chip = SurfacePill (accent selected/focus), episode rows = SurfaceRow cards, calm accent focus ring on the focused row | PASS (screenshots) |
+| "Episode N" plain-word naming in Details episode rows | PASS — plus fix: addons that TITLE episodes "Episode N" (the fixture, Cinemeta unnamed episodes) no longer render "Episode 1 · Episode 1"; label shown once |
+| Home hold-UP stick (owner report): root-caused to the pinned header outside the LazyColumn (see DECISIONS #33); header moved INSIDE the list as item 0 | FIXED structurally |
+| Home after fix: entry lands on Discover pill w/ hero fully visible; 6-rows-deep → rapid 12×UP burst settles at the TRUE top (header + full hero), no half-scrolled rest state; header scrolls away while browsing (new, intended) | PASS (screenshots) |
+| Genuine remote key-repeat CANNOT be simulated via adb (discrete down/up pairs only; `emu event send EV_KEY` never reaches the input pipeline — dumpsys-verified) — hold-UP fix needs owner's remote for final confirmation | NOTE |
+| `testDebugUnitTest` 236/236 | PASS |
+| R8 release smoke: alpha.15 (versionCode 15) installs over 14, launches to Home, header/hero/CW render, focus moves | PASS (screenshot; one transient black screencap was a capture race — app was resumed, next cap clean) |
+
+Deploy target is now **app-release.apk alpha.15** (supersedes alpha.14).
+
 ## 2026-07-06 — Player control-bar rebuild (session 14 day 2, alpha.14)
 
 Owner-confirmed rebuild (round 8): wake-then-navigate controls. Verified on a

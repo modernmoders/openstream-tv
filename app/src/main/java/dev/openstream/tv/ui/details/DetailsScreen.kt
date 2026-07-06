@@ -250,8 +250,13 @@ private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = M
             Text(
                 // "Episode 1 · System" — spelled out, no "E1" (plain words for
                 // people who don't speak in TV shorthand, owner 2026-07-06).
-                text = video.episode?.let { "Episode $it  ·  ${video.displayTitle}" }
-                    ?: video.displayTitle,
+                // Addons without real episode names title them "Episode N"
+                // themselves — don't print "Episode 1 · Episode 1".
+                text = video.episode?.let { ep ->
+                    val label = "Episode $ep"
+                    if (video.displayTitle.equals(label, ignoreCase = true)) label
+                    else "$label  ·  ${video.displayTitle}"
+                } ?: video.displayTitle,
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 maxLines = 1,

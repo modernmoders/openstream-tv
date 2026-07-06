@@ -1,18 +1,20 @@
-# STATE — updated 2026-07-06 by session 14 (day 2)
+# STATE — updated 2026-07-06 by session 14 (day 2, cont.)
 
-## ⚠️ READ FIRST (session 14 day 2 — UI overhaul COMPLETE, now alpha.13)
-The 4-part owner UX overhaul is done and emulator-verified: (1) Settings, (2)
-Home featured hero, (3) all menu lists/pills/rows + Discover pickers, (4)
-app-wide screen motion — all in the shared refined language (calm surfaces,
-accent focus, no white invert; DECISIONS #29/#30/#31). Current build
-**alpha.13** (versionCode 13), 236 tests green, R8 release smoke PASS. The
-refined language lives in `theme/OpenStreamTheme.kt` (tokens) +
-`ui/components/Surfaces.kt` (`SurfacePill`/`SurfaceRow`/`OptionRow`). Only
-low-value stragglers remain (Settings' identical private picker row, tiny
-Streams/Rename action dialogs, Details title) — pick up only if the owner
-wants more polish. Deploy target: `app-release.apk` **alpha.13**. The setup
-name flow on real boxes is STILL gated on the owner re-uploading the `api=1`
-index.php — see NEXT ACTION.
+## ⚠️ READ FIRST (session 14 day 2 cont. — alpha.15: both pending items CLOSED)
+The two items alpha.14 left pending are DONE on a cold-booted emulator:
+(1) round-7 Details VISUALLY VERIFIED (SurfacePill season chips, SurfaceRow
+episodes, "Episode N" naming — plus a dedupe so addons that title episodes
+"Episode N" don't render "Episode 1 · Episode 1"); (2) the owner's **Home
+hold-UP stick** root-caused and fixed STRUCTURALLY: the pinned header outside
+the LazyColumn let key-repeat focus escape mid-scroll and strand Home
+half-scrolled — the header is now the list's item 0, so reaching it always
+finishes the scroll to the top (DECISIONS #33; header now scrolls away while
+browsing — intended). ⚠️ Genuine remote key-repeat is NOT simulatable via adb
+(proven, see DECISIONS #33) — the hold-UP fix still needs the OWNER'S REMOTE
+for final confirmation. Current build **alpha.15** (versionCode 15), 236
+tests green, R8 release smoke PASS. Deploy target: `app-release.apk`
+**alpha.15**. The setup name flow on real boxes is STILL gated on the owner
+re-uploading the `api=1` index.php — see NEXT ACTION.
 
 ## ⚠️ (prior) session 14 — setup verified + owner UX overhaul, alpha.12
 Two arcs this session, both emulator-verified: (a) session-13's one-step
@@ -41,6 +43,22 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 day 2 (cont. 2, 2026-07-06) — alpha.15: Details verified +
+  Home hold-UP stick fixed (DECISIONS #33).** Cold-booted AVD. (a) Round-7
+  Details changes visually verified on the fixture series (screenshots in
+  transcript; TESTLOG); added an episode-label dedupe ("Episode 1 ·
+  Episode 1" → "Episode 1" when the addon titles episodes that way).
+  (b) Home hold-UP glitch: repro attempts proved adb CANNOT generate real
+  key-repeat (discrete pairs only; `emu event send` never reaches the input
+  pipeline — dumpsys-verified; computer-use can't allowlist the qemu window,
+  no bundle id). Root-caused by mechanism instead: pinned header outside the
+  LazyColumn = focus escape mid-scroll cancels bring-into-view with nothing
+  left to finish it → half-scrolled rest state. Header moved INSIDE the list
+  (item 0) + branch-aware entry-focus re-request. Emulator-verified: entry
+  focus/hero intact, 12×UP burst from 6 deep settles at true top, header
+  scrolls away while browsing (intended). 236 tests, R8 smoke PASS.
+  versionCode 15 / alpha.15. **Owner must confirm the hold-UP feel with a
+  real remote after deploying alpha.15.**
 - **Session 14 day 2 (cont., 2026-07-06) — Player control-bar REBUILT +
   no-flash auto (alpha.14, DECISIONS #32). Emulator-verified.** Owner-confirmed
   "build the full bar". PlayerScreen.kt rewritten: clean while playing → any
@@ -55,9 +73,8 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
   autoplay-no-flash, wake, scrub+seek (0:30→1:22), play/pause, focus nav,
   labelled buttons (screenshots). TracksDialog + external launch reuse proven
   code (VLC unrenderable on the AVD). 236 tests, release built. versionCode 14.
-  **STILL PENDING a cold-boot visual pass (emulator re-degraded to black
-  mid-session): the round-7 Details refinement, and the Home hold-UP scroll
-  glitch (not yet reproduced/fixed).**
+  ~~STILL PENDING a cold-boot visual pass~~ → both items CLOSED in the
+  alpha.15 entry above.
 - **Session 14 day 2 (cont., 2026-07-06) — Owner feedback round 7 (partial).**
   Shipped the code-safe subset: (a) "E1/E2/S1E2" spelled out to "Episode N" /
   "Season N · Episode N" everywhere (Details, Up Next, both autoplay title
@@ -68,16 +85,11 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
   ⚠️ NOT visually verified — emulator hit its black-screencap degradation
   mid-run; cold-boot + re-verify Details next session. versionCode still 13
   (bump when verified).
-  **STILL OPEN from this feedback round — DO NEXT (needs a COLD-BOOTED
-  emulator; current AVD is in its black-screencap degraded state):**
-  1. Cold-boot, then VISUALLY VERIFY the round-7 Details changes (episode UI,
-     "Episode N", bottom fade) — then bump versionCode 13→14 + build release.
-  2. **Home scroll-up glitch** (owner-reported): scrolled down in Home, holding
-     UP sticks partway (hero half-shown) until a Down+Up. Reproduce on fresh
-     emulator; likely the tall hero (first LazyColumn item) + header-outside-
-     list focus boundary during key-repeat. Try: header inside the scroll, or
-     pivot/bring-into-view tuning.
-  3. **Player controls redesign — OWNER CONFIRMED "build the full bar"
+  **STILL OPEN from this feedback round** — ALL THREE now closed:
+  1. ✅ Round-7 Details visual verify — done (alpha.15 entry above).
+  2. ✅ Home scroll-up glitch — root-caused + fixed structurally
+     (DECISIONS #33; owner-remote confirmation pending).
+  3. ✅ **Player controls redesign — OWNER CONFIRMED "build the full bar"
      (2026-07-06):** a proper bottom control bar. Press any key wakes it and
      puts focus on it; a scrub/progress bar you land on and press ◀▶ to
      rewind/fast-forward (keep the ±10/30s quick-seek too); OK = play/pause; a
@@ -437,11 +449,13 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**The app side of alpha.10 is DONE and emulator-verified (0a below, session
-14). Everything remaining is OWNER-SIDE** — the owner must (a) re-upload the
-regenerated index.php so the real site speaks `api=1`, (b) deploy alpha.10 to
-both boxes, (c) reconnect each box once so ProfileSync learns the link, then
-run gate D. After that, continue Phase 4 (3).
+**The app side is DONE and emulator-verified through alpha.15. Everything
+remaining is OWNER-SIDE** — the owner must (a) re-upload the regenerated
+index.php so the real site speaks `api=1`, (b) deploy **alpha.15** to both
+boxes, (c) reconnect each box once so ProfileSync learns the link, then run
+gate D, and (d) confirm with the REMOTE that holding UP in Home no longer
+sticks (DECISIONS #33 — un-simulatable via adb). After that, continue
+Phase 4 (3).
 
 0a. ✅ **DONE (session 14) — session-13 one-step setup EMULATOR-VERIFIED,
    no bugs.** Full flow passed against a contract mock of the `api=1` site
