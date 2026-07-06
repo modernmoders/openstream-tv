@@ -4,6 +4,29 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Connect screen redesign, owner feedback (session 14, alpha.11)
+
+Owner feedback on the first working setup run: cut the "jody m" example name,
+drop the 3-step guide + filler copy, no accept screen (type name → just
+install → a message that fades → Home), lift content above the keyboard, stop
+the focus highlight clipping, tighter spacing/centering + smooth animation.
+Rebuilt ConnectViewModel (auto-install, dropped the Ready/confirm accept
+state) and ConnectScreen (minimal copy, top-anchored name step, centered
+everything else, AnimatedContent cross-fade with `SizeTransform(clip=false)`,
+Done auto-fades to Home). Tested against the same api=1 mock (Cinemeta +
+fixture, non-secret); `setup.url` restored to the real domain after. All adb
+pinned to `emulator-5554` (boxes untouched).
+
+| Check | Environment | Result |
+|---|---|---|
+| Name step: "Welcome to SavoyStreams" + "What's your name?" + field + "Skip for now" — no guide, no example name, no filler; all above the keyboard | TV emulator (windowed) | PASS (screenshot) |
+| Type "adam s" + ENTER → installs on its own, NO accept screen; cross-fade to "✓ You're all set, Adam!" (first name) | same, api=1 mock | PASS (caught mid-fade) |
+| Done message fades and auto-navigates to Home (no button press) → SavoyStreams rows (Cinemeta + Local Test) | same | PASS |
+| Focus highlight not clipped during step transitions | same | PASS |
+| `testDebugUnitTest` 236 tests (ConnectViewModelTest updated for auto-install: Ready/confirm removed) | macOS, JDK 17 | PASS (236/236) |
+| `assembleDebug` + `assembleRelease` (real savoy.click URL, versionCode 11 / 0.3.0-alpha.11) | same | PASS |
+| R8 release smoke: fresh install of app-release.apk launches to the Welcome screen, no crash / no ClassNotFound in logcat | TV emulator | PASS (screenshot) |
+
 ## 2026-07-06 — One-step name setup + Welcome Guide + Expert mode, emulator verify (session 14)
 
 Session 13 shipped the one-step setup blind (ran out of budget before an

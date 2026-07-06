@@ -27,10 +27,10 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * One-step setup state machine (owner directive 2026-07-06): a typed name
- * walks name → lookup → plan → confirm → installed without the person ever
- * seeing a URL. The mock setup site answers exactly like the regenerated
- * index.php's api mode.
+ * One-step setup state machine (owner directive 2026-07-06, simplified round
+ * 2): a typed name walks name → lookup → install → done automatically, with
+ * no accept screen and without the person ever seeing a URL. The mock setup
+ * site answers exactly like the regenerated index.php's api mode.
  */
 class ConnectViewModelTest {
 
@@ -82,14 +82,10 @@ class ConnectViewModelTest {
         )
 
         val vm = viewModel()
+        // No accept screen: a typed name installs on its own (round 2).
         vm.submitName("adam s")
-        val ready = vm.settled() as UiState.Ready
-        assertEquals("Adam Savoy", ready.displayName)
-        assertEquals(listOf("Movies"), ready.plan.entries.map { it.displayName })
-        assertTrue(dao.getAll().isEmpty()) // still confirm-first (§4.1.1)
-
-        vm.confirm()
         val done = vm.settled() as UiState.Done
+        assertEquals("Adam Savoy", done.displayName)
         assertEquals(1, done.count)
         assertEquals(listOf(manifestUrl), dao.getAll().map { it.manifestUrl })
         // The setup link is remembered → ProfileSync manages this box from now on.
@@ -117,7 +113,8 @@ class ConnectViewModelTest {
             """{"ok":true,"name":"Myles Manuel","link":"${server.url("/profile.json")}"}"""
         )
         vm.choose("Myles Manuel")
-        assertEquals("Myles Manuel", (vm.settled() as UiState.Ready).displayName)
+        // The pick runs the same automatic install path straight to Done.
+        assertEquals("Myles Manuel", (vm.settled() as UiState.Done).displayName)
     }
 
     @Test

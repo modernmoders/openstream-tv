@@ -22,6 +22,21 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 (cont., 2026-07-06) — Connect screen REDESIGN from owner
+  feedback (alpha.11, DECISIONS #28). Built + emulator-verified + R8 smoke.**
+  Owner saw the first working setup run and asked to strip it down: no "jody m"
+  example (real name), no 3-step guide, no filler intro, NO accept screen
+  (type name → just installs → a message that fades → Home), lift content above
+  the keyboard, stop the focus highlight clipping, tighter spacing + smooth
+  animation. Reworked `ConnectViewModel` (dropped `Ready`/`confirm` — auto-
+  installs after lookup; the expert Add-addon paste path still previews-first)
+  and `ConnectScreen` (minimal copy, name step top-anchored above the IME, all
+  else centered, `AnimatedContent` cross-fade with `SizeTransform(clip=false)`,
+  `Done` auto-fades to Home after ~1.7s). 236/236 tests (ConnectViewModelTest
+  updated). versionCode 11 / 0.3.0-alpha.11. Fresh **release APK built + R8-
+  smoke-verified** (launches clean to the new Welcome screen). Emulator flow
+  re-verified end-to-end (TESTLOG 2026-07-06 Connect redesign). Boxes: deploy
+  `app-release.apk` (alpha.11) — supersedes the alpha.10 build.
 - **Session 14 (2026-07-06) — EMULATOR-VERIFIED the session-13 one-step setup
   (NEXT ACTION 0a). PASS end-to-end, no bugs found; docs + gate updated.**
   Session 13 shipped it without a device run; this was the verification.

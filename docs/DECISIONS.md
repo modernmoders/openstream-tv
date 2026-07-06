@@ -553,3 +553,33 @@ secret); a separate lookup microservice (the PHP page already knows the map —
 just teach it JSON); duplicating install logic in the Connect flow (extracted
 `ProfileInstaller` instead); making Expert mode a build flavor (a runtime
 toggle lets one box be "the admin's" without a separate APK).
+
+## 28. 2026-07-06 (session 14) — Connect flow: no accept screen, auto-install, minimal welcome
+
+First real-hardware run of #27 worked, but the owner found the Welcome flow
+over-built: a 3-step guide, a filler intro ("we'll take care of the rest"), an
+example name ("jody m") that named a real person, an accept/confirm screen
+between typing and installing, and content centered where the on-screen
+keyboard covered it. Reworked to the least-friction shape:
+
+- **No accept screen.** A typed name goes straight to install — `ConnectVM`
+  dropped the `Ready` state and `confirm()`; `submitName` → lookup → (Found) →
+  plan → install → `Done`, all under one "Setting up your shows…" message.
+  The expert Add-addon screen still previews-then-confirms (§4.1.1) for the
+  paste-a-link path; the family Connect path trades the preview for zero
+  friction because the profile is trusted (it's the person's own hosted set).
+- **`Done` is a message that fades**, not a button — it shows "You're all set,
+  <first name>!" for ~1.7 s then auto-navigates Home. The only remaining tap
+  on the whole flow is typing the name.
+- **Minimal copy:** just "Welcome to <brand>" + "What's your name?" + field +
+  a low-key "Skip for now". No guide, no example name, no filler.
+- **Keyboard-aware layout:** only the name step lifts toward the top (so the
+  IME never covers it); every other step is centered. Steps cross-fade with a
+  gentle lift via `AnimatedContent` + `SizeTransform(clip = false)` so the
+  focus highlight is never clipped (the §5.3 clip rule, applied to a
+  non-scroll screen). Ambiguous names still detour through the WhichOne picker.
+
+**Rejected:** keeping a confirm step "for safety" (the family path has nothing
+to decide — it's their own profile, and the expert path still confirms);
+a manual "Start watching" button on Done (one more press the owner explicitly
+didn't want).
