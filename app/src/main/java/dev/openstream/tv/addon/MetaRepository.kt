@@ -1,5 +1,7 @@
 package dev.openstream.tv.addon
 
+import dev.openstream.tv.diagnostics.DiagnosticsSink
+import dev.openstream.tv.diagnostics.toDiagnosticDetail
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -17,6 +19,7 @@ class MetaRepository @Inject constructor(
     private val client: AddonClient,
     private val addonRepository: AddonRepository,
     @Named("cinemetaBaseUrl") private val cinemetaBaseUrl: String,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) {
 
     suspend fun resolveMeta(type: String, id: String): Result<MetaItem> {
@@ -37,11 +40,13 @@ class MetaRepository @Inject constructor(
                 .onFailure { lastError = it }
         }
 
-        return Result.failure(
-            lastError ?: AddonRequestException(
-                id, AddonRequestException.Reason.INVALID_MANIFEST,
-                "no installed addon can describe this item"
-            )
+        val error = lastError ?: AddonRequestException(
+            id, AddonRequestException.Reason.INVALID_MANIFEST,
+            "no installed addon can describe this item"
         )
+        // Only the FINAL failure is logged: a stream-only addon skipping an
+        // item is normal, every addon failing to describe it is a diagnosis.
+        diagnostics.record("meta", "couldn't describe $type $id: ${error.toDiagnosticDetail()}")
+        return Result.failure(error)
     }
 }

@@ -85,7 +85,10 @@ class ExoPlayerEngine(context: Context) : PlayerEngine {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                trySend(PlayerEvent.Error(error.toPlainLanguage()))
+                // detail = the raw story for the diagnostics log (codec names
+                // are exactly what the 32-bit boxes' failures need diagnosed).
+                val cause = error.cause?.let { " — ${it::class.simpleName}: ${it.message}" }.orEmpty()
+                trySend(PlayerEvent.Error(error.toPlainLanguage(), "${error.errorCodeName}$cause"))
             }
         }
         exoPlayer.addListener(listener)

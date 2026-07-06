@@ -96,4 +96,22 @@ object DataModule {
     @Singleton
     @ApplicationScope
     fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** On-device error log (MASTER_PLAN §10): Settings → Expert mode → App log. */
+    @Provides
+    @Singleton
+    fun diagnosticsLog(
+        @ApplicationContext context: Context,
+        @ApplicationScope scope: CoroutineScope,
+    ): dev.openstream.tv.diagnostics.DiagnosticsLog =
+        dev.openstream.tv.diagnostics.DiagnosticsLog(
+            logFile = java.io.File(context.filesDir, "diagnostics.log"),
+            scope = scope,
+        )
+
+    @Provides
+    @Singleton
+    fun diagnosticsSink(
+        log: dev.openstream.tv.diagnostics.DiagnosticsLog,
+    ): dev.openstream.tv.diagnostics.DiagnosticsSink = log
 }

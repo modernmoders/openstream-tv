@@ -1,5 +1,7 @@
 package dev.openstream.tv.addon
 
+import dev.openstream.tv.diagnostics.DiagnosticsSink
+import dev.openstream.tv.diagnostics.toDiagnosticDetail
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.first
 class StreamRepository @Inject constructor(
     private val client: AddonClient,
     private val addonRepository: AddonRepository,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) {
 
     /** Enabled addons that declare streams for this type+id, in user order. */
@@ -30,4 +33,11 @@ class StreamRepository @Inject constructor(
         type: String,
         videoId: String,
     ): Result<List<Stream>> = client.streams(addon.baseUrl, type, videoId)
+        .onFailure {
+            // The screen shows a friendly chip; the detail goes here (§10).
+            diagnostics.record(
+                "streams",
+                "${addon.manifest.name} for $type $videoId: ${it.toDiagnosticDetail()}",
+            )
+        }
 }

@@ -21,6 +21,8 @@ sealed interface PlayerEvent {
     /** Playback reached the end of the media — autoplay's trigger (§7.1). */
     data object Ended : PlayerEvent
 
-    /** Fatal player error, already mapped to a plain-language message (§6.1). */
-    data class Error(val message: String) : PlayerEvent
+    /** Fatal player error, already mapped to a plain-language message (§6.1).
+     *  [detail] carries the raw code/cause for the diagnostics log only —
+     *  it must never reach the screen. */
+    data class Error(val message: String, val detail: String = "") : PlayerEvent
 }

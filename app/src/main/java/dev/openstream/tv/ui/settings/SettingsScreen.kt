@@ -60,6 +60,7 @@ fun SettingsScreen(
     onHomeRows: () -> Unit,
     onConnect: () -> Unit,
     onAddons: () -> Unit,
+    onAppLog: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
@@ -153,6 +154,11 @@ fun SettingsScreen(
                     title = "Addons",
                     description = "Add, remove, or reorder the services this TV gets its shows from",
                     onClick = onAddons,
+                )
+                SettingEntry(
+                    title = "App log",
+                    description = "What went wrong lately — viewers never see errors, they land here",
+                    onClick = onAppLog,
                 )
             }
         }

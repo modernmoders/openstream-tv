@@ -14,6 +14,7 @@ import dev.openstream.tv.autoplay.AutoplayStateMachine
 import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.diagnostics.DiagnosticsSink
 import dev.openstream.tv.data.SUBTITLES_OFF
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
@@ -56,6 +57,7 @@ class PlayerViewModel @Inject constructor(
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
     playerHolder: PlayerHolder,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) : ViewModel() {
 
     /** Installed external players (VLC/MX) for the "Play in another app"
@@ -155,16 +157,26 @@ class PlayerViewModel @Inject constructor(
                         origin = autoplayOrigin.origin,
                     )
                 }
-                is PlayerEvent.Error -> when {
-                    // While autoplay is attempting, an open failure is its
-                    // fallthrough signal (§7.1 step 5), not an error panel.
-                    autoplay.onPlaybackError(viewModelScope) -> Unit
-                    // Auto-skip a broken stream to the next server (owner
-                    // request 2026-07-06) — quietly, like a human would.
-                    autoAdvanceOnError && errorSkips < MAX_ERROR_SKIPS && tryNextStream() ->
-                        errorSkips++
-                    else -> _uiState.value =
-                        _uiState.value.copy(error = event.message, switching = false)
+                is PlayerEvent.Error -> {
+                    // Every playback failure lands in the log with its raw
+                    // code/cause (§10 "log them") — the codec detail the
+                    // 32-bit boxes' failures need, without a logcat hookup.
+                    diagnostics.record(
+                        "player",
+                        "\"${_uiState.value.title}\": ${event.message}" +
+                            event.detail.takeIf { it.isNotBlank() }?.let { " [$it]" }.orEmpty(),
+                    )
+                    when {
+                        // While autoplay is attempting, an open failure is its
+                        // fallthrough signal (§7.1 step 5), not an error panel.
+                        autoplay.onPlaybackError(viewModelScope) -> Unit
+                        // Auto-skip a broken stream to the next server (owner
+                        // request 2026-07-06) — quietly, like a human would.
+                        autoAdvanceOnError && errorSkips < MAX_ERROR_SKIPS && tryNextStream() ->
+                            errorSkips++
+                        else -> _uiState.value =
+                            _uiState.value.copy(error = event.message, switching = false)
+                    }
                 }
             }
         }

@@ -78,7 +78,9 @@ class SetupProfileClient @Inject constructor(
                 Result.success(profile)
             }
         } catch (e: IOException) {
-            android.util.Log.w("SetupProfile", "fetch failed: $url", e)
+            // Class name only — the URL and exception message can repeat the
+            // owner's setup domain / tokens (same rule as AddonClient).
+            android.util.Log.w("SetupProfile", "fetch failed: ${e::class.simpleName}")
             Result.failure(
                 AddonRequestException(url, AddonRequestException.Reason.NETWORK, e.message ?: "network error", e)
             )

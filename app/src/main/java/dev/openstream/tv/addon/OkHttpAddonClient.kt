@@ -130,9 +130,11 @@ class OkHttpAddonClient @Inject constructor(
                     }
                 }
             } catch (e: IOException) {
-                // Log the exception class: the on-screen chip is URL-free by
-                // design, so logcat is where diagnosis happens (§4.1.8 "logged").
-                android.util.Log.w("AddonClient", "request failed: $url", e)
+                // NO URL and NO exception object in the log line: addon URLs
+                // embed personal tokens, and exception messages (e.g.
+                // UnknownHostException) repeat the host. Class name only —
+                // the friendly detail lands in DiagnosticsLog (sanitized).
+                android.util.Log.w("AddonClient", "request failed: ${e::class.simpleName}")
                 Result.failure(
                     AddonRequestException(
                         url, AddonRequestException.Reason.NETWORK, e.message ?: "network error", e

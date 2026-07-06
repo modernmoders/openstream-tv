@@ -2,6 +2,7 @@ package dev.openstream.tv.addon
 
 import dev.openstream.tv.data.ProfileLink
 import dev.openstream.tv.data.ProfileSyncPrefs
+import dev.openstream.tv.diagnostics.DiagnosticsSink
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
@@ -55,6 +56,7 @@ class ProfileSync @Inject constructor(
     private val prefs: ProfileSyncPrefs,
     private val profileClient: SetupProfileClient,
     private val repository: AddonRepository,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) {
 
     /**
@@ -67,7 +69,10 @@ class ProfileSync @Inject constructor(
         if (nowMs - link.lastSyncMs < MIN_INTERVAL_MS) return
         val profile = profileClient.fetch(link.url).getOrElse { e ->
             // No URLs in logs — they embed tokens (CLAUDE.md rule).
-            android.util.Log.i(TAG, "re-sync skipped: ${(e as? AddonRequestException)?.reason ?: e.message}")
+            diagnostics.record(
+                "profile-sync",
+                "re-sync skipped: ${(e as? AddonRequestException)?.reason ?: e::class.simpleName}",
+            )
             return
         }
         val wanted = profile.addons.mapNotNull { AddonUrls.normalizeManifestUrl(it.url) }
@@ -79,8 +84,8 @@ class ProfileSync @Inject constructor(
         plan.install.forEach { url -> repository.install(url).onFailure { failed++ } }
         plan.remove.forEach { repository.uninstall(it) }
         if (plan.install.isNotEmpty() || plan.remove.isNotEmpty()) {
-            android.util.Log.i(
-                TAG,
+            diagnostics.record(
+                "profile-sync",
                 "re-synced: ${plan.install.size - failed} installed ($failed failed), ${plan.remove.size} removed"
             )
         }
@@ -89,8 +94,6 @@ class ProfileSync @Inject constructor(
     }
 
     companion object {
-        private const val TAG = "ProfileSync"
-
         /**
          * Short on purpose: the owner's support flow is "I changed your
          * addons — restart the app", which must beat the throttle. This only

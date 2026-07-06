@@ -411,10 +411,13 @@ Owner directives 2026-07-05 (session 12 — REQUIRED, not nice-to-have):
   possibly hold-to-open or a simple gate); everyday users should never land
   in it by accident. Pairs with re-sync above (once boxes self-update,
   nobody but the owner ever needs that screen).
-- [ ] **Never show raw errors to elder users — log them instead.** Owner:
+- [x] **Never show raw errors to elder users — log them instead.** Owner:
   "Don't show them the errors and stuff, but log them." Quiet, friendly
   fallback UI on failures; detailed diagnostics go to an on-device log the
   owner can read (Settings → advanced), not to the screen.
+  DONE session 14 (alpha.16, DECISIONS #34): DiagnosticsLog + Settings →
+  Expert mode → App log; catalog/stream/meta/player/profile-sync failures
+  recorded with addon context, URLs sanitized out (tokens).
 - [ ] **Interface-language switcher + settings parity.** Settings should
   cover the basics other apps have (Stremio/Nuvio as reference), starting
   with an app-UI language switcher (distinct from the shipped

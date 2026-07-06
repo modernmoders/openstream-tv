@@ -1,20 +1,23 @@
 # STATE — updated 2026-07-06 by session 14 (day 2, cont.)
 
-## ⚠️ READ FIRST (session 14 day 2 cont. — alpha.15: both pending items CLOSED)
-The two items alpha.14 left pending are DONE on a cold-booted emulator:
-(1) round-7 Details VISUALLY VERIFIED (SurfacePill season chips, SurfaceRow
-episodes, "Episode N" naming — plus a dedupe so addons that title episodes
-"Episode N" don't render "Episode 1 · Episode 1"); (2) the owner's **Home
-hold-UP stick** root-caused and fixed STRUCTURALLY: the pinned header outside
-the LazyColumn let key-repeat focus escape mid-scroll and strand Home
-half-scrolled — the header is now the list's item 0, so reaching it always
-finishes the scroll to the top (DECISIONS #33; header now scrolls away while
-browsing — intended). ⚠️ Genuine remote key-repeat is NOT simulatable via adb
-(proven, see DECISIONS #33) — the hold-UP fix still needs the OWNER'S REMOTE
-for final confirmation. Current build **alpha.15** (versionCode 15), 236
-tests green, R8 release smoke PASS. Deploy target: `app-release.apk`
-**alpha.15**. The setup name flow on real boxes is STILL gated on the owner
-re-uploading the `api=1` index.php — see NEXT ACTION.
+## ⚠️ READ FIRST (session 14 day 2 cont. — alpha.16: error log SHIPPED)
+Three arcs closed this stretch, all emulator-verified on a cold-booted AVD:
+(1) round-7 Details VISUALLY VERIFIED (+ "Episode 1 · Episode 1" dedupe);
+(2) the owner's **Home hold-UP stick** root-caused + fixed structurally —
+header is now the LazyColumn's item 0 (DECISIONS #33); ⚠️ genuine remote
+key-repeat is NOT simulatable via adb (proven, see #33) — this fix needs the
+OWNER'S REMOTE for final confirmation. (3) **Phase 4 owner directive
+SHIPPED: on-device error log (DECISIONS #34)** — `DiagnosticsLog` (URL-
+sanitized file, trimmed) + Settings → Expert mode → **App log** viewer;
+catalog/stream/meta/player/profile-sync failures recorded with addon
+context; ALSO fixed a Phase-1-era token leak (AddonClient/SetupProfile
+logged full request URLs to logcat). Player errors now log their raw
+codec story — the box's "Naruto won't play internally" (NEXT ACTION 1b)
+will self-document in App log after the next deploy, no adb needed.
+Current build **alpha.16** (versionCode 16), 243 tests green, R8 release
+smoke PASS. Deploy target: `app-release.apk` **alpha.16**. The setup name
+flow on real boxes is STILL gated on the owner re-uploading the `api=1`
+index.php — see NEXT ACTION.
 
 ## ⚠️ (prior) session 14 — setup verified + owner UX overhaul, alpha.12
 Two arcs this session, both emulator-verified: (a) session-13's one-step
@@ -43,6 +46,21 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 day 2 (cont. 3, 2026-07-06) — alpha.16: Phase 4 on-device
+  error log (MASTER_PLAN §10 ticked, DECISIONS #34).** New
+  `diagnostics/DiagnosticsLog` (plain file, newest-last, 400→300 trim,
+  EVERY line URL-sanitized before disk — tokens) + `DiagnosticsSink` fun
+  interface (defaulted no-op param → Hilt injects the real one, the 8
+  direct-construction test files untouched). Wired at the repository
+  chokepoints (Catalog/Stream/MetaRepository, ProfileSync) +
+  PlayerViewModel; PlayerEvent.Error gained a log-only `detail`
+  (errorCodeName+cause → codec diagnosis for 1b without adb). Settings →
+  Expert mode → "App log" (focusable monospace lines, Clear log). Token
+  leak fixed: OkHttpAddonClient/SetupProfile no longer put URLs/exception
+  messages in logcat. VERIFIED live: dead fixture server → friendly chip
+  on screen, sanitized detail in the file AND in the App log screen
+  (screenshots; TESTLOG). 243 tests (7 new), R8 smoke PASS. versionCode
+  16 / alpha.16. AVD restored (expert OFF, fixture server back up).
 - **Session 14 day 2 (cont. 2, 2026-07-06) — alpha.15: Details verified +
   Home hold-UP stick fixed (DECISIONS #33).** Cold-booted AVD. (a) Round-7
   Details changes visually verified on the fixture series (screenshots in
@@ -449,13 +467,15 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**The app side is DONE and emulator-verified through alpha.15. Everything
+**The app side is DONE and emulator-verified through alpha.16. Everything
 remaining is OWNER-SIDE** — the owner must (a) re-upload the regenerated
-index.php so the real site speaks `api=1`, (b) deploy **alpha.15** to both
+index.php so the real site speaks `api=1`, (b) deploy **alpha.16** to both
 boxes, (c) reconnect each box once so ProfileSync learns the link, then run
-gate D, and (d) confirm with the REMOTE that holding UP in Home no longer
-sticks (DECISIONS #33 — un-simulatable via adb). After that, continue
-Phase 4 (3).
+gate D, (d) confirm with the REMOTE that holding UP in Home no longer
+sticks (DECISIONS #33 — un-simulatable via adb), and (e) when the Naruto
+file next fails in the internal player, read Settings → Expert mode →
+App log — the codec detail now records itself (1b, DECISIONS #34). After
+that, continue Phase 4 (3).
 
 0a. ✅ **DONE (session 14) — session-13 one-step setup EMULATOR-VERIFIED,
    no bugs.** Full flow passed against a contract mock of the `api=1` site
@@ -517,11 +537,12 @@ fast path, then pick a subtitle → exit → replay → auto-selected).
    row manager, global density, language memory, "Always use" player,
    ProfileSync remote management). Next candidates, owner-value order —
    the owner's session-12 directives FIRST (MASTER_PLAN §10):
-   (a) **guard the Addons screen** (off the main path, e.g. into Settings —
-   but NOT before gate D passes, its instructions say "Addons → Add addon");
-   (b) **error suppression + on-device log** (friendly fallbacks
-   everywhere, diagnostics to a log the owner reads in Settings);
-   (c) **interface-language switcher** (Stremio/Nuvio parity);
+   (a) **guard the Addons screen** — effectively DONE since alpha.10
+   (Addons lives behind Settings → Expert mode; Home has no Addons button);
+   (b) ✅ **error suppression + on-device log** — DONE alpha.16
+   (DECISIONS #34);
+   (c) **interface-language switcher** (Stremio/Nuvio parity) ← NEXT
+   app-side unit;
    then (d) watched-history row; (e) Discover scroll perf prefetch;
    (f) autoplay settings + tunneling toggle + debug overlay. When the next
    box deploy happens, bump versionCode and include everything since

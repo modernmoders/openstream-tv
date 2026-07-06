@@ -1,5 +1,7 @@
 package dev.openstream.tv.addon
 
+import dev.openstream.tv.diagnostics.DiagnosticsSink
+import dev.openstream.tv.diagnostics.toDiagnosticDetail
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,6 +14,7 @@ import javax.inject.Singleton
 @Singleton
 class CatalogRepository @Inject constructor(
     private val client: AddonClient,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) {
 
     /**
@@ -72,4 +75,12 @@ class CatalogRepository @Inject constructor(
     ): Result<List<MetaItem>> =
         client.catalog(ref.addon.baseUrl, ref.catalog.type, ref.catalog.id, extra)
             .map { metas -> metas.filter { it.isUsable } }
+            .onFailure {
+                // The screen shows a friendly chip; the detail goes here (§10).
+                diagnostics.record(
+                    "catalog",
+                    "\"${ref.title}\" from ${ref.addon.manifest.name}" +
+                        " (${ref.catalog.type}): ${it.toDiagnosticDetail()}",
+                )
+            }
 }

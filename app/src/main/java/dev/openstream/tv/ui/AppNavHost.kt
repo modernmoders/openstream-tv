@@ -22,6 +22,7 @@ import dev.openstream.tv.ui.discover.DiscoverScreen
 import dev.openstream.tv.ui.home.HomeScreen
 import dev.openstream.tv.ui.player.PlayerScreen
 import dev.openstream.tv.ui.search.SearchScreen
+import dev.openstream.tv.ui.settings.AppLogScreen
 import dev.openstream.tv.ui.settings.HomeRowsScreen
 import dev.openstream.tv.ui.settings.SettingsScreen
 import dev.openstream.tv.ui.streams.StreamListScreen
@@ -38,6 +39,8 @@ object Routes {
     const val ADDONS_ADD = "addons/add"
     const val SETTINGS = "settings"
     const val SETTINGS_HOME_ROWS = "settings/home-rows"
+    /** Expert-mode diagnostics viewer (MASTER_PLAN §10 "log them"). */
+    const val SETTINGS_APP_LOG = "settings/app-log"
     /** Welcome Guide + type-your-name setup (owner directive 2026-07-06). */
     const val CONNECT = "connect"
 
@@ -116,10 +119,14 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
                 onHomeRows = { navController.navigate(Routes.SETTINGS_HOME_ROWS) },
                 onConnect = { navController.navigate(Routes.CONNECT) },
                 onAddons = { navController.navigate(Routes.ADDONS) },
+                onAppLog = { navController.navigate(Routes.SETTINGS_APP_LOG) },
             )
         }
         composable(Routes.SETTINGS_HOME_ROWS) {
             HomeRowsScreen(onBack = goBack)
+        }
+        composable(Routes.SETTINGS_APP_LOG) {
+            AppLogScreen(onBack = goBack)
         }
         composable(Routes.DISCOVER) {
             DiscoverScreen(onBack = goBack, onItemClick = openDetails)

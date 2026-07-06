@@ -4,6 +4,28 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Phase 4: on-device error log (session 14 day 2, alpha.16)
+
+MASTER_PLAN §10 "never show raw errors — log them" (DECISIONS #34). Verified
+on the same cold-booted emulator; boxes untouched.
+
+| Check | Result |
+|---|---|
+| `testDebugUnitTest` 243/243 (7 new DiagnosticsLogTest: newest-first, URL sanitization incl. raw-file bytes, stremio:// scheme, 400→300 trim, clear, fire-and-forget record, detail format) | PASS |
+| Kill fixture server → open its movie's stream list → screen shows only the friendly "⚠ couldn't reach the addon" chip (no raw error, no URL) | PASS (screenshot) |
+| The same failure lands on disk with addon context and the manifest URL replaced by "‹address hidden›" (verified via run-as cat of files/diagnostics.log); profile-sync skip logged too | PASS |
+| Settings → Expert mode ON → new "App log" entry → screen lists entries newest-first (monospace), Clear log button shows only when non-empty | PASS (screenshot) |
+| Expert mode OFF hides Addons + App log again (AVD restored to expert-off, fixture server restarted) | PASS |
+| Token-leak fix: OkHttpAddonClient / SetupProfile logcat lines no longer print the request URL or exception message (class name only) | FIXED |
+| R8 release smoke: alpha.16 (versionCode 16) installs over 15, launches to full Home | PASS (screenshot) |
+
+NOT yet exercised on hardware: the player-error path into the log (needs a
+real broken stream; the AVD fixture plays clean) — first box playback failure
+will now self-document in Settings → Expert mode → App log, which is how
+NEXT ACTION 1b (Naruto internal-player failure) gets its codec answer.
+
+Deploy target is now **app-release.apk alpha.16** (supersedes alpha.15).
+
 ## 2026-07-06 — Round-7 Details verified + Home header-in-list fix (session 14 day 2, alpha.15)
 
 Cold-booted emulator (the two items alpha.14 left pending), fixture addon on

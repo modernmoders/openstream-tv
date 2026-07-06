@@ -700,3 +700,40 @@ owner's remote for final confirmation.
 focus could still escape to a pinned header and cancel the scroll);
 key-repeat throttling via onPreviewKeyEvent (fights the framework, breaks
 fast browsing).
+
+## 34. 2026-07-06 (session 14) — On-device error log: DiagnosticsLog + App log screen
+
+MASTER_PLAN §10 owner directive ("Don't show them the errors and stuff, but
+log them"). Viewers keep the existing quiet, friendly fallbacks (toChipMessage
+chips, plain-language player panel); the raw detail now lands in
+`diagnostics/DiagnosticsLog` — one plain-text file in filesDir, newest last,
+trimmed at 400→300 lines so it can't grow unbounded on the 32-bit boxes —
+readable at Settings → Expert mode → App log (monospace, newest first,
+focusable lines so the D-pad can scroll, Clear log).
+
+Security: every line is sanitized BEFORE hitting disk (any scheme://…
+becomes "‹address hidden›", 300-char cap) because addon URLs embed personal
+tokens and exception messages repeat them (verified live: a dead-server
+streams failure logged with its manifest URL hidden). Same reasoning removed
+the full-URL logcat lines in OkHttpAddonClient/SetupProfile (now exception
+class only — they'd leaked the URL+host into logcat since Phase 1).
+
+Wiring altitude: the REPOSITORY chokepoints (CatalogRepository /
+StreamRepository / MetaRepository / ProfileSync) + PlayerViewModel — not the
+five ViewModels — so every surface (home/search/discover/streams/details/
+player/sync) is covered by five call sites that already know the addon name.
+PlayerEvent.Error gained a screen-forbidden `detail` (errorCodeName + cause):
+playback failures now log the codec story, which is exactly what the
+owner-reported "Naruto plays in VLC but not internally" needs diagnosed
+WITHOUT an adb hookup (NEXT ACTION 1b).
+
+`DiagnosticsSink` is a fun interface with a defaulted no-op param
+(`= DiagnosticsSink.NONE`) — Dagger ignores Kotlin defaults so Hilt still
+injects the real log, while the 8 test files constructing these classes
+directly stay untouched. MetaRepository logs only the FINAL failure (a
+stream-only addon skipping an item is normal, all addons failing is a
+diagnosis).
+
+**Rejected:** logging in each ViewModel (5× the call sites, breaks VM test
+constructors); logcat-only (the owner has no adb); a Room table (a text file
+the size of a poster is not a database problem).
