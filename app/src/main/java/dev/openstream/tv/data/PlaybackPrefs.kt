@@ -78,7 +78,9 @@ class DataStorePlaybackPrefs @Inject constructor(
     }
 
     override val autoPlayFirstStream: Flow<Boolean> =
-        context.playbackPrefsStore.data.map { it[AUTO_PLAY_FIRST] ?: false }
+        // Default ON (owner directive 2026-07-06): picking a movie/episode just
+        // plays; a broken stream quietly tries the next server (§7.1.7).
+        context.playbackPrefsStore.data.map { it[AUTO_PLAY_FIRST] ?: true }
 
     override suspend fun setAutoPlayFirstStream(enabled: Boolean) {
         context.playbackPrefsStore.edit { it[AUTO_PLAY_FIRST] = enabled }

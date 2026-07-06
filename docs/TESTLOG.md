@@ -4,6 +4,27 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Owner feedback round 7: naming, autoplay default, episode UI (session 14 day 2)
+
+Owner feedback batch. This entry covers the code-safe subset (the bigger
+player/home redesigns are still pending — see STATE).
+
+| Change | Verification |
+|---|---|
+| "E1/E2/S1E2" → spelled out ("Episode 1", "Season 1 · Episode 2") everywhere — Details rows, Up Next, both autoplay title builders (owner: users don't speak TV shorthand) | compiles; 236 tests green |
+| Auto-play first stream now defaults **ON** (PlaybackPrefs) | compiles; 236 tests green (fakes unaffected) |
+| Details screen refined to the shared language: season chips → `SurfacePill` (current season = accent tint/border), episode rows → `SurfaceRow` (was flat white-invert Buttons) | compiles |
+| No hard-cut: Details episode list gets a bottom fade-to-background + extra bottom contentPadding so a partly-scrolled episode melts out instead of a sharp half-row | compiles |
+
+⚠️ **Visual verification pending:** the emulator hit its known render-
+degradation state (black screencaps after a long heavy adb session — STATE
+env note) mid-verification, so the Details refinement + "Episode N" + fade
+were NOT screenshot-confirmed this run. They use components already verified
+elsewhere (SurfacePill on Discover, SurfaceRow on streams) + a string rename
++ a standard gradient, so risk is low — but re-verify on a cold-booted
+emulator next session before deploying. Also still to reproduce/fix: the Home
+"hold UP sticks partway" scroll-focus glitch (owner-reported).
+
 ## 2026-07-06 — UI pass finish: motion + pills/rows + picker dialogs (session 14 day 2, alpha.13)
 
 Completed owner UX items #3 (stragglers) and #4 (motion). Refined, not dramatic.

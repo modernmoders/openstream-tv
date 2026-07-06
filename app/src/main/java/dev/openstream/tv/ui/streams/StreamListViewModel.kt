@@ -259,8 +259,9 @@ class StreamListViewModel @Inject constructor(
     }
 
     private fun episodeTitle(next: Video): String {
-        // Same shape PlayerViewModel uses for internal autoplay titles
-        val se = if (next.season != null && next.episode != null) "S${next.season}E${next.episode}" else null
+        // Same shape PlayerViewModel uses for internal autoplay titles.
+        // Spelled out, never "S1E2" (owner directive 2026-07-06 — plain words).
+        val se = if (next.season != null && next.episode != null) "Season ${next.season} · Episode ${next.episode}" else null
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { title }
     }

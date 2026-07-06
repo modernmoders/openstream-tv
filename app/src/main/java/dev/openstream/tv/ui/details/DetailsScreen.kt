@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -38,6 +39,8 @@ import dev.openstream.tv.addon.Video
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SurfacePill
+import dev.openstream.tv.ui.components.SurfaceRow
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
 
@@ -132,12 +135,14 @@ private fun DetailsContent(
     onPlayMovie: () -> Unit,
     onPlayEpisode: (Video) -> Unit,
 ) {
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         // contentPadding (not outer padding): the clip boundary stays at the
-        // screen edge, so a focused item's 1.1× scale grows into the
-        // overscan gutter instead of being cut off (§5.3).
-        contentPadding = PaddingValues(horizontal = 48.dp, vertical = 27.dp),
+        // screen edge, so a focused item's 1.1× scale grows into the overscan
+        // gutter instead of being cut off (§5.3). Extra bottom room so the last
+        // episode can scroll clear of the fade below.
+        contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 27.dp, bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item(key = "header") {
@@ -196,24 +201,18 @@ private fun DetailsContent(
                     // the first/last chip's focus scale needs headroom. The
                     // slight indent is invisible at 10 feet (§5.3).
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                     ) {
                         items(seasons, key = { it }) { season ->
-                            Button(
+                            SurfacePill(
+                                label = if (season == 0) "Specials" else "Season $season",
                                 onClick = { onSelectSeason(season) },
+                                selected = season == selectedSeason,
                                 modifier = if (season == seasons.first()) {
                                     Modifier.focusRequester(primaryFocus)
                                 } else Modifier,
-                            ) {
-                                Text(
-                                    text = when {
-                                        season == 0 -> "Specials"
-                                        season == selectedSeason -> "Season $season ✓"
-                                        else -> "Season $season"
-                                    }
-                                )
-                            }
+                            )
                         }
                     }
                 }
@@ -230,15 +229,31 @@ private fun DetailsContent(
             }
         }
     }
+        // Nothing hard-cuts: a partly-scrolled row melts into the background
+        // instead of a sharp half-episode at the bottom edge (owner 2026-07-06).
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(96.dp)
+                .background(
+                    Brush.verticalGradient(0f to Color.Transparent, 1f to AppBackground)
+                )
+        )
+    }
 }
 
 @Composable
 private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(onClick = onClick, modifier = modifier.fillMaxWidth(0.75f)) {
-        Column(Modifier.padding(vertical = 4.dp)) {
+    SurfaceRow(onClick = onClick, modifier = modifier) {
+        Column(Modifier.weight(1f)) {
             Text(
-                text = video.episode?.let { "E$it  ${video.displayTitle}" }
+                // "Episode 1 · System" — spelled out, no "E1" (plain words for
+                // people who don't speak in TV shorthand, owner 2026-07-06).
+                text = video.episode?.let { "Episode $it  ·  ${video.displayTitle}" }
                     ?: video.displayTitle,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -246,6 +261,7 @@ private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = M
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
+                    color = MutedText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

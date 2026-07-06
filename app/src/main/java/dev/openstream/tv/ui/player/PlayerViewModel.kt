@@ -232,7 +232,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun episodeTitle(next: Video): String {
-        val se = if (next.season != null && next.episode != null) "S${next.season}E${next.episode}" else null
+        val se = if (next.season != null && next.episode != null) "Season ${next.season} · Episode ${next.episode}" else null
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { request?.source?.title.orEmpty() }
     }

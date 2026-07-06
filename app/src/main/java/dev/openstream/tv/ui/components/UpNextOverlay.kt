@@ -46,7 +46,9 @@ fun UpNextOverlay(state: AutoplayStateMachine.State?) {
 }
 
 fun Video.upNextLabel(): String {
-    val se = if (season != null && episode != null) "S${season}E$episode" else null
+    // Spelled out, never "S1E2" — this app is used by people who don't speak
+    // in TV shorthand (owner directive 2026-07-06).
+    val se = if (season != null && episode != null) "Season $season · Episode $episode" else null
     return listOfNotNull(se, displayTitle.takeIf { it.isNotBlank() && it != id }).joinToString(" · ")
         .ifBlank { displayTitle }
 }

@@ -33,12 +33,16 @@ import dev.openstream.tv.ui.theme.SurfaceCardFocused
  * every menu reads in the same language.
  */
 
-/** A rounded nav/filter pill (Home header, Discover filter bar). */
+/**
+ * A rounded nav/filter pill (Home header, Discover filter bar, season chips).
+ * [selected] gives it a resting accent tint + border (e.g. the current season).
+ */
 @Composable
 fun SurfacePill(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
 ) {
     val shape = RoundedCornerShape(999.dp)
     Surface(
@@ -47,7 +51,7 @@ fun SurfacePill(
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = SurfaceCard,
+            containerColor = if (selected) SurfaceCardFocused else SurfaceCard,
             focusedContainerColor = SurfaceCardFocused,
             pressedContainerColor = SurfaceCardFocused,
             contentColor = Color.White,
@@ -55,7 +59,7 @@ fun SurfacePill(
             pressedContentColor = Color.White,
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(BorderStroke(1.dp, Hairline), shape = shape),
+            border = Border(BorderStroke(1.dp, if (selected) Accent else Hairline), shape = shape),
             focusedBorder = Border(BorderStroke(2.dp, Accent), shape = shape),
         ),
     ) {

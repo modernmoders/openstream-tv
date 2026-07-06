@@ -41,6 +41,23 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 day 2 (cont., 2026-07-06) — Owner feedback round 7 (partial).**
+  Shipped the code-safe subset: (a) "E1/E2/S1E2" spelled out to "Episode N" /
+  "Season N · Episode N" everywhere (Details, Up Next, both autoplay title
+  builders); (b) **auto-play first stream defaults ON** now; (c) Details screen
+  refined to the shared language (season chips → `SurfacePill` w/ selected
+  state, episode rows → `SurfaceRow`); (d) episode list gets a bottom
+  fade-to-bg + bottom padding so nothing hard-cuts. 236 tests green.
+  ⚠️ NOT visually verified — emulator hit its black-screencap degradation
+  mid-run; cold-boot + re-verify Details next session. versionCode still 13
+  (bump when verified).
+  **STILL OPEN from this feedback round (do next, see NEW BACKLOG below):**
+  Home scroll-up glitch; player controls redesign (wake + scrub-bar cursor,
+  friendlier hints); episode/selection "sexier" polish; Home reorganization
+  (curated lists first, MediaFusion catalogs not first). Owner's addon
+  questions were answered in-chat (profiles hold 9 addons — Cinemeta, Aiolists,
+  Mediafusion, Tmdb, Trakt Scrobble, AIOMetadata, AIOStreams, [BAK]AIOStreams,
+  ANOtherOne; trim to the 4-5 end-game via users.json when finalizing).
 - **Session 14 day 2 (2026-07-06) — UI overhaul FINISHED: motion + straggler
   refinements (alpha.13, DECISIONS #31).** (#4) App-wide screen motion: one
   shared NavHost fade + micro-scale on every navigation. (#3 stragglers)
