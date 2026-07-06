@@ -4,6 +4,28 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Refined UI pass: Settings, Home hero, Addons/Home-rows (session 14, alpha.12)
+
+Owner: menus/typography/spacing "horrible", wants it to "feel amazing" but
+"refined, not dramatic"; do items 1→3 in order. Shared refined tokens
+(`Accent`/`SurfaceCard`/`SurfaceCardFocused`/`Hairline`, DECISIONS #29) +
+TV `Surface` rows replace the flat white-inverting `Button` lists.
+
+| Check | Environment | Result |
+|---|---|---|
+| #1 Settings: rows are quiet surfaces w/ hairline border → calm accent tint + accent border + gentle native scale on focus (no white invert), trailing chevron, readable description both states | TV emulator (windowed) | PASS (screenshot) |
+| #1 Settings picker dialogs (Poster size / Player) use the same refined rows; current selection = accent border + tint + ✓ | same | PASS |
+| #2 Home featured hero: first catalog item as a spotlight — backdrop + scrim, poster, headline title, meta (type·year·★), description, accent "Press OK to watch"; accent focus border | same, Cinemeta content via mock | PASS (screenshot) |
+| #2 Home opens at the top with the hero in view (header-anchored focus + snap-to-item-0 when hero first appears) | same | PASS |
+| #3 Addons manager + Home-rows editor: each entry wrapped in the shared card surface (hairline border, rounded), consistent with Settings | same | PASS (Home-rows screenshot) |
+| `testDebugUnitTest` 236 tests (UI-only changes) | macOS, JDK 17 | PASS (236/236) |
+| `assembleDebug` + `assembleRelease` (real savoy.click URL, versionCode 12 / 0.3.0-alpha.12) | same | PASS |
+| R8 release smoke: refined Settings renders in the minified release build, no crash / no ClassNotFound | TV emulator | PASS (screenshot) |
+
+Not yet redone (future polish, owner's "in order" continues): Discover picker
+chips/dialogs, the Home header pills (Discover/Search/Settings), Details/Streams
+headers. Motion polish (#4) — screen-transition animations app-wide — not started.
+
 ## 2026-07-06 — Connect screen redesign, owner feedback (session 14, alpha.11)
 
 Owner feedback on the first working setup run: cut the "jody m" example name,

@@ -1,14 +1,19 @@
 # STATE — updated 2026-07-06 by session 14
 
-## ⚠️ READ FIRST (session 14 — session-13 feature now emulator-verified)
-Session 13's one-step name setup + Welcome Guide + Expert mode was shipped
-blind (built + committed + pushed, 236 tests green, but never run on a
-device). **Session 14 emulator-verified the whole flow end-to-end against a
-contract mock of the new `api=1` site — PASS, no bugs found** (TESTLOG
-2026-07-06 session 14; screenshots in that session's scratchpad). The
-runtime wiring (routing, name lookup, focus/IME, install order, ProfileSync
-save) is proven correct. **What remains is entirely owner-side / gate D** —
-see NEXT ACTION. The app side of alpha.10 is done and trustworthy.
+## ⚠️ READ FIRST (session 14 — setup verified + owner UX overhaul, now alpha.12)
+Two arcs this session, both emulator-verified: (a) session-13's one-step
+setup was proven end-to-end against a contract mock (no bugs); (b) a big
+owner-driven UX pass — the setup/Connect flow was simplified (no accept
+screen, minimal copy, above-keyboard, smooth) and a **refined visual language**
+was applied (shared theme tokens + TV `Surface` rows) to Settings, a new Home
+featured hero, and the Addons/Home-rows lists. Current build **alpha.12**
+(versionCode 12), 236 tests green, R8 release smoke PASS. Owner is happy
+("new apk works, my account works"). **Active dev thread = the UI overhaul,
+items 1–4 (see the top "Just finished" entry): 1–3 done, still to do are #3's
+stragglers (Discover pickers, Home header pills, Details/Streams headers) and
+#4 (app-wide screen-transition motion), all "refined, not dramatic."** The
+setup name flow on real boxes is still gated on the owner re-uploading the
+`api=1` index.php — see NEXT ACTION.
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
@@ -22,6 +27,22 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 (cont., 2026-07-06) — Refined UI overhaul, owner feedback
+  (alpha.12, DECISIONS #29/#30). Items 1–3 of 4 done + emulator-verified;
+  #4 (app-wide motion) not started.** Owner: "menus/typography/spacing
+  horrible… make it feel amazing" but "refined, not dramatic"; do 1,2,3,4 in
+  order. Established a shared visual language in `theme/OpenStreamTheme.kt`
+  (`Accent` #4DA3FF, `SurfaceCard`, `SurfaceCardFocused`, `Hairline`) + TV
+  `Surface` rows (native smooth focus, no white invert). (1) **Settings** rows
+  + both picker dialogs refined. (2) **Home featured hero** — a calm marquee
+  spotlight (first catalog item: backdrop+scrim, poster, headline title, meta,
+  description, accent CTA); Home now header-anchors focus + snaps to item 0 so
+  the hero shows on entry. (3) **Addons manager + Home-rows editor** wrapped in
+  the shared card surface. 236/236 tests, R8 release smoke PASS. versionCode
+  12 / 0.3.0-alpha.12. **NEXT for the UI pass:** finish #3's stragglers
+  (Discover picker chips/dialogs, Home header pills, Details/Streams headers)
+  and do #4 (app-wide screen-transition motion). Deploy target is now
+  `app-release.apk` alpha.12 (supersedes alpha.10/.11).
 - **Session 14 (cont., 2026-07-06) — Connect screen REDESIGN from owner
   feedback (alpha.11, DECISIONS #28). Built + emulator-verified + R8 smoke.**
   Owner saw the first working setup run and asked to strip it down: no "jody m"

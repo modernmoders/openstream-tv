@@ -1,6 +1,7 @@
 package dev.openstream.tv.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +36,9 @@ import dev.openstream.tv.data.HomeRow
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
+import dev.openstream.tv.ui.theme.SurfaceCard
 
 /**
  * Home-row manager: reorder (▲/▼), rename, and hide/show every catalog row.
@@ -135,8 +138,13 @@ private fun RowEntry(
     onMoveDown: () -> Unit,
     firstFocus: FocusRequester?,
 ) {
+    val shape = RoundedCornerShape(14.dp)
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SurfaceCard, shape)
+            .border(1.dp, Hairline, shape)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
