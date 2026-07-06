@@ -600,3 +600,26 @@ rolls out to the other menus in order.
 
 **Rejected:** a heavy marquee/neon redesign (owner chose refined); per-screen
 ad-hoc colors (all go through the shared tokens so a future change is one file).
+
+## 30. 2026-07-06 (session 14) — Home featured hero (refined marquee)
+
+Owner wanted the big-bold marquee feel from their reference pics, but
+"refined, not dramatic". Added a single quiet spotlight at the top of Home:
+the first item of the first catalog that returns content, shown as a
+focusable Surface with the item's backdrop (when the addon provides one)
+under a left→right + bottom scrim, its poster, a headline-sized title, a
+one-line meta (type · year · ★rating), a 3-line description, and an accent
+"Press OK to watch". Falls back gracefully to the surface tint when a catalog
+item carries no backdrop (many do not). Not a rotating carousel — one calm
+pick, no motion.
+
+Two focus/scroll fixes it needed: (1) Home now anchors initial focus on the
+header (Discover) so it opens at the very top with the hero in view (the §10
+predictable-entry rule); (2) because a LazyColumn anchors scroll to its first
+item, the hero — inserted at the top only after rows load — landed above the
+viewport, so the list snaps to item 0 once when the hero first appears.
+
+**Rejected:** a full-bleed auto-rotating hero carousel (dramatic + motion the
+owner didn't want, and it fights D-pad focus); putting the hero above
+Continue Watching permanently was kept simple — hero is a distinct spotlight
+band, CW remains the first *row*.
