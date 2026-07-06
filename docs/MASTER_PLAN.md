@@ -387,6 +387,39 @@ Owner feedback backlog (real-box session 2026-07-04 — prioritize within Phase 
   on the onn box while 1080p HEVC was clean — likely a low-bitrate source,
   but verify decoder selection; consider a software-decode fallback toggle.
 
+Owner directives 2026-07-05 (session 12 — REQUIRED, not nice-to-have):
+- [x] **Remote addon management via setup-link re-sync.** Boxes live far
+  away (out-of-state family); the owner must be able to change everyone's
+  addons WITHOUT touching the box — in Stremio he did this by signing into
+  their account and reconfiguring (e.g. the 15-addon → AIOStreams×3 +
+  AIOMetadata migration). The design hook already exists: every box is set
+  up from a hosted per-person profile JSON (DECISIONS #14). Plan: the app
+  remembers the setup link it was installed from; on launch (throttled,
+  e.g. daily) it re-fetches the profile and syncs installed addons to match
+  (add new, drop removed, follow profile order; manually-added addons
+  untouched). Owner edits the hosted JSON → every box follows on its own.
+  Failures are silent-but-logged (elder rule below). All households share
+  the same addon set with different credentials, so profile-as-source-of-
+  truth is the correct semantics. *(2026-07-05 session 12: SHIPPED —
+  ProfileSync + ProfileLink prefs, DECISIONS #25; 15-min throttle, retries
+  on unreachable profile; 216/216 tests. On boxes with the next deploy —
+  NOTE: existing boxes must re-paste their setup link ONCE after upgrading
+  so the box learns its link.)*
+- [ ] **Guard the Addons screen from elder users.** Owner: "Don't make it
+  easy to get to the addons screen… I don't really want them messing with
+  addons." Move the Addons entry off the main path (e.g. behind Settings,
+  possibly hold-to-open or a simple gate); everyday users should never land
+  in it by accident. Pairs with re-sync above (once boxes self-update,
+  nobody but the owner ever needs that screen).
+- [ ] **Never show raw errors to elder users — log them instead.** Owner:
+  "Don't show them the errors and stuff, but log them." Quiet, friendly
+  fallback UI on failures; detailed diagnostics go to an on-device log the
+  owner can read (Settings → advanced), not to the screen.
+- [ ] **Interface-language switcher + settings parity.** Settings should
+  cover the basics other apps have (Stremio/Nuvio as reference), starting
+  with an app-UI language switcher (distinct from the shipped
+  audio/subtitle language memory, DECISIONS #24).
+
 ### Phase 5 — Release + community
 - [ ] Release CI: tag → build signed APK (repo-secret keystore) → GitHub Release.
 - [ ] In-app updater: background check of GitHub Releases API, dismissible prompt, download + `ACTION_VIEW` package-installer intent (sideload-friendly; needs `REQUEST_INSTALL_PACKAGES`).

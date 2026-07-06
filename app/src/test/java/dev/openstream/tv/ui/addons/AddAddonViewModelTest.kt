@@ -5,6 +5,7 @@ import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.RemoteEntryServer
 import dev.openstream.tv.addon.SetupProfileClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
+import dev.openstream.tv.addon.fixtures.FakeProfileSyncPrefs
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
 import dev.openstream.tv.ui.addons.AddAddonViewModel.UiState
@@ -31,6 +32,7 @@ class AddAddonViewModelTest {
 
     private lateinit var server: MockAddonServer
     private lateinit var dao: FakeInstalledAddonDao
+    private lateinit var profileSyncPrefs: FakeProfileSyncPrefs
     private lateinit var viewModel: AddAddonViewModel
 
     @Before
@@ -38,10 +40,12 @@ class AddAddonViewModelTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         server = MockAddonServer()
         dao = FakeInstalledAddonDao()
+        profileSyncPrefs = FakeProfileSyncPrefs()
         val http = OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build()
         val client = OkHttpAddonClient(http)
         viewModel = AddAddonViewModel(
-            client, AddonRepository(client, dao), RemoteEntryServer(), SetupProfileClient(http)
+            client, AddonRepository(client, dao), RemoteEntryServer(),
+            SetupProfileClient(http), profileSyncPrefs,
         )
     }
 
@@ -147,6 +151,28 @@ class AddAddonViewModelTest {
         assertEquals("2 addons installed", (settledState() as UiState.Installed).summary)
         val installed = dao.getAll().sortedBy { it.sortOrder }.map { it.manifestUrl }
         assertEquals(listOf(urlA, urlB), installed) // §4.1.7: profile order kept
+
+        // The link is remembered so ProfileSync can follow it from now on.
+        val link = profileSyncPrefs.link!!
+        assertEquals(server.url("/profile.json"), link.url)
+        assertEquals(setOf(urlA, urlB), link.managedUrls)
+    }
+
+    @Test
+    fun `dismissing a profile preview records no setup link`() = runTest(timeout = 60.seconds) {
+        server.route("/a/manifest.json", Fixtures.load("manifest_full"))
+        server.start()
+        server.route(
+            "/profile.json",
+            """{"openstream":1,"addons":[{"name":"A","url":"${server.url("/a/manifest.json")}"}]}"""
+        )
+
+        viewModel.fetchPreview(server.url("/profile.json"))
+        settledState()
+        viewModel.dismissPreview()
+
+        assertEquals(null, profileSyncPrefs.link)
+        assertTrue(dao.getAll().isEmpty())
     }
 
     @Test

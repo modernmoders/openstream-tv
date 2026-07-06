@@ -447,3 +447,28 @@ preferred player silently falls back to internal — never a dead OK press —
 and `ask` with nothing installed behaves as internal. Long-press "Play
 with…" stays the one-off override regardless of the setting. The §7.1.6
 external binge chain inherits whatever player actually launched.
+
+## 25. 2026-07-05 — Remote addon management: the hosted setup profile is a live source of truth
+
+**Decision:** Boxes remember the setup link they were installed from
+(`ProfileLink` in DataStore, saved on the confirmed install-all) and
+`ProfileSync` re-fetches it on every app start, throttled to one successful
+sync per 15 minutes. Diffing is a pure function (`planSync`): install what
+the profile added, remove what it dropped, and only ever remove addons the
+profile itself installed (the "managed" set) — hand-added addons are
+invisible to the sync. A profile addon the user removed by hand comes back:
+the owner's hosted file always wins, that IS the feature (the owner manages
+far-away family boxes by editing one JSON on his host — the Stremio
+sign-into-their-account workflow, minus accounts). Failure policy is the
+elder rule: sync failures are logged, never shown; an unreachable profile
+changes nothing and lastSync doesn't advance, so "I fixed it — restart the
+app" always works. 15-minute throttle, not daily, for the same reason.
+Reorder-on-sync is deferred (YAGNI): install order follows profile order for
+NEW installs; a pure reorder in the profile doesn't reshuffle existing boxes
+until someone actually needs it. SECURITY: managed URLs embed tokens — they
+live in app-private DataStore and are never logged (counts only).
+
+**Rejected:** per-box push/remote-control (needs a reachable box or a relay
+server); accounts with cloud sync (KISS, and the owner IS the server);
+sync-on-timer while running (launch-time only is enough for a TV app that
+gets fully backgrounded/killed between sessions).
