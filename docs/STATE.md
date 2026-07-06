@@ -65,10 +65,20 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
      puts focus on it; a scrub/progress bar you land on and press ◀▶ to
      rewind/fast-forward (keep the ±10/30s quick-seek too); OK = play/pause; a
      clearly-LABELED "Audio & subtitles" button (kill the cryptic "▲ audio
-     settings" hint) + "Try another server" button; auto-hide after ~5s. Keep
-     UpNext/ended/error panels working. This is a real PlayerScreen.kt rewrite
-     with TV focus management — do it against a live emulator, verify the seek/
-     play/track/focus loop end-to-end. Autoplay-default-ON already shipped.
+     settings" hint) + the two failure escapes below; auto-hide after ~5s. Keep
+     UpNext/ended/error panels working. Real PlayerScreen.kt rewrite with TV
+     focus management — verify seek/play/track/focus end-to-end on a live AVD.
+     **Failure UX (owner 2026-07-06, round 8) — two plain-word buttons ALWAYS
+     visible on the bar (not hidden long-press), for the "auto didn't work"
+     cases:** (a) **"Try a different stream"** = next stream (the existing
+     StreamAlternatives walk); (b) **"Play in another app"** = hand THIS stream
+     to VLC/MX (external) — for streams that load but have no audio / no video /
+     wrong-language / that only VLC decodes (ExoPlayer codec gaps on the 32-bit
+     boxes). Rationale: next-STREAM-first is right for "won't play", but "plays
+     wrong" needs the external-player escape, and today it's an invisible
+     long-press. Put the same two buttons on the error panel. Auto still
+     next-stream-first (up to 3), then surfaces the friendly panel with both.
+     Autoplay-default-ON + the auto-mode "Starting…" flash fix already shipped.
   **Home reorganization — OWNER CHOSE "fix via the addon trim later"**: leave
   Home following addon order; MediaFusion-catalogs-first gets fixed when
   profiles are trimmed to 4-5 addons at finalize (see memory

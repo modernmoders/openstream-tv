@@ -190,6 +190,18 @@ fun StreamListScreen(
             )
         }
 
+        if (state.autoStarting) {
+            // Auto mode: a calm "Starting…" fills the screen so the technical
+            // stream list never flashes by (owner 2026-07-06). If auto-play
+            // gives up, autoStarting flips false and the real list appears.
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingMessage(
+                    text = "Starting your show…",
+                    horizontalPadding = 0.dp,
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+            }
+        } else {
         if (!state.initializing && state.groups.isEmpty()) {
             RowMessage(
                 "No installed addon provides streams for this item — " +
@@ -266,6 +278,7 @@ fun StreamListScreen(
                 }
             }
         }
+        } // end: auto-starting spinner vs. the real stream list
     }
 
     pendingPlay?.let { play ->

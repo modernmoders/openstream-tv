@@ -89,6 +89,13 @@ class StreamListViewModel @Inject constructor(
         val externalPlayers: List<ExternalPlayerPort.Choice> = emptyList(),
         /** §6.2 "Always use" setting — what a plain OK on a stream does. */
         val playerPref: String = PLAYER_INTERNAL,
+        /**
+         * Auto-play is picking a stream: show a calm "Starting…" state, NOT the
+         * technical stream list, so it never flashes by (owner 2026-07-06).
+         * Flips false the moment playback starts or auto-play gives up (then the
+         * real list appears so the person can choose — never a dead end).
+         */
+        val autoStarting: Boolean = false,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -154,6 +161,7 @@ class StreamListViewModel @Inject constructor(
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
         // "Try another server" walks from HERE, whatever stream was picked.
         playbackStarted = true
+        _uiState.update { it.copy(autoStarting = false) }
         alternatives.currentIndex = alternatives.list.indexOf(
             StreamAlternatives.Alternative(addon.manifestUrl, stream)
         )
@@ -174,6 +182,7 @@ class StreamListViewModel @Inject constructor(
         val source = stream.toPlayableSource(playTitle)?.copy(startPositionMs = startPositionMs)
             ?: return null
         playbackStarted = true
+        _uiState.update { it.copy(autoStarting = false) }
         pendingExternal = PendingExternal(choice, mediaRef, playTitle)
         lastExternalChoice = choice
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
@@ -282,14 +291,22 @@ class StreamListViewModel @Inject constructor(
             // Auto-play first stream (owner request 2026-07-06): wait until
             // the top of the list can no longer change, then launch it once.
             if (!playbackPrefs.autoPlayFirstStream.first()) return@launch
+            // Hide the raw list behind a calm "Starting…" state until we either
+            // launch or give up — no technical flash (owner 2026-07-06).
+            _uiState.update { it.copy(autoStarting = true) }
             // Resume position first — Room answers long before the fan-out,
             // and auto-start must resume where the person left off.
             val resume = progressRepository.observeResumePosition(mediaRef).first()
             val result = _uiState
                 .map { firstPlayableWhenSettled(it.initializing, it.groups) }
                 .first { it !is AutoStartResult.Waiting }
-            val found = result as? AutoStartResult.Found ?: return@launch
-            if (playbackStarted) return@launch // user beat us to it
+            val found = result as? AutoStartResult.Found
+            if (found == null || playbackStarted) {
+                // Nothing auto-playable, or the user got there first: reveal the
+                // real list so they can pick — never leave them on a spinner.
+                _uiState.update { it.copy(autoStarting = false) }
+                return@launch
+            }
             _autoStart.tryEmit(AutoStart(found.addon, found.stream, resume ?: 0))
         }
         viewModelScope.launch {
