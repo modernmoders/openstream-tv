@@ -1,5 +1,6 @@
 package dev.openstream.tv.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,8 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Button
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.MAX_POSTER_COLUMNS
 import dev.openstream.tv.data.MIN_POSTER_COLUMNS
@@ -36,8 +39,12 @@ import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.components.BackButton
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
+import dev.openstream.tv.ui.theme.SurfaceCard
+import dev.openstream.tv.ui.theme.SurfaceCardFocused
 
 /**
  * Settings home (Phase 4). Deliberately a short list of large, described
@@ -184,6 +191,12 @@ private fun playerPrefLabel(pref: String, installed: List<ExternalPlayerPort.Cho
             ?: "the internal player"
     }
 
+/**
+ * One refined settings row (2026-07-06 owner UX pass): a quiet surface with a
+ * hairline border that lifts to a calm accent tint + accent border on focus,
+ * with TV Material's built-in (non-stuttering) scale. No white invert — the
+ * description stays readable in both states. Trailing chevron cues "opens".
+ */
 @Composable
 private fun SettingEntry(
     title: String,
@@ -191,12 +204,90 @@ private fun SettingEntry(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Button(onClick = onClick, modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(vertical = 6.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            // No explicit color: inherit the button's content color so the
-            // focused (inverted) state stays readable.
-            Text(text = description, style = MaterialTheme.typography.bodySmall)
+    val shape = RoundedCornerShape(14.dp)
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.015f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = SurfaceCard,
+            focusedContainerColor = SurfaceCardFocused,
+            pressedContainerColor = SurfaceCardFocused,
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+            pressedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(BorderStroke(1.dp, Hairline), shape = shape),
+            focusedBorder = Border(BorderStroke(2.dp, Accent), shape = shape),
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 16.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(text = description, style = MaterialTheme.typography.bodySmall, color = MutedText)
+            }
+            Text(
+                text = "›",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MutedText,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
+    }
+}
+
+/** A dialog picker option in the same refined language (selected = accent). */
+@Composable
+private fun PickerRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = ClickableSurfaceDefaults.shape(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) SurfaceCardFocused else SurfaceCard,
+            focusedContainerColor = SurfaceCardFocused,
+            pressedContainerColor = SurfaceCardFocused,
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+            pressedContentColor = Color.White,
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(BorderStroke(1.dp, if (selected) Accent else Hairline), shape = shape),
+            focusedBorder = Border(BorderStroke(2.dp, Accent), shape = shape),
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 13.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                modifier = Modifier.weight(1f),
+            )
+            if (selected) {
+                Text("✓", style = MaterialTheme.typography.titleMedium, color = Accent)
+            }
         }
     }
 }
@@ -218,15 +309,12 @@ private fun PlayerPrefDialog(
 
     @Composable
     fun option(value: String, label: String) {
-        Button(
+        PickerRow(
+            label = label,
+            selected = value == current,
             onClick = { onPick(value) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (value == current) Modifier.focusRequester(selectedFocus)
-                    else Modifier
-                ),
-        ) { Text(label + if (value == current) "  ✓" else "") }
+            modifier = if (value == current) Modifier.focusRequester(selectedFocus) else Modifier,
+        )
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -299,17 +387,12 @@ private fun DensityDialog(
                         MAX_POSTER_COLUMNS -> " · most on screen"
                         else -> ""
                     }
-                    Button(
+                    PickerRow(
+                        label = "$columns per row$hint",
+                        selected = columns == current,
                         onClick = { onPick(columns) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (columns == current) Modifier.focusRequester(selectedFocus)
-                                else Modifier
-                            ),
-                    ) {
-                        Text("$columns per row$hint" + if (columns == current) "  ✓" else "")
-                    }
+                        modifier = if (columns == current) Modifier.focusRequester(selectedFocus) else Modifier,
+                    )
                 }
             }
         }

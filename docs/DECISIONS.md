@@ -583,3 +583,20 @@ keyboard covered it. Reworked to the least-friction shape:
 to decide — it's their own profile, and the expert path still confirms);
 a manual "Start watching" button on Done (one more press the owner explicitly
 didn't want).
+
+## 29. 2026-07-06 (session 14) — Refined UI language: shared tokens, Surface rows
+
+Owner: "the menus, typography and spacing are horrible… make it feel amazing,
+snappy and smooth" but "refined, not dramatic". Established one shared visual
+vocabulary in `theme/OpenStreamTheme.kt` (the single palette home): `Accent`
+(#4DA3FF, the one interaction color), `SurfaceCard`/`SurfaceCardFocused`
+(quiet resting surface → calm accent tint on focus, no white invert),
+`Hairline` border. List rows/pickers now use TV Material `Surface` (native,
+non-stuttering focus scale + color/border transitions) instead of the flat
+`Button` that inverted to white — title white in both states, description
+stays muted-readable, trailing chevron cues "opens", accent border on focus.
+Applied first to Settings + its dialogs (owner screenshotted it as "horrible");
+rolls out to the other menus in order.
+
+**Rejected:** a heavy marquee/neon redesign (owner chose refined); per-screen
+ad-hoc colors (all go through the shared tokens so a future change is one file).
