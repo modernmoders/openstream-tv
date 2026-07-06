@@ -12,6 +12,26 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 12 (cont., 2026-07-06) — gate-D failure root-caused: NOT the
+  hosting, NOT the app.** Owner reported clarence's setup link installs but
+  adam's shows "response this app couldn't read". Re-verified adam's file
+  byte-perfect + structurally valid on the host, then REPRODUCED the exact
+  flow on the TV emulator with adam's real link: profile previewed
+  perfectly — "adam savoy", all 9 addons ✓, Install button ready
+  (screenshot in transcript). Conclusion: the text entered on the owner's
+  box wasn't the exact personal .json link (page URL or stale/mistyped
+  link). Owner instruction: phone → setup page → type name → COPY the
+  returned link → paste into the box's browser-entry page. toby-savoy-*
+  .json is STILL 404 everywhere (re-drag never landed) — that one file
+  must be re-uploaded to setup/ before D can fully pass.
+  Addon-manifest facts captured for owner education (2026-07-06): Trakt
+  Scrobble addon = catalogs only (scrobbling is Stremio-app-native →
+  MASTER_PLAN owner-asks: native Trakt integration); AIOMetadata instance
+  ("AIO - Friends Anime") = catalog+meta+subtitles, 66 catalogs; main
+  AIOStreams = 48 catalogs, the two backups = stream-only. App gap found
+  while answering: subtitles resource never fanned out (stream-embedded
+  only) — recorded in MASTER_PLAN. New owner asks recorded: profile
+  dashboard (add/remove/reorder + last-sync metrics), native Trakt.
 - **Session 12 — setup hosting FIXED (9/10) + Phase 4 unit 4: remote addon
   management (ProfileSync, DECISIONS #25).**
   (a) **Hosting saga resolved:** owner's drag-and-drop had landed in the

@@ -420,6 +420,28 @@ Owner directives 2026-07-05 (session 12 — REQUIRED, not nice-to-have):
   with an app-UI language switcher (distinct from the shipped
   audio/subtitle language memory, DECISIONS #24).
 
+Owner asks 2026-07-06 (session 12 continued):
+- [ ] **Owner dashboard for the hosted profiles.** A password-protected
+  single-file PHP admin page next to the setup page: list every person,
+  add/remove/reorder their addons (name + URL rows), write the profile
+  JSONs back. Optional metrics: record each profile fetch (timestamp per
+  file, tiny PHP log) so the owner can see which boxes have synced since a
+  change. NOT required to push changes — editing the hosted JSON by hand
+  (or `tools/make_profiles.py` + re-upload) already works; ProfileSync
+  pulls it. This is convenience so the owner never hand-edits JSON.
+- [ ] **Native Trakt integration.** Verified 2026-07-06: Stremio's "Trakt
+  Scrobble" addon declares `resources=[catalog]` ONLY — it serves the
+  user's Trakt lists as catalogs; actual scrobbling in Stremio is done by
+  the Stremio app itself, not the addon. So in OUR app that addon gives
+  Trakt rows but nothing ever scrobbles back. Plan: per-box Trakt device-
+  code OAuth, scrobble start/pause/stop (watched at ~80%), pairs with the
+  watched-history row. Until then: installing the scrobble addon is
+  harmless (catalogs work in any client, no Stremio app needed).
+- [ ] **Subtitles fan-out (§4.1 gap).** The player only uses subtitles
+  embedded in the chosen stream object; installed addons' `subtitles`
+  resource is never queried (AIOMetadata + AIOStreams both declare it).
+  Fan out at playback like streams, merge with stream-embedded tracks.
+
 ### Phase 5 — Release + community
 - [ ] Release CI: tag → build signed APK (repo-secret keystore) → GitHub Release.
 - [ ] In-app updater: background check of GitHub Releases API, dismissible prompt, download + `ACTION_VIEW` package-installer intent (sideload-friendly; needs `REQUEST_INSTALL_PACKAGES`).
