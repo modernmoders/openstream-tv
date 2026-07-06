@@ -1,6 +1,11 @@
 package dev.openstream.tv.ui
 
 import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -76,7 +81,17 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
     // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
     val goBack: () -> Unit = { navController.popBackStack() }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        // Refined, snappy screen motion (owner UX pass #4): a quick cross-fade
+        // with a whisper of scale — enough to feel alive on a TV, never enough
+        // to disorient or stutter. One place, so every destination inherits it.
+        enterTransition = { fadeIn(tween(240)) + scaleIn(initialScale = 0.985f, animationSpec = tween(240)) },
+        exitTransition = { fadeOut(tween(160)) },
+        popEnterTransition = { fadeIn(tween(240)) },
+        popExitTransition = { fadeOut(tween(160)) + scaleOut(targetScale = 0.985f, animationSpec = tween(160)) },
+    ) {
         composable(Routes.HOME) {
             HomeScreen(
                 onDiscover = { navController.navigate(Routes.DISCOVER) },

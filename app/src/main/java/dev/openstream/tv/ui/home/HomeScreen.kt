@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Border
-import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -48,6 +47,7 @@ import dev.openstream.tv.ui.components.ContinueWatchingCard
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
@@ -101,10 +101,10 @@ fun HomeScreen(
                 color = Color.White,
                 modifier = Modifier.weight(1f),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onDiscover, modifier = Modifier.focusRequester(headerFocus)) { Text("Discover") }
-                Button(onClick = onSearch) { Text("Search") }
-                Button(onClick = onSettings) { Text("Settings") }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SurfacePill("Discover", onDiscover, Modifier.focusRequester(headerFocus))
+                SurfacePill("Search", onSearch)
+                SurfacePill("Settings", onSettings)
             }
         }
 
@@ -249,7 +249,7 @@ private fun FeaturedHero(
                     }
                     if (!item.description.isNullOrBlank()) {
                         Text(
-                            text = item.description!!,
+                            text = item.description,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MutedText,
                             maxLines = 3,

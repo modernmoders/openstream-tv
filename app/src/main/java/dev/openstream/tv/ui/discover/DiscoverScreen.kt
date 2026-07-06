@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -38,7 +39,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
@@ -46,6 +46,7 @@ import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 
@@ -108,35 +109,30 @@ fun DiscoverScreen(
                 modifier = Modifier.padding(end = 16.dp),
             )
             if (state.types.isNotEmpty()) {
-                Button(
+                SurfacePill(
+                    label = typeLabel(state.selectedType),
                     onClick = { openPicker = Picker.TYPE },
                     modifier = Modifier.focusRequester(typeFocus),
-                ) {
-                    Text(typeLabel(state.selectedType))
-                }
+                )
             }
             if (state.catalogs.isNotEmpty()) {
-                Button(onClick = { openPicker = Picker.CATALOG }) {
-                    Text(
-                        text = state.selected?.title ?: "Catalog",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                SurfacePill(
+                    label = state.selected?.title ?: "Catalog",
+                    onClick = { openPicker = Picker.CATALOG },
+                    modifier = Modifier.widthIn(max = 300.dp),
+                )
             }
             if (state.genres.isNotEmpty()) {
-                Button(onClick = { openPicker = Picker.GENRE }) {
-                    Text(state.selectedGenre ?: "Genre")
-                }
+                SurfacePill(
+                    label = state.selectedGenre ?: "Genre",
+                    onClick = { openPicker = Picker.GENRE },
+                )
             }
             if (state.types.isNotEmpty()) {
                 // View is display settings, not a tree level — pushed to the
-                // far edge and outlined so it reads apart from the pickers
-                // (owner request 2026-07-05).
+                // far edge so it reads apart from the pickers (owner 2026-07-05).
                 Spacer(Modifier.weight(1f))
-                OutlinedButton(onClick = { openPicker = Picker.VIEW }) {
-                    Text("⚙ View")
-                }
+                SurfacePill(label = "⚙ View", onClick = { openPicker = Picker.VIEW })
             }
         }
 

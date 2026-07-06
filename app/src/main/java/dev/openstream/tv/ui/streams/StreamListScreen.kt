@@ -49,6 +49,7 @@ import dev.openstream.tv.player.resolvePreferredPlayer
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SurfaceRow
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
@@ -418,14 +419,16 @@ private fun StreamRow(
     modifier: Modifier = Modifier,
 ) {
     if (stream.isPlayableInV1) {
-        Button(
+        SurfaceRow(
             onClick = onClick,
             onLongClick = onLongClick,
-            modifier = modifier.fillMaxWidth(0.85f),
+            modifier = modifier,
         ) {
-            Column(Modifier.padding(vertical = 2.dp)) {
+            Column(Modifier.weight(1f)) {
                 Text(
                     text = stream.name ?: "Stream",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -433,6 +436,7 @@ private fun StreamRow(
                     Text(
                         text = stream.displayDescription,
                         style = MaterialTheme.typography.bodySmall,
+                        color = MutedText,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
