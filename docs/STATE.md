@@ -1,4 +1,13 @@
-# STATE — updated 2026-07-05 by session 12
+# STATE — updated 2026-07-06 by session 13
+
+## ⚠️ READ FIRST (session 13 handoff — Fable 5 ran out mid-task)
+Session 13's big feature (one-step name setup + Welcome Guide + Expert mode)
+is **built, committed, and pushed**, 236 tests green — BUT it was **never
+emulator-verified** and the live setup site still runs the OLD page. It is
+NOT proven working on real hardware. **Do not treat it as done.** Start at
+NEXT ACTION 0 below: verify the Connect flow on the emulator, then fix
+whatever's broken. Everything compiles and unit-tests pass; the risk is in
+the runtime wiring (nav routing, name lookup against the real site, focus).
 
 ## Phase
 Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
@@ -12,6 +21,31 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 13 (2026-07-06) — One-step name setup + Welcome Guide + Expert
+  mode (owner directive, DECISIONS #27). BUILT + COMMITTED + PUSHED, 236
+  tests green, NOT emulator-verified, NOT deployed. alpha.10 (versionCode 10).**
+  Owner: kill link-copying — a person types ONLY their name on the TV and the
+  app looks them up, fetches their profile, installs everything; nobody sees
+  a URL. New: `SetupConfig` (setup.url/brand from gitignored local.properties
+  via BuildConfig — the secret domain stays out of git; empty url = feature
+  hidden, open-source-safe); `SetupNameLookup` (POSTs name to the site's new
+  JSON `api=1` mode → Found/Ambiguous/NoMatch); `ProfileInstaller` (shared
+  plan+install path — `AddAddonViewModel` refactored to delegate to it);
+  `ui/connect/ConnectViewModel`+`ConnectScreen` (Welcome Guide: 3 steps →
+  type name → "Hi Adam!" → Finish setup → Done; warm jargon-free copy);
+  `LaunchViewModel` (fresh install + configured build → Welcome, else Home;
+  `take(1)` so installing mid-Connect doesn't yank the nav graph). Expert
+  mode (`ViewPrefs.expertMode`, default OFF): Home header lost "Addons"
+  (title = brand), addon manager moved to Settings → Expert mode → Addons
+  (expert-only); Settings gained "Connect this TV" + "Expert mode", now
+  scrollable. Site: `tools/make_hosting_bundle.py` index.php gained the JSON
+  api mode + friendlier copy + `--brand`; **regenerated with --brand
+  SavoyStreams into the gitignored hosting dir but NOT yet uploaded to
+  the owner's setup domain** (the live site is still the old HTML page — the name flow
+  CANNOT work on real hardware until this is uploaded). Also fixed the
+  long-standing HomeViewModelTest Main-dispatcher flake (cancel VM scopes
+  before resetMain; still saw it ~1/6 — mitigated, not fully dead). 13 new
+  tests (ConnectViewModelTest ×7, LaunchViewModelTest ×3, + updated).
 - **Session 12 (cont., 2026-07-06) — Phase 4 unit 5: Auto-play first
   stream + "Try another server" (owner request, DECISIONS #26).**
   Settings toggle (default off): picking a movie/episode auto-plays the
@@ -262,9 +296,35 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**Owner-blocked items first if the owner is present (0/1/1b below);
-otherwise continue Phase 4 units (3).** Gate D is CLOSE: hosting is 9/10
-verified (session 12) — one file re-drag + a clean retest away.
+**0a below is THE priority — session 13 shipped a big feature blind (ran out
+of budget before emulator verify). Prove it, then fix it.** After that, the
+owner-blocked gate items (0b/1/1b), then continue Phase 4 (3).
+
+0a. **VERIFY + FIX the session-13 one-step setup on the emulator.** It
+   compiles and unit-tests pass but has NEVER run on a device — assume
+   something in the runtime wiring needs fixing.
+   The live <setup-domain>/setup/ still serves the OLD HTML index.php, so the
+   name lookup will FAIL against it as-is. Two ways to test:
+   (i) **Re-upload first** the regenerated `docs/reference/StremioSurfer/
+   hosting/index.php` (gitignored — has the JSON `api=1` mode) to
+   <setup-domain>/setup/, then test against the real site; OR
+   (ii) **Local mock:** last session left `scratchpad/mock_setup_site.py`
+   (may be gone — the scratchpad is session-scoped; re-create if needed: a
+   tiny http.server answering POST api=1 with `{"ok":true,"name":"Adam
+   Savoy","link":"<adam's REAL .json link>"}` for "adam", the ambiguous
+   `choices` shape for "myles"). Then in local.properties set
+   `setup.url=http://10.0.2.2:8095/`, `assembleDebug`, install, and after
+   the run RESTORE `setup.url=<setup-domain>/setup/`.
+   Flow to verify on a FRESH install (clear app data or uninstall first):
+   launch → Welcome/Connect screen (not Home) → type "adam s" → "Hi Adam!"
+   with the addon list → Finish setup → addons install → "Start watching" →
+   Home shows rows. Also check: Settings → Expert mode toggle reveals Addons;
+   Home header shows "SavoyStreams" and has no Addons button. Fix focus/nav/
+   copy issues as they show up (emulator D-pad + IME quirks are in the
+   Environment rules below). TESTLOG the result. adam's real link is in the
+   owner's message history / the hosted adam-savoy-*.json.
+0b. Gate D is CLOSE: hosting is 9/10 verified (session 12) — one file re-drag
+   + a clean retest away.
 Quick verify next session: subtitle-language persistence round-trip on
 the fixture movie (Settings → Home rows → move "Local Test" row up for a
 fast path, then pick a subtitle → exit → replay → auto-selected).

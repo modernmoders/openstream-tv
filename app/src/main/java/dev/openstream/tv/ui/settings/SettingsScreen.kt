@@ -51,11 +51,14 @@ import dev.openstream.tv.ui.theme.MutedText
 fun SettingsScreen(
     onBack: () -> Unit,
     onHomeRows: () -> Unit,
+    onConnect: () -> Unit,
+    onAddons: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
+    val expert by viewModel.expertMode.collectAsStateWithLifecycle()
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
 
@@ -83,7 +86,14 @@ fun SettingsScreen(
 
         Spacer(Modifier.padding(top = 24.dp))
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The list outgrew one screen when Connect/Expert arrived — scroll,
+        // with vertical headroom so the focus scale isn't clipped (§5.3).
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 8.dp),
+        ) {
             SettingEntry(
                 title = "Home rows",
                 description = "Reorder, rename, or hide the rows on the home screen",
@@ -112,6 +122,32 @@ fun SettingsScreen(
                 },
                 onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
             )
+            if (viewModel.setupConfigured) {
+                SettingEntry(
+                    title = "Connect this TV",
+                    description = "Type your name and your ${viewModel.brand} " +
+                        "shows set themselves up — nothing else to do",
+                    onClick = onConnect,
+                )
+            }
+            // Deliberately LAST (owner directive 2026-07-06): technical tools
+            // stay out of sight unless whoever looks after the box opts in.
+            SettingEntry(
+                title = "Expert mode",
+                description = if (expert) {
+                    "On — technical tools are shown (like the addon manager below)"
+                } else {
+                    "Off — keeps things simple. Only for whoever looks after this TV"
+                },
+                onClick = { viewModel.setExpertMode(!expert) },
+            )
+            if (expert) {
+                SettingEntry(
+                    title = "Addons",
+                    description = "Add, remove, or reorder the services this TV gets its shows from",
+                    onClick = onAddons,
+                )
+            }
         }
     }
 

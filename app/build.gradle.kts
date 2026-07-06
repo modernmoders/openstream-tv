@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     // Kotlin compilation is built into AGP 9+ (no kotlin-android plugin needed).
     alias(libs.plugins.android.application)
@@ -5,6 +7,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// Owner-private deployment config (setup.url / setup.brand) lives in the
+// gitignored local.properties: the setup domain unlocks name->profile
+// lookups, so it must never reach the public repo (CLAUDE.md security).
+// Absent keys leave the one-step name setup hidden — open-source builds
+// still work, they just start at the classic add-addon path.
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -20,8 +32,17 @@ android {
         targetSdk = 37
         // Bump both for every pre-release: the Phase 5 in-app updater will
         // compare versionCode, and Android refuses to upgrade over an equal one.
-        versionCode = 9
-        versionName = "0.3.0-alpha.9"
+        versionCode = 10
+        versionName = "0.3.0-alpha.10"
+
+        buildConfigField(
+            "String", "SETUP_URL",
+            "\"${localProps.getProperty("setup.url").orEmpty()}\"",
+        )
+        buildConfigField(
+            "String", "SETUP_BRAND",
+            "\"${localProps.getProperty("setup.brand") ?: "OpenStream TV"}\"",
+        )
     }
 
     buildTypes {
@@ -49,6 +70,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

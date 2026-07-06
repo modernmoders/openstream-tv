@@ -2,13 +2,16 @@ package dev.openstream.tv.ui
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.ui.addons.AddAddonScreen
 import dev.openstream.tv.ui.addons.AddonManagerScreen
+import dev.openstream.tv.ui.connect.ConnectScreen
 import dev.openstream.tv.ui.details.DetailsScreen
 import dev.openstream.tv.ui.discover.DiscoverScreen
 import dev.openstream.tv.ui.home.HomeScreen
@@ -30,6 +33,8 @@ object Routes {
     const val ADDONS_ADD = "addons/add"
     const val SETTINGS = "settings"
     const val SETTINGS_HOME_ROWS = "settings/home-rows"
+    /** Welcome Guide + type-your-name setup (owner directive 2026-07-06). */
+    const val CONNECT = "connect"
 
     /** Ids contain `:` and arbitrary addon characters — always Uri.encode. */
     const val DETAILS = "details/{type}/{id}"
@@ -45,7 +50,15 @@ object Routes {
 }
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
+    // First launch with nothing installed → Welcome Guide; else Home.
+    // null = Room read in flight (ms) — render nothing rather than flash Home.
+    val startOnWelcome by launchViewModel.startOnWelcome.collectAsStateWithLifecycle()
+    val startDestination = when (startOnWelcome) {
+        null -> return
+        true -> Routes.CONNECT
+        false -> Routes.HOME
+    }
     val navController = rememberNavController()
     // Movies skip the details screen: it held exactly one action ("View
     // streams"), which the owner called an extra step (2026-07-05 round 5).
@@ -63,20 +76,31 @@ fun AppNavHost() {
     // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
     val goBack: () -> Unit = { navController.popBackStack() }
 
-    NavHost(navController = navController, startDestination = Routes.HOME) {
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.HOME) {
             HomeScreen(
                 onDiscover = { navController.navigate(Routes.DISCOVER) },
                 onSearch = { navController.navigate(Routes.SEARCH) },
-                onManageAddons = { navController.navigate(Routes.ADDONS) },
                 onSettings = { navController.navigate(Routes.SETTINGS) },
                 onItemClick = openDetails,
+            )
+        }
+        composable(Routes.CONNECT) {
+            // Done/"maybe later" both land Home with a clean back stack: from
+            // the welcome start there IS no back, and from Settings a freshly
+            // connected TV should open on its new home screen, not history.
+            ConnectScreen(
+                onExit = {
+                    navController.navigate(Routes.HOME) { popUpTo(0) { inclusive = true } }
+                },
             )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = goBack,
                 onHomeRows = { navController.navigate(Routes.SETTINGS_HOME_ROWS) },
+                onConnect = { navController.navigate(Routes.CONNECT) },
+                onAddons = { navController.navigate(Routes.ADDONS) },
             )
         }
         composable(Routes.SETTINGS_HOME_ROWS) {

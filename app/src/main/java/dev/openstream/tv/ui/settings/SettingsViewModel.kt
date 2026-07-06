@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
+import dev.openstream.tv.data.SetupConfig
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.player.ExternalPlayer
 import dev.openstream.tv.player.ExternalPlayerPort
@@ -21,10 +22,20 @@ class SettingsViewModel @Inject constructor(
     private val viewPrefs: ViewPrefs,
     private val playbackPrefs: PlaybackPrefs,
     externalPlayers: ExternalPlayerPort,
+    setupConfig: SetupConfig,
 ) : ViewModel() {
+
+    /** "Connect this TV" only exists when this build knows a setup site. */
+    val setupConfigured: Boolean = setupConfig.isConfigured
+    val brand: String = setupConfig.brand
 
     val posterColumns: StateFlow<Int> = viewPrefs.posterColumns
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_POSTER_COLUMNS)
+
+    /** Expert mode (owner directive 2026-07-06): technical tools stay
+     *  invisible until whoever looks after the box flips this. */
+    val expertMode: StateFlow<Boolean> = viewPrefs.expertMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val playerPref: StateFlow<String> = playbackPrefs.preferredPlayer
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PLAYER_INTERNAL)
@@ -49,5 +60,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoPlayFirstStream(enabled: Boolean) {
         viewModelScope.launch { playbackPrefs.setAutoPlayFirstStream(enabled) }
+    }
+
+    fun setExpertMode(enabled: Boolean) {
+        viewModelScope.launch { viewPrefs.setExpertMode(enabled) }
     }
 }

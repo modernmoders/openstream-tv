@@ -60,6 +60,15 @@ object DataModule {
     @Singleton
     fun viewPrefs(impl: dev.openstream.tv.data.DataStoreViewPrefs): dev.openstream.tv.data.ViewPrefs = impl
 
+    /** Owner-private deployment config baked in at build time (see app/build.gradle.kts). */
+    @Provides
+    @Singleton
+    fun setupConfig(): dev.openstream.tv.data.SetupConfig =
+        dev.openstream.tv.data.SetupConfig(
+            setupUrl = dev.openstream.tv.BuildConfig.SETUP_URL,
+            brand = dev.openstream.tv.BuildConfig.SETUP_BRAND,
+        )
+
     @Provides
     @Singleton
     fun homeRowPrefs(

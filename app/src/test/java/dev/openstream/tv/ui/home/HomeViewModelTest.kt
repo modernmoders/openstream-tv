@@ -15,9 +15,11 @@ import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
+import androidx.lifecycle.viewModelScope
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -64,6 +66,8 @@ class HomeViewModelTest {
      * MetaRepositoryTest); tests that expect no prefetch traffic keep the
      * unroutable default so a stray fetch fails fast and silently.
      */
+    private val viewModels = mutableListOf<HomeViewModel>()
+
     private fun viewModel(
         cinemetaBase: String = "http://localhost:1",
         rowPrefs: FakeHomeRowPrefsStore = FakeHomeRowPrefsStore(),
@@ -73,11 +77,19 @@ class HomeViewModelTest {
         MetaRepository(client, addonRepository, cinemetaBase),
         rowPrefs,
         viewPrefs,
-    )
+    ).also { viewModels += it }
 
     @After
     fun tearDown() {
+        // Order matters (the "1 in 3 runs" Main-dispatcher flake, session 13):
+        // tests assert on the FIRST interesting state, leaving the fan-out's
+        // other fetches in flight. Kill the server (fails them fast), cancel
+        // every ViewModel's scope, and only THEN resetMain — otherwise a
+        // straggler resumes on Dispatchers.Main after reset and poisons
+        // whichever test runs next.
         server.shutdown()
+        viewModels.forEach { it.viewModelScope.cancel() }
+        viewModels.clear()
         Dispatchers.resetMain()
     }
 

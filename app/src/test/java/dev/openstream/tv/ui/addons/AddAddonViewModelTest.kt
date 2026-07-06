@@ -2,6 +2,7 @@ package dev.openstream.tv.ui.addons
 
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
+import dev.openstream.tv.addon.ProfileInstaller
 import dev.openstream.tv.addon.RemoteEntryServer
 import dev.openstream.tv.addon.SetupProfileClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
@@ -43,9 +44,10 @@ class AddAddonViewModelTest {
         profileSyncPrefs = FakeProfileSyncPrefs()
         val http = OkHttpClient.Builder().callTimeout(3, TimeUnit.SECONDS).build()
         val client = OkHttpAddonClient(http)
+        val repository = AddonRepository(client, dao)
         viewModel = AddAddonViewModel(
-            client, AddonRepository(client, dao), RemoteEntryServer(),
-            SetupProfileClient(http), profileSyncPrefs,
+            client, repository, RemoteEntryServer(),
+            ProfileInstaller(client, SetupProfileClient(http), repository, profileSyncPrefs),
         )
     }
 

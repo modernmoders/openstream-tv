@@ -1,6 +1,7 @@
 package dev.openstream.tv.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -37,9 +38,17 @@ interface ViewPrefs {
 
     /** Poster columns for home/search rows (4–8, default 6). */
     val posterColumns: Flow<Int>
+
+    /**
+     * Expert mode (owner directive 2026-07-06): technical tools — the addon
+     * manager today, diagnostics later — exist only behind this toggle, at
+     * the bottom of Settings. Everyone else gets the friendly surface only.
+     */
+    val expertMode: Flow<Boolean>
     suspend fun setDiscoverColumns(columns: Int)
     suspend fun setDiscoverSort(sort: DiscoverSortMode)
     suspend fun setPosterColumns(columns: Int)
+    suspend fun setExpertMode(enabled: Boolean)
 }
 
 private val Context.viewPrefsStore by preferencesDataStore("view_prefs")
@@ -76,15 +85,23 @@ class DataStoreViewPrefs @Inject constructor(
         context.viewPrefsStore.edit { it[DISCOVER_SORT] = sort.name }
     }
 
+    override val expertMode: Flow<Boolean> =
+        context.viewPrefsStore.data.map { prefs -> prefs[EXPERT_MODE] ?: false }
+
     override suspend fun setPosterColumns(columns: Int) {
         context.viewPrefsStore.edit {
             it[POSTER_COLUMNS] = columns.coerceIn(MIN_POSTER_COLUMNS, MAX_POSTER_COLUMNS)
         }
     }
 
+    override suspend fun setExpertMode(enabled: Boolean) {
+        context.viewPrefsStore.edit { it[EXPERT_MODE] = enabled }
+    }
+
     private companion object {
         val DISCOVER_COLUMNS = intPreferencesKey("discover_columns")
         val DISCOVER_SORT = stringPreferencesKey("discover_sort")
         val POSTER_COLUMNS = intPreferencesKey("poster_columns")
+        val EXPERT_MODE = booleanPreferencesKey("expert_mode")
     }
 }

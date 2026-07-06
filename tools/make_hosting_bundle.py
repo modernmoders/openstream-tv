@@ -2,17 +2,19 @@
 """Build an upload-ready hosting folder for the setup-link system.
 
 Output (default docs/reference/StremioSurfer/hosting/ — private, gitignored):
-    index.php     "type your first name + last initial" lookup page that
-                  shows the person their setup link with a copy button.
-                  The name->file map lives server-side in PHP, so profile
-                  filenames (the secret part) are never listed publicly.
+    index.php     name lookup with two faces: a friendly human page, and an
+                  api mode (POST api=1) that the TV app's one-step setup
+                  calls directly (SetupNameLookup) — people type their name
+                  ON THE TV and never see a link. The name->file map lives
+                  server-side in PHP, so profile filenames (the secret part)
+                  are never listed publicly. The human page keeps the raw
+                  link under a collapsible for TVs on pre-alpha.10 builds.
     <profiles>    the generated *.json profiles, copied as-is
     .htaccess     directory listing off
 
 Upload the folder's CONTENTS to any PHP host (e.g. Dreamhost: Manage
 Websites -> your domain -> File Manager, into a subfolder like /setup).
-Then a family member just opens https://yourdomain/setup, types their
-name, and copies their link.
+Set the app build's `setup.url` (local.properties) to that folder's URL.
 
 SECURITY tradeoff (owner-accepted): the lookup turns a first name + last
 initial into that person's tokenized profile URL for anyone who knows the
@@ -38,6 +40,7 @@ $matches = []; $link = null; $error = null; $who = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['full'])) {
         foreach ($PEOPLE as $p) if ($p['full'] === $_POST['full']) { $matches = [$p]; break; }
+        if (!$matches) $error = 'No match — check the spelling, or ask whoever set this up.';
     } else {
         $who = $_POST['who'] ?? '';
         $tokens = array_values(array_filter(explode(' ', norm($who))));
@@ -60,10 +63,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (substr($path, -1) !== '/') $path = rtrim(dirname($path), '/') . '/';
         $link = 'https://' . $_SERVER['HTTP_HOST'] . $path . $matches[0]['file'];
     }
+    // api mode: the TV app's one-step setup asks here directly (SetupNameLookup)
+    // so people only ever type their name — never a link.
+    if (($_POST['api'] ?? '') === '1') {
+        header('Content-Type: application/json');
+        if ($link) {
+            echo json_encode(['ok' => true, 'name' => $matches[0]['full'], 'link' => $link]);
+        } elseif (count($matches) > 1) {
+            $choices = array_values(array_unique(array_map(
+                function ($p) { return $p['full']; }, $matches)));
+            echo json_encode(['ok' => false, 'choices' => $choices]);
+        } else {
+            echo json_encode(['ok' => false, 'error' => $error ?: 'No match.']);
+        }
+        exit;
+    }
 }
 ?><!doctype html><html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenStream TV — your setup link</title>
+<title>__BRAND__ — let's get you set up</title>
 <style>
   body{background:#0e0e16;color:#eee;font:16px/1.5 system-ui,sans-serif;
        display:flex;justify-content:center;padding:48px 16px}
@@ -75,37 +93,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   button{padding:12px 20px;border-radius:8px;border:0;background:#e5e1e6;
          color:#111;font-weight:600;cursor:pointer}
   .msg{padding:12px;border-radius:8px;background:#181822;word-break:break-all}
-  .err{color:#ff6b6b}
+  .err{color:#ffb86b}
+  .big{color:#eee;font-size:18px}
   ol{color:#9a9ab0;padding-left:20px}
   .choice{display:block;width:100%;margin:6px 0;background:#181822;color:#eee;
           border:1px solid #333;text-align:left}
+  details{margin-top:28px;color:#9a9ab0}
+  summary{cursor:pointer}
 </style></head><body><main>
-<h1>OpenStream TV — get your setup link</h1>
-<p>Type your first name and last initial (like “jody m”).</p>
+<?php if (!$link): ?>
+<h1>Hi! Welcome to __BRAND__.</h1>
+<p>The easiest way to get set up doesn't even need this page: on your TV,
+open <b>__BRAND__</b> and type your name when it asks. That's the whole thing.</p>
+<p>You can also check in here — type your first name and last initial
+(like “jody m”) and we'll make sure everything's ready for you.</p>
 <form method="post">
   <input name="who" autofocus autocomplete="off" placeholder="first name + last initial"
          value="<?php echo htmlspecialchars($who); ?>">
   <button>Find me</button>
 </form>
+<?php endif; ?>
 <?php if ($error): ?><div class="msg err"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 <?php if (count($matches) > 1): ?>
-  <p>More than one match — which one are you?</p>
+  <p>A few people go by that name — which one are you?</p>
   <?php foreach ($matches as $p): ?>
   <form method="post"><button class="choice" name="full"
     value="<?php echo htmlspecialchars($p['full']); ?>"><?php echo htmlspecialchars($p['full']); ?></button></form>
   <?php endforeach; ?>
 <?php endif; ?>
 <?php if ($link): ?>
-  <p>Hi <?php echo htmlspecialchars($matches[0]['full']); ?> — here’s your setup link:</p>
-  <div class="msg" id="link"><?php echo htmlspecialchars($link); ?></div>
-  <p><button onclick="navigator.clipboard.writeText(document.getElementById('link').innerText)
-      .then(()=>this.innerText='Copied!')">Copy link</button></p>
+  <h1>Hi <?php echo htmlspecialchars($matches[0]['full']); ?> — you're all set! 🎉</h1>
+  <p class="big">Everything on our end is ready for you. Now, on your TV:</p>
   <ol>
-    <li>On the TV: <b>Addons → Add addon</b>.</li>
-    <li>On this phone, open the web address the TV shows.</li>
-    <li>Paste the link there and press <b>Send to TV</b>.</li>
-    <li>Press <b>Install</b> on the TV. Done.</li>
+    <li>Open <b>__BRAND__</b>.</li>
+    <li>When it asks for your name, type it — same as you did here.</li>
+    <li>Press <b>Finish setup</b>. The TV takes care of the rest.</li>
   </ol>
+  <details>
+    <summary>TV running an older version? Get your setup link</summary>
+    <p>Copy this link, then on the TV go to <b>Settings → Expert mode →
+    Addons → Add addon</b> and follow the web-address instructions shown there.</p>
+    <div class="msg" id="link"><?php echo htmlspecialchars($link); ?></div>
+    <p><button onclick="navigator.clipboard.writeText(document.getElementById('link').innerText)
+        .then(()=>this.innerText='Copied!')">Copy link</button></p>
+  </details>
 <?php endif; ?>
 </main></body></html>
 """
@@ -139,6 +170,9 @@ def main():
     parser.add_argument("--users", type=Path, default=DEFAULT_USERS)
     parser.add_argument("--out", type=Path, default=None,
                         help="bundle dir (default: <users.json dir>/hosting)")
+    parser.add_argument("--brand", default="OpenStream TV",
+                        help="family-facing app name shown on the page "
+                             "(the owner's deployments pass their own)")
     args = parser.parse_args()
 
     base = args.users.parent
@@ -161,7 +195,8 @@ def main():
 
     rows = people_map(users, links, skip)
     php_json = json.dumps(rows).replace("\\", "\\\\").replace("'", "\\'")
-    (out / "index.php").write_text(PHP_TEMPLATE.replace("__PEOPLE_JSON__", php_json))
+    page = PHP_TEMPLATE.replace("__PEOPLE_JSON__", php_json).replace("__BRAND__", args.brand)
+    (out / "index.php").write_text(page)
     (out / ".htaccess").write_text("Options -Indexes\n")
 
     print(f"{copied} profiles + index.php + .htaccess -> {out}")

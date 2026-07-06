@@ -8,16 +8,11 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.AddonRequestException
 import dev.openstream.tv.addon.AddonUrls
 import dev.openstream.tv.addon.Manifest
+import dev.openstream.tv.addon.ProfileInstaller
+import dev.openstream.tv.addon.ProfilePlan
 import dev.openstream.tv.addon.RemoteEntryServer
-import dev.openstream.tv.addon.SetupProfile
-import dev.openstream.tv.addon.SetupProfileClient
-import dev.openstream.tv.data.ProfileLink
-import dev.openstream.tv.data.ProfileSyncPrefs
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -32,8 +27,7 @@ class AddAddonViewModel @Inject constructor(
     private val client: AddonClient,
     private val repository: AddonRepository,
     private val remoteEntryServer: RemoteEntryServer,
-    private val profileClient: SetupProfileClient,
-    private val profileSyncPrefs: ProfileSyncPrefs,
+    private val profileInstaller: ProfileInstaller,
 ) : ViewModel() {
 
     sealed interface UiState {
@@ -42,10 +36,10 @@ class AddAddonViewModel @Inject constructor(
         /** Manifest fetched and valid — waiting for the user to confirm. */
         data class Preview(val manifestUrl: String, val manifest: Manifest) : UiState
         /** A setup link resolved — waiting to confirm installing the lot. */
-        data class ProfilePreview(
-            val profileName: String,
-            val entries: List<ProfileEntry>,
-        ) : UiState
+        data class ProfilePreview(val plan: ProfilePlan) : UiState {
+            val profileName: String get() = plan.profileName
+            val entries: List<ProfilePlan.Entry> get() = plan.entries
+        }
         data object Installing : UiState
         /**
          * One install round done. The screen STAYS here showing [summary] so
@@ -56,26 +50,8 @@ class AddAddonViewModel @Inject constructor(
         data class Error(val message: String) : UiState
     }
 
-    /**
-     * One row of a setup-link preview. Never carries the manifest URL into
-     * display text — addon URLs stay off the screen (they embed tokens).
-     */
-    data class ProfileEntry(
-        val displayName: String,
-        /** Normalized manifest URL to install, or null when not installable. */
-        val manifestUrl: String?,
-        /** "v1.2.3" for good entries, a friendly error for bad ones. */
-        val detail: String,
-    ) {
-        val ok: Boolean get() = manifestUrl != null
-    }
-
     private val _state = MutableStateFlow<UiState>(UiState.Idle)
     val state: StateFlow<UiState> = _state
-
-    /** The setup link behind the current ProfilePreview — remembered on
-     *  confirmed install so ProfileSync can follow it from then on. */
-    private var pendingProfileUrl: String? = null
 
     /** `http://<lan-ip>:<port>` to type into a browser, or null if unavailable. */
     private val _remoteEntryUrl = MutableStateFlow<String?>(null)
@@ -150,31 +126,10 @@ class AddAddonViewModel @Inject constructor(
         }
         _state.value = UiState.Fetching
         viewModelScope.launch {
-            profileClient.fetch(trimmed)
-                .onSuccess { profile ->
-                    pendingProfileUrl = trimmed
-                    _state.value = previewProfile(profile)
-                }
+            profileInstaller.plan(trimmed)
+                .onSuccess { _state.value = UiState.ProfilePreview(it) }
                 .onFailure { _state.value = UiState.Error(it.toProfileUserMessage()) }
         }
-    }
-
-    /** Fetch every entry's manifest in parallel; keep the profile's order. */
-    private suspend fun previewProfile(profile: SetupProfile): UiState = coroutineScope {
-        val entries = profile.addons.mapIndexed { index, entry ->
-            async {
-                val fallbackName = entry.name.ifBlank { "Addon ${index + 1}" }
-                val url = AddonUrls.normalizeManifestUrl(entry.url)
-                    ?: return@async ProfileEntry(fallbackName, null, "Not a valid addon URL")
-                client.fetchManifest(url).fold(
-                    onSuccess = {
-                        ProfileEntry(entry.name.ifBlank { it.name }, url, "v${it.version}")
-                    },
-                    onFailure = { ProfileEntry(fallbackName, null, it.toUserMessage()) },
-                )
-            }
-        }.awaitAll()
-        UiState.ProfilePreview(profile.name.ifBlank { "Setup link" }, entries)
     }
 
     /** Install every good entry from the previewed setup link, in order. */
@@ -182,17 +137,8 @@ class AddAddonViewModel @Inject constructor(
         val preview = _state.value as? UiState.ProfilePreview ?: return
         _state.value = UiState.Installing
         viewModelScope.launch {
-            val urls = preview.entries.mapNotNull { it.manifestUrl }
-            val results = urls.map { repository.install(it) } // sequential: §4.1.7 order = install order
-            val ok = results.count { it.isSuccess }
+            val ok = profileInstaller.install(preview.plan)
             _state.value = if (ok > 0) {
-                // Remember the link so ProfileSync keeps this box in step with
-                // the owner's hosted profile from now on (remote management).
-                pendingProfileUrl?.let { url ->
-                    profileSyncPrefs.save(
-                        ProfileLink(url, urls.toSet(), System.currentTimeMillis())
-                    )
-                }
                 UiState.Installed(if (ok == 1) "1 addon installed" else "$ok addons installed")
             } else {
                 UiState.Error("Couldn't install any addons from that setup link")
@@ -213,7 +159,6 @@ class AddAddonViewModel @Inject constructor(
     }
 
     fun dismissPreview() {
-        pendingProfileUrl = null
         _state.value = UiState.Idle
     }
 

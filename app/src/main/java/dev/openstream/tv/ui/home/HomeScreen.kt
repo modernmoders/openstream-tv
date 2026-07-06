@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.openstream.tv.BuildConfig
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.ContinueWatchingCard
@@ -42,7 +43,6 @@ import dev.openstream.tv.ui.theme.MutedText
 fun HomeScreen(
     onDiscover: () -> Unit,
     onSearch: () -> Unit,
-    onManageAddons: () -> Unit,
     onSettings: () -> Unit,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
@@ -64,7 +64,11 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "OpenStream TV",
+                // The family-facing brand ("SavoyStreams" on the owner's
+                // boxes); addon management now lives in Settings behind
+                // Expert mode — the home header stays friendly-only
+                // (owner directive 2026-07-06).
+                text = BuildConfig.SETUP_BRAND,
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
                 modifier = Modifier.weight(1f),
@@ -72,7 +76,6 @@ fun HomeScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onDiscover) { Text("Discover") }
                 Button(onClick = onSearch) { Text("Search") }
-                Button(onClick = onManageAddons) { Text("Addons") }
                 Button(onClick = onSettings) { Text("Settings") }
             }
         }
@@ -106,7 +109,7 @@ fun HomeScreen(
 private fun EmptyHome() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = "No catalogs yet — install an addon to get started",
+            text = "Nothing here yet — open Settings and pick \"Connect this TV\" to get set up",
             style = MaterialTheme.typography.bodyLarge,
             color = MutedText,
         )

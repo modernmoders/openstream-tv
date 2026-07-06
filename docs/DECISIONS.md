@@ -501,3 +501,55 @@ own screen loads).
 auto-start racing on the literal first Loaded group (top spot not stable);
 a focusable overlay button in the player (D-pad ownership conflicts with
 play/pause — ▼ + trapped dialog instead).
+
+## 27. 2026-07-06 (session 13) — One-step name setup, secret domain via BuildConfig, Expert mode
+
+**Decision (owner directive):** Setup must be one step — a person types their
+NAME on the TV and the app does everything else (look up who they are, fetch
+their hosted profile, install every addon). Nobody ever sees, copies, or
+pastes a link. This replaces the two-step "phone → copy link → paste on TV"
+flow (which stays alive only as an Expert-mode fallback for pre-alpha.10
+boxes).
+
+**How it fits together:**
+- **Secret domain stays out of git.** The setup site URL unlocks name→profile
+  lookups, so it's a secret like the addon tokens (CLAUDE.md). It lives in the
+  gitignored `local.properties` as `setup.url` / `setup.brand`, surfaced to
+  code via `buildConfigField` → `BuildConfig.SETUP_URL/SETUP_BRAND` →
+  `SetupConfig` (a plain injected value object, so everything stays
+  JVM-testable). A build with no `setup.url` simply hides the whole name flow
+  and behaves like the classic open-source app — the feature degrades, it
+  doesn't break.
+- **Site gains a JSON API, keeps one file.** `tools/make_hosting_bundle.py`'s
+  `index.php` now answers `POST api=1` with JSON (`{ok, name, link}` /
+  `{ok:false, choices}` / `{ok:false, error}`) for the app, alongside the
+  human page. The name→file map still lives server-side, so profile filenames
+  (the secret part) are never listed. Human page now leads with "set it up on
+  the TV"; the raw link is demoted to a collapsible for old builds.
+- **`ProfileInstaller` is the one install path.** Plan (fetch profile + every
+  manifest in parallel, keep profile order) → confirm → install sequentially →
+  remember the link for ProfileSync (#25). Both the name flow
+  (`ConnectViewModel`) and the expert paste-a-link flow (`AddAddonViewModel`)
+  delegate to it, so install/order/remember logic lives in exactly one place.
+- **First launch routes by state.** `LaunchViewModel`: configured build +
+  nothing installed → Welcome/Connect screen; else Home. `take(1)` so
+  installing addons mid-Connect doesn't yank the nav graph out from under the
+  running flow. null-until-first-emission avoids a Home flash (same trick as
+  HomeViewModel).
+- **Normal vs Expert (`ViewPrefs.expertMode`, default OFF).** Technical
+  surfaces are invisible by default: Home lost its "Addons" button (title is
+  now the brand), and the addon manager moved to Settings → Expert mode →
+  Addons, shown only when Expert is on. This is the "hide a toggle deep in
+  settings" the owner asked for; future logs/diagnostics land behind the same
+  flag.
+
+**Status:** code complete, 236 unit tests green (13 new). NOT yet
+emulator-verified end-to-end and NOT deployed. The live <setup-domain>/setup/
+still runs the OLD HTML-only index.php — the regenerated one MUST be
+re-uploaded before the name flow works on real hardware.
+
+**Rejected:** shipping the domain in a committed config or resource (it's a
+secret); a separate lookup microservice (the PHP page already knows the map —
+just teach it JSON); duplicating install logic in the Connect flow (extracted
+`ProfileInstaller` instead); making Expert mode a build flavor (a runtime
+toggle lets one box be "the admin's" without a separate APK).

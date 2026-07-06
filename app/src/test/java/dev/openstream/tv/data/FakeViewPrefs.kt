@@ -8,9 +8,11 @@ import kotlinx.coroutines.flow.update
 class FakeViewPrefs : ViewPrefs {
     private val state = MutableStateFlow(DiscoverViewPrefs())
     private val columnsState = MutableStateFlow(DEFAULT_POSTER_COLUMNS)
+    private val expertState = MutableStateFlow(false)
 
     override val discover: Flow<DiscoverViewPrefs> = state
     override val posterColumns: Flow<Int> = columnsState
+    override val expertMode: Flow<Boolean> = expertState
 
     override suspend fun setDiscoverColumns(columns: Int) {
         state.update { it.copy(columns = columns) }
@@ -22,5 +24,9 @@ class FakeViewPrefs : ViewPrefs {
 
     override suspend fun setPosterColumns(columns: Int) {
         columnsState.value = columns.coerceIn(MIN_POSTER_COLUMNS, MAX_POSTER_COLUMNS)
+    }
+
+    override suspend fun setExpertMode(enabled: Boolean) {
+        expertState.value = enabled
     }
 }
