@@ -268,20 +268,17 @@ verified (session 12) — one file re-drag + a clean retest away.
 Quick verify next session: subtitle-language persistence round-trip on
 the fixture movie (Settings → Home rows → move "Local Test" row up for a
 fast path, then pick a subtitle → exit → replay → auto-selected).
-0. **Finish the setup hosting (owner, 1 minute; Claude verifies):**
-   (a) drag `docs/reference/StremioSurfer/hosting/toby-savoy-*.json` into
-   the `setup/` folder on the owner's domain (it's 404 everywhere — lost
-   during the root→setup move); (b) delete the leftover profile `.json`
-   files from the DOMAIN ROOT (duplicates from the mis-placed upload);
-   (c) confirm `.htaccess` is present in `setup/` (show hidden files).
-   Then Claude re-verifies all 10 byte-for-byte with the curl+sha256 loop
-   (session 12 transcript / one cheap command).
-   Retest on the box: on the PHONE open `<domain>/setup/`, type the name,
-   COPY THE LINK IT RETURNS (ends in `.json`) — that link, not the page
-   address, is what goes into the app via Addons → Add addon → browser
-   entry. Pasting the page URL is exactly the "response this app couldn't
-   read" error the owner hit. When install-all works → gate check D PASS →
-   tick §7.2, tag `phase-3-done`, push.
+0. **Setup hosting COMPLETE (verified 2026-07-06):** all 10 profiles live
+   in `setup/` — 9 byte-perfect, toby content-identical (upload converted
+   LF→CRLF; parses fine, all 7 addons installable); domain root clean
+   (every leftover 404s); lookup POST returns correct links; adam's link
+   additionally proven end-to-end on the TV emulator (full 9-addon
+   preview). ONLY the owner's retest remains for gate D:
+   on the PHONE open `<domain>/setup/`, type the name, COPY THE LINK IT
+   RETURNS (ends in `.json`) — that link, not the page address, goes into
+   the app via Addons → Add addon → browser entry. Pasting the page URL is
+   exactly the "response this app couldn't read" error. When install-all
+   works → gate check D PASS → tick §7.2, tag `phase-3-done`, push.
    AIOMetadata URLs in users.json are still all EMPTY — owner fills, then
    regenerate profiles (same filenames survive via profiles.config.json)
    and re-upload; boxes then follow automatically via ProfileSync (#25)
