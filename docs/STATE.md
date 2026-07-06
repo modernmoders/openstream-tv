@@ -51,13 +51,28 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
   ⚠️ NOT visually verified — emulator hit its black-screencap degradation
   mid-run; cold-boot + re-verify Details next session. versionCode still 13
   (bump when verified).
-  **STILL OPEN from this feedback round (do next, see NEW BACKLOG below):**
-  Home scroll-up glitch; player controls redesign (wake + scrub-bar cursor,
-  friendlier hints); episode/selection "sexier" polish; Home reorganization
-  (curated lists first, MediaFusion catalogs not first). Owner's addon
-  questions were answered in-chat (profiles hold 9 addons — Cinemeta, Aiolists,
-  Mediafusion, Tmdb, Trakt Scrobble, AIOMetadata, AIOStreams, [BAK]AIOStreams,
-  ANOtherOne; trim to the 4-5 end-game via users.json when finalizing).
+  **STILL OPEN from this feedback round — DO NEXT (needs a COLD-BOOTED
+  emulator; current AVD is in its black-screencap degraded state):**
+  1. Cold-boot, then VISUALLY VERIFY the round-7 Details changes (episode UI,
+     "Episode N", bottom fade) — then bump versionCode 13→14 + build release.
+  2. **Home scroll-up glitch** (owner-reported): scrolled down in Home, holding
+     UP sticks partway (hero half-shown) until a Down+Up. Reproduce on fresh
+     emulator; likely the tall hero (first LazyColumn item) + header-outside-
+     list focus boundary during key-repeat. Try: header inside the scroll, or
+     pivot/bring-into-view tuning.
+  3. **Player controls redesign — OWNER CONFIRMED "build the full bar"
+     (2026-07-06):** a proper bottom control bar. Press any key wakes it and
+     puts focus on it; a scrub/progress bar you land on and press ◀▶ to
+     rewind/fast-forward (keep the ±10/30s quick-seek too); OK = play/pause; a
+     clearly-LABELED "Audio & subtitles" button (kill the cryptic "▲ audio
+     settings" hint) + "Try another server" button; auto-hide after ~5s. Keep
+     UpNext/ended/error panels working. This is a real PlayerScreen.kt rewrite
+     with TV focus management — do it against a live emulator, verify the seek/
+     play/track/focus loop end-to-end. Autoplay-default-ON already shipped.
+  **Home reorganization — OWNER CHOSE "fix via the addon trim later"**: leave
+  Home following addon order; MediaFusion-catalogs-first gets fixed when
+  profiles are trimmed to 4-5 addons at finalize (see memory
+  addon-endgame-and-finalize). No app-side curation now.
 - **Session 14 day 2 (2026-07-06) — UI overhaul FINISHED: motion + straggler
   refinements (alpha.13, DECISIONS #31).** (#4) App-wide screen motion: one
   shared NavHost fade + micro-scale on every navigation. (#3 stragglers)
