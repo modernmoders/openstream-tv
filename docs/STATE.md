@@ -1,6 +1,20 @@
-# STATE — updated 2026-07-06 by session 14
+# STATE — updated 2026-07-06 by session 14 (day 2)
 
-## ⚠️ READ FIRST (session 14 — setup verified + owner UX overhaul, now alpha.12)
+## ⚠️ READ FIRST (session 14 day 2 — UI overhaul COMPLETE, now alpha.13)
+The 4-part owner UX overhaul is done and emulator-verified: (1) Settings, (2)
+Home featured hero, (3) all menu lists/pills/rows + Discover pickers, (4)
+app-wide screen motion — all in the shared refined language (calm surfaces,
+accent focus, no white invert; DECISIONS #29/#30/#31). Current build
+**alpha.13** (versionCode 13), 236 tests green, R8 release smoke PASS. The
+refined language lives in `theme/OpenStreamTheme.kt` (tokens) +
+`ui/components/Surfaces.kt` (`SurfacePill`/`SurfaceRow`/`OptionRow`). Only
+low-value stragglers remain (Settings' identical private picker row, tiny
+Streams/Rename action dialogs, Details title) — pick up only if the owner
+wants more polish. Deploy target: `app-release.apk` **alpha.13**. The setup
+name flow on real boxes is STILL gated on the owner re-uploading the `api=1`
+index.php — see NEXT ACTION.
+
+## ⚠️ (prior) session 14 — setup verified + owner UX overhaul, alpha.12
 Two arcs this session, both emulator-verified: (a) session-13's one-step
 setup was proven end-to-end against a contract mock (no bugs); (b) a big
 owner-driven UX pass — the setup/Connect flow was simplified (no accept
@@ -27,9 +41,17 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 day 2 (2026-07-06) — UI overhaul FINISHED: motion + straggler
+  refinements (alpha.13, DECISIONS #31).** (#4) App-wide screen motion: one
+  shared NavHost fade + micro-scale on every navigation. (#3 stragglers)
+  Extracted `ui/components/Surfaces.kt` (`SurfacePill`/`SurfaceRow`/
+  `OptionRow`) and applied it to the Home header pills, Discover filter bar,
+  stream-list rows, and Discover pickers — all now the DECISIONS #29 language.
+  236/236 tests, R8 release smoke PASS. versionCode 13 / 0.3.0-alpha.13.
+  Emulator-verified (screenshots: Home pills, Discover pills, stream rows,
+  Catalog picker, release Welcome). Deploy target `app-release.apk` alpha.13.
 - **Session 14 (cont., 2026-07-06) — Refined UI overhaul, owner feedback
-  (alpha.12, DECISIONS #29/#30). Items 1–3 of 4 done + emulator-verified;
-  #4 (app-wide motion) not started.** Owner: "menus/typography/spacing
+  (alpha.12, DECISIONS #29/#30). Items 1–3 of 4 done + emulator-verified.** Owner: "menus/typography/spacing
   horrible… make it feel amazing" but "refined, not dramatic"; do 1,2,3,4 in
   order. Established a shared visual language in `theme/OpenStreamTheme.kt`
   (`Accent` #4DA3FF, `SurfaceCard`, `SurfaceCardFocused`, `Hairline`) + TV

@@ -32,18 +32,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
+import dev.openstream.tv.ui.components.OptionRow
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfacePill
@@ -269,12 +268,12 @@ private fun ViewOptionsDialog(
 
     @Composable
     fun option(label: String, selected: Boolean, first: Boolean = false, onPick: () -> Unit) {
-        Button(
+        OptionRow(
+            label = label,
+            selected = selected,
             onClick = onPick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (first) Modifier.focusRequester(firstFocus) else Modifier),
-        ) { Text(label + if (selected) "  ✓" else "") }
+            modifier = if (first) Modifier.focusRequester(firstFocus) else Modifier,
+        )
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -363,34 +362,16 @@ private fun PickerDialog(
                     .padding(vertical = 8.dp),
             ) {
                 options.forEachIndexed { index, option ->
-                    Button(
+                    OptionRow(
+                        label = option.label,
+                        selected = option.selected,
+                        sublabel = option.sublabel,
                         onClick = {
                             onDismiss()
                             onPick(index)
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(
-                                if (option.selected) Modifier.focusRequester(selectedFocus)
-                                else Modifier
-                            ),
-                    ) {
-                        Column {
-                            Text(
-                                text = option.label + if (option.selected) "  ✓" else "",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            option.sublabel?.let {
-                                Text(
-                                    text = it,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
+                        modifier = if (option.selected) Modifier.focusRequester(selectedFocus) else Modifier,
+                    )
                 }
             }
         }

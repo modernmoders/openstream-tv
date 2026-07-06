@@ -4,6 +4,29 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — UI pass finish: motion + pills/rows + picker dialogs (session 14 day 2, alpha.13)
+
+Completed owner UX items #3 (stragglers) and #4 (motion). Refined, not dramatic.
+
+| Check | Environment | Result |
+|---|---|---|
+| App-wide screen motion: NavHost fade + micro-scale on every navigation, smooth (no stutter) | TV emulator (windowed) | PASS (navigated Home↔Discover↔Streams) |
+| Home header pills (Discover/Search/Settings) → SurfacePill, accent focus, no white invert | same | PASS (screenshot) |
+| Discover filter bar (Type/Catalog/Genre/⚙View) → SurfacePill | same | PASS (screenshot) |
+| Stream-list rows → SurfaceRow (full-width, title + description, OK + long-press preserved) | same, Local Test fixture stream | PASS (screenshot) |
+| Discover pickers (Type/Catalog/Genre/View) → OptionRow (label + addon sublabel, selected = accent border + tint + ✓) | same | PASS (Catalog picker screenshot) |
+| `testDebugUnitTest` 236 tests (UI-only) | macOS, JDK 17 | PASS (236/236) |
+| `assembleDebug` + `assembleRelease` (real savoy.click URL, versionCode 13 / 0.3.0-alpha.13) | same | PASS |
+| R8 release smoke: launches clean to the refined Welcome screen, no crash / no ClassNotFound | TV emulator | PASS (screenshot) |
+
+Gotcha logged: an old prototype app `com.openstream.tv` also lives on this AVD;
+stray BACK presses can surface its "Who's watching?" UI — force-stop it and
+relaunch `dev.openstream.tv/.MainActivity` (don't confuse the two).
+
+Left for later (owner "in order", diminishing returns): Settings pickers keep
+their identical private row; small Streams/Rename action dialogs keep plain
+buttons; Details title already consistent.
+
 ## 2026-07-06 — Refined UI pass: Settings, Home hero, Addons/Home-rows (session 14, alpha.12)
 
 Owner: menus/typography/spacing "horrible", wants it to "feel amazing" but

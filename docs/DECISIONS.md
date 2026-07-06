@@ -623,3 +623,25 @@ viewport, so the list snaps to item 0 once when the hero first appears.
 owner didn't want, and it fights D-pad focus); putting the hero above
 Continue Watching permanently was kept simple — hero is a distinct spotlight
 band, CW remains the first *row*.
+
+## 31. 2026-07-06 (session 14) — App-wide screen motion + shared refined surfaces
+
+Owner UX pass #4 (motion) + finishing the #3 stragglers. (a) Every NavHost
+destination gets one shared transition — a quick fade + whisper of scale
+(enter/exit/pop) — so screen changes feel alive but never stutter or
+disorient; set once on the NavHost. (b) Extracted the refined language into
+`ui/components/Surfaces.kt`: `SurfacePill` (nav/filter pills), `SurfaceRow`
+(full-width list row w/ optional long-press), `OptionRow` (picker option w/
+selected accent tick + optional sublabel). Applied to the Home header pills,
+the Discover filter bar, the stream-list rows, and the Discover pickers — all
+now speak the DECISIONS #29 language (calm surface → accent tint + border +
+native scale on focus, no white invert).
+
+Left as-is: the Settings pickers keep their earlier private row (visually
+identical); the small Streams/Rename action dialogs keep plain buttons
+(1–2 buttons, white-invert is fine there); Details/Streams screen titles were
+already consistent. `BackButton` stays outlined so "back" reads distinct.
+
+**Rejected:** per-screen motion overrides (one shared spec is calmer and
+cheaper); sliding page transitions (read as heavy on a 10-foot UI — a fade +
+micro-scale is the "refined, not dramatic" choice).
