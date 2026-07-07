@@ -1,4 +1,33 @@
-# STATE — updated 2026-07-06 by session 15 (evening)
+# STATE — updated 2026-07-07 by session 16
+
+## ⚠️ READ FIRST (session 16 — 2026-07-07 — round-10 R2 wave BUILT + landed, build+tests GREEN)
+Session 16 (Fable 5) spawned a background coder that built the first wave of
+round-10 app fixes; Fable 5 merged them to `main` and pushed, then hit its
+usage limit DURING the merge/verify step — before updating this file. This
+session picked up: re-ran the build, confirmed green, and wrote this
+checkpoint. The 5 landed commits (`8393b01..321f794`) are **build-verified
+(`assembleDebug`) + unit-tests GREEN (`testDebugUnitTest`) this session, but
+NOT yet emulator/visually verified:**
+1. `379c0fe` — search mic: crisp vector `MicIcon` replaces the emoji glyph.
+2. `9fda76a` — **R2(a) DONE:** DOWN from the hero/a row lands on that row's
+   FIRST item, not mid-row (Home + Discover + ContinueWatchingCard).
+3. `481f4a2` — **R2(c) DONE:** filter-bar chips — selected state now clearly
+   distinct from focus + backglow (Surfaces.kt + DiscoverScreen).
+4. `a8be757` — **DONE (owner's stated #1):** Details gets a sticky season
+   indicator while scrolling episodes + per-episode thumbnails & synopses.
+5. `321f794` — **DONE (easy-mode):** a movie **Info screen** before playback
+   for movies / no-episode items only; Back from a playing video now returns
+   to the Info/episode screen instead of the raw stream list.
+STILL OPEN in R2: **R2(b)** the focused-CARD redesign (poster art must not
+cover the title — title pushed down inside a border extending from the
+artwork, silky under fast d-pad travel). NOT in these commits.
+⚠️ NEXT deploy is gated on an emulator/visual pass of these 5 (especially
+easy-mode nav + the Info screen + episode thumbnails). versionCode NOT
+bumped; boxes still target alpha.17.
+Dev-tooling note (NOT app code): this session installed 4 Claude Code
+plugins/skills globally in `~/.claude` — superpowers (enabled for MastaP),
+ui-ux-pro-max, frontend-slides, web-asset-generator. web-asset-generator is
+earmarked for R3 (SStreams launcher-icon / favicon art).
 
 ## ⚠️ READ FIRST (session 15 — round-10 feedback LOGGED, phase 3 CLOSED, site LIVE)
 Session 14 ran out of usage MID-CHECKPOINT while logging owner feedback
@@ -557,11 +586,16 @@ R1. **Rachael end-to-end (owner's #1).** Blocked owner-side on account
    type "rachael" on the non-pro box. Then derive the other 3 templates
    (Family-Anime, NSFW-Anime, NSFW-no-anime).
 R2. **Discover UX fixes (self-contained app code, no owner input):**
-   (a) DOWN from the hero lands on the LEFT-MOST item of the first row;
-   (b) focused-card redesign — art must not cover the title: title pushes
-   down inside a border that extends from the artwork, silky under fast
-   d-pad travel; (c) filter bar — selected state clearly distinct from
-   focus + backglow/glow visibility pass.
+   (a) ✅ DONE (session 16, `9fda76a`) — DOWN lands on the row's first item;
+   (b) **STILL OPEN** — focused-card redesign: art must not cover the title,
+   title pushes down inside a border that extends from the artwork, silky
+   under fast d-pad travel;
+   (c) ✅ DONE (session 16, `481f4a2`) — filter bar selected vs focus distinct
+   + backglow.
+   ⚠️ (a)+(c) are build/test-green but NOT emulator-verified yet — do a visual
+   pass with (b) before the next deploy. Also landed session 16 and awaiting
+   the same visual pass: sticky season + episode thumbnails/synopses
+   (`a8be757`) and easy-mode Info-screen/Back nav (`321f794`).
 R3. **Rebrand → SStreams** (no "Savoy" in anything public): dual-S
    spoon-logo experiment (two colors, thin border; drop it if ugly and
    design better), Home brand title, launcher label/icon, `setup.brand`,
