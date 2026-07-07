@@ -1,19 +1,23 @@
 package dev.openstream.tv.ui.details
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,10 +25,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -123,6 +129,9 @@ fun DetailsScreen(
     }
 }
 
+// OptIn: stickyHeader (Compose Foundation) pins the current season indicator
+// at the top of the viewport while episodes scroll beneath it (owner request).
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DetailsContent(
     onBack: () -> Unit,
@@ -196,23 +205,37 @@ private fun DetailsContent(
             }
         } else {
             if (seasons.isNotEmpty()) {
-                item(key = "seasons") {
-                    // 8dp edge padding: the row clips on its scroll axis, so
-                    // the first/last chip's focus scale needs headroom. The
-                    // slight indent is invisible at 10 feet (§5.3).
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
+                // Sticky, not a plain item (owner: "the currently selected
+                // season must stay visible at the top of the screen while
+                // scrolling the episode list"): pins at the top of the
+                // viewport once scrolled there and stays put while episodes
+                // continue past underneath. Opaque background + its own
+                // bottom padding so episodes scrolling behind it never show
+                // through the strip.
+                stickyHeader(key = "seasons") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(AppBackground)
+                            .padding(bottom = 10.dp),
                     ) {
-                        items(seasons, key = { it }) { season ->
-                            SurfacePill(
-                                label = if (season == 0) "Specials" else "Season $season",
-                                onClick = { onSelectSeason(season) },
-                                selected = season == selectedSeason,
-                                modifier = if (season == seasons.first()) {
-                                    Modifier.focusRequester(primaryFocus)
-                                } else Modifier,
-                            )
+                        // 8dp edge padding: the row clips on its scroll axis, so
+                        // the first/last chip's focus scale needs headroom. The
+                        // slight indent is invisible at 10 feet (§5.3).
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                        ) {
+                            items(seasons, key = { it }) { season ->
+                                SurfacePill(
+                                    label = if (season == 0) "Specials" else "Season $season",
+                                    onClick = { onSelectSeason(season) },
+                                    selected = season == selectedSeason,
+                                    modifier = if (season == seasons.first()) {
+                                        Modifier.focusRequester(primaryFocus)
+                                    } else Modifier,
+                                )
+                            }
                         }
                     }
                 }
@@ -243,9 +266,30 @@ private fun DetailsContent(
     }
 }
 
+/**
+ * An episode row in the shared SurfaceRow language, upgraded with the
+ * addon-supplied thumbnail + a 2-3 line synopsis (owner request) when the
+ * addon provides them — degrades to the old compact text-only row when it
+ * doesn't (many addons send neither). Coil paints a flat placeholder color
+ * FIRST (same trick as PosterCard) so the row's layout never pops/reflows
+ * as the image arrives — no jank on the 32-bit boxes.
+ */
 @Composable
 private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = Modifier) {
     SurfaceRow(onClick = onClick, modifier = modifier) {
+        if (video.thumbnail != null) {
+            AsyncImage(
+                model = video.thumbnail,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                placeholder = ColorPainter(EpisodeThumbPlaceholder),
+                error = ColorPainter(EpisodeThumbPlaceholder),
+                modifier = Modifier
+                    .width(128.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
+        }
         Column(Modifier.weight(1f)) {
             Text(
                 // "Episode 1 · System" — spelled out, no "E1" (plain words for
@@ -267,10 +311,16 @@ private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = M
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
                     color = MutedText,
-                    maxLines = 1,
+                    // 2-3 lines (owner request) when there's a thumbnail to
+                    // balance against; the old compact 1-line clamp stays for
+                    // the thumbnail-less/description-less fallback row.
+                    maxLines = if (video.thumbnail != null) 3 else 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
 }
+
+/** Matches SurfaceCard so a loading thumbnail blends into its row. */
+private val EpisodeThumbPlaceholder = Color(0xFF23232F)

@@ -40,6 +40,17 @@ class MetaAndStreamParsingTest {
         assertEquals("Pilot", pilot.displayTitle)          // from "name" (Cinemeta style)
         assertEquals(1, pilot.season)
         assertEquals(1, pilot.episode)
+        // Episode-row upgrade (owner request): thumbnail + a synopsis are
+        // already lenient-parsed fields on Video — this locks that in.
+        assertEquals("https://example.com/s01e01.jpg", pilot.thumbnail)
+        assertEquals(
+            "Monica and the gang introduce Rachel to the real world.",
+            pilot.overview,
+        )
+
+        // Second episode carries neither — the row must degrade gracefully.
+        assertNull(meta.videos[1].thumbnail)
+        assertNull(meta.videos[1].overview)
 
         val e2 = meta.videos[1]
         assertEquals("The One with the Sonogram at the End", e2.displayTitle) // from "title"
