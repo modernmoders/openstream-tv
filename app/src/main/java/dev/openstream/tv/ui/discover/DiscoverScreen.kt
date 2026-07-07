@@ -28,9 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -55,6 +57,11 @@ import dev.openstream.tv.ui.theme.CardSizeTokens
  * the grid below deep-browses the selection with skip pagination. Pickers are
  * real Dialogs so D-pad focus is trapped and Back dismisses (§5.4).
  */
+// OptIn: focusRestorer — same §10 row-entry rule as Search/Home (no stable
+// equivalent yet): DOWN from the filter bar into a freshly-shown grid lands
+// on the FIRST poster, but returning to the SAME grid (e.g. dismissing a
+// picker without changing the selection) restores the card you left.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DiscoverScreen(
     onBack: () -> Unit = {},
@@ -71,6 +78,12 @@ fun DiscoverScreen(
     LaunchedEffect(state.types.isNotEmpty()) {
         if (state.types.isNotEmpty()) runCatching { typeFocus.requestFocus() }
     }
+
+    // A new filter selection is a brand-new list — a fresh FocusRequester so
+    // focusRestorer's "last focused child" memory can't leak from the
+    // PREVIOUS filter's grid into this one (owner bug: DOWN from the filter
+    // bar landed mid-row, e.g. the 3rd item, instead of the first poster).
+    val firstCardFocus = remember(state.selected?.key, state.selectedGenre) { FocusRequester() }
 
     // Ask for the next page when the last visible item is near the tail.
     val nearEnd by remember {
@@ -163,15 +176,17 @@ fun DiscoverScreen(
                 verticalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                 // Scroll-axis headroom for the first/last row's focus scale (§5.3).
                 contentPadding = PaddingValues(vertical = CardSizeTokens.focusHeadroom),
+                modifier = Modifier.focusRestorer { firstCardFocus },
             ) {
                 itemsIndexed(
                     items = shown,
                     key = { _, it -> it.id },
                     contentType = { _, _ -> "poster" },
-                ) { _, item ->
+                ) { index, item ->
                     PosterCard(
                         item = item,
                         onClick = { onItemClick(item) },
+                        modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
                         columns = state.view.columns,
                     )
                 }

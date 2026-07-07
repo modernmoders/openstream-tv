@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -23,10 +24,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -307,6 +310,10 @@ private fun EmptyHome() {
  * Always-first row when non-empty (§5.6). A click navigates to the item's
  * DETAILS page — from there the resume dialog (stream list) takes over.
  */
+// OptIn: focusRestorer — same §10 row-entry rule as Search (no stable
+// equivalent yet); DOWN into a fresh row lands on the FIRST card, but
+// returning to a row you were just in restores the card you left.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ContinueWatchingRow(
     entries: List<WatchProgress>,
@@ -319,6 +326,7 @@ private fun ContinueWatchingRow(
             color = Color.White,
             modifier = Modifier.padding(horizontal = 48.dp),
         )
+        val firstCardFocus = remember { FocusRequester() }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
             // Vertical headroom: a focused card scales into this gap instead
@@ -326,8 +334,9 @@ private fun ContinueWatchingRow(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
             ),
+            modifier = Modifier.focusRestorer { firstCardFocus },
         ) {
-            items(entries, key = { "${it.ref.sourceKind}:${it.ref.externalId}" }) { p ->
+            itemsIndexed(entries, key = { _, it -> "${it.ref.sourceKind}:${it.ref.externalId}" }) { index, p ->
                 ContinueWatchingCard(
                     progress = p,
                     onClick = {
@@ -336,12 +345,15 @@ private fun ContinueWatchingRow(
                             MetaItem(id = p.metaId, type = p.metaType, name = p.title, poster = p.poster)
                         )
                     },
+                    modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
                 )
             }
         }
     }
 }
 
+// OptIn: focusRestorer — see ContinueWatchingRow above.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun CatalogRow(
     row: RowState,
@@ -374,14 +386,21 @@ private fun CatalogRow(
                 if (row.items.isEmpty()) {
                     RowMessage("Nothing in this catalog")
                 } else {
+                    val firstCardFocus = remember { FocusRequester() }
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
                         ),
+                        modifier = Modifier.focusRestorer { firstCardFocus },
                     ) {
-                        items(row.items, key = { it.id }) { item ->
-                            PosterCard(item, onClick = { onItemClick(item) }, columns = columns)
+                        itemsIndexed(row.items, key = { _, it -> it.id }) { index, item ->
+                            PosterCard(
+                                item,
+                                onClick = { onItemClick(item) },
+                                modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
+                                columns = columns,
+                            )
                         }
                     }
                 }

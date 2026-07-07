@@ -25,12 +25,15 @@ import dev.openstream.tv.ui.theme.MutedText
 /**
  * Poster card + progress bar for the Continue Watching row (§5.6). Same
  * dimensions as [PosterCard] so the two row kinds align visually.
+ *
+ * [modifier] lands on the Card — the focusable — so callers can attach a
+ * FocusRequester for the row-entry rule (§10: DOWN lands on the first card).
  */
 @Composable
-fun ContinueWatchingCard(progress: WatchProgress, onClick: () -> Unit) {
+fun ContinueWatchingCard(progress: WatchProgress, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val width = CardSizeTokens.posterWidth()
     Column(modifier = Modifier.width(width)) {
-        Card(onClick = onClick) {
+        Card(onClick = onClick, modifier = modifier) {
             Box {
                 AsyncImage(
                     model = progress.poster,
