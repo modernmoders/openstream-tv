@@ -28,30 +28,37 @@ from pathlib import Path
 CINEMETA = "https://v3-cinemeta.strem.io/manifest.json"  # public, safe to embed
 DEFAULT_USERS = Path(__file__).resolve().parent.parent / "docs/reference/StremioSurfer/users.json"
 
+# Owner's own per-person custom addons (2026-07-07 finalize/trim decision):
+# MediaFusion and TMDB duplicate scrapers/catalogs AIOStreams already wraps
+# internally (Service Wrap) — excluded from the generated profile by default.
+# This does NOT touch users.json: the manifest URLs stay there untouched,
+# just unused when assembling a profile. Override per-run via
+# profiles.config.json's "exclude_addon_keys" (fully replaces this default
+# when that key is present, even if set to an empty list).
+DEFAULT_EXCLUDED_ADDON_KEYS = {"mediafusion_manifest", "tmdb_manifest"}
+
 
 def is_manifest_url(value):
     return isinstance(value, str) and value.startswith(("http://", "https://")) \
         and value.endswith("manifest.json")
 
 
-def profile_for(user, instance, pulled=None):
+def profile_for(user, instance, pulled=None, exclude_addon_keys=None):
     """Addon order is meaningful (§4.1.7: install order = stream-group order):
-    metadata sources first (Cinemeta fallback, then AIOMetadata), extra
-    catalog addons, then the person's live Stremio collection (pulled by
-    tools/pull_stremio_addons.py) — or the assembled AIOStreams URL when no
-    pull exists. Union, deduped by URL: the live account is truth for stream
-    addons, but the curated catalog addons in users.json aren't in those
-    accounts and would be lost otherwise (DECISIONS #15)."""
+    metadata sources first (Cinemeta fallback, then AIOMetadata), then the
+    person's live Stremio collection (tools/pull_stremio_addons.py) or the
+    assembled AIOStreams URL — both come BEFORE the supplementary catalog
+    addons below (2026-07-07: owner reordered so AIOStreams' own catalogs
+    lead Home instead of trailing behind them). Union, deduped by URL: the
+    live account is truth for stream addons, but the curated catalog addons
+    in users.json aren't in those accounts and would be lost otherwise
+    (DECISIONS #15)."""
+    exclude_addon_keys = DEFAULT_EXCLUDED_ADDON_KEYS if exclude_addon_keys is None else exclude_addon_keys
     addons = [{"name": "Cinemeta", "url": CINEMETA}]
 
     aiometadata = (user.get("aiometadata") or {}).get("manifest_url")
     if is_manifest_url(aiometadata):
         addons.append({"name": "AIOMetadata", "url": aiometadata})
-
-    for key, value in sorted((user.get("addons") or {}).items()):
-        if is_manifest_url(value):
-            pretty = re.sub(r"_manifest$", "", key).replace("_", " ").title()
-            addons.append({"name": pretty, "url": value})
 
     account = (pulled or {}).get(user.get("email") or "")
     if account and account.get("addons"):
@@ -68,6 +75,13 @@ def profile_for(user, instance, pulled=None):
                     break
         if is_manifest_url(url):
             addons.append({"name": f"AIOStreams ({instance})", "url": url})
+
+    for key, value in sorted((user.get("addons") or {}).items()):
+        if key in exclude_addon_keys:
+            continue
+        if is_manifest_url(value):
+            pretty = re.sub(r"_manifest$", "", key).replace("_", " ").title()
+            addons.append({"name": pretty, "url": value})
 
     seen, unique = set(), []
     for addon in addons:
@@ -100,6 +114,8 @@ def main():
     config = json.loads(config_path.read_text()) if config_path.exists() \
         else {"skip": [], "links": {}}
     skip = {s.lower() for s in config.get("skip", [])}
+    exclude_addon_keys = set(config["exclude_addon_keys"]) if "exclude_addon_keys" in config \
+        else DEFAULT_EXCLUDED_ADDON_KEYS
 
     pulled_path = args.users.parent / "stremio_addons.json"
     pulled = json.loads(pulled_path.read_text()) if pulled_path.exists() else {}
@@ -110,7 +126,7 @@ def main():
         if name.lower() in skip:
             print(f"(skipped {name})")
             continue
-        profile = profile_for(user, args.instance, pulled)
+        profile = profile_for(user, args.instance, pulled, exclude_addon_keys)
         filename = config["links"].get(name)
         if not filename:
             slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "user"

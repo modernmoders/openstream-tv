@@ -31,3 +31,7 @@ docs/reference/MastaP/
 # in docs/reference/ — never commit any of them.
 docs/reference/*.json
 .DS_Store
+
+# Owner's AIOStreams/AIOMetadata config templates — will hold real service
+# tokens once populated. NEVER commit (CLAUDE.md security).
+templates/

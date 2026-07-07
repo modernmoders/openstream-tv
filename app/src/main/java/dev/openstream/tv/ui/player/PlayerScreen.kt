@@ -228,12 +228,13 @@ fun PlayerScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SurfacePill("Audio & subtitles", onClick = { showTracks = true; wake() })
-                    if (state.canTryNext) {
-                        SurfacePill("Try a different stream", onClick = { viewModel.tryNextStream(); wake() })
-                    }
                     if (viewModel.externalPlayers.isNotEmpty()) {
                         SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
                     }
+                    // Always shown (owner report): walks to the next candidate
+                    // if one remains, else opens the full stream list for this
+                    // video — never a dead/hidden button.
+                    SurfacePill("Try a different stream", onClick = { viewModel.tryAnotherStream(); wake() })
                 }
             }
         }
@@ -284,15 +285,23 @@ fun PlayerScreen(
 
         state.error?.let { message ->
             // §6.1: no dead-end errors — always an obvious, plain-word way out.
+            // "Try a different stream" is ALWAYS present (owner report: hiding
+            // it when the ranked cascade was exhausted left DOWN landing on
+            // the unrelated "Play in another app" instead) and holds initial
+            // focus — deterministic, not a 2D nearest-neighbor guess. Placed
+            // last before Back (owner: wants it rightmost for visibility).
+            val tryAnotherFocus = remember { FocusRequester() }
+            LaunchedEffect(message) { runCatching { tryAnotherFocus.requestFocus() } }
             CenterPanel("Hmm, that one won't play.\n$message") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (state.canTryNext) {
-                        Button(onClick = { viewModel.tryNextStream() }) { Text("Try a different stream") }
-                    }
                     if (viewModel.externalPlayers.isNotEmpty()) {
                         Button(onClick = ::onPlayInAnotherApp) { Text("Play in another app") }
                     }
                     Button(onClick = viewModel::retry) { Text("Try again") }
+                    Button(
+                        onClick = { viewModel.tryAnotherStream() },
+                        modifier = Modifier.focusRequester(tryAnotherFocus),
+                    ) { Text("Try a different stream") }
                     Button(onClick = onExit) { Text("Back") }
                 }
             }

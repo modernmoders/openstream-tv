@@ -309,6 +309,24 @@ class PlayerViewModel @Inject constructor(
         )
     }
 
+    /**
+     * The player's one "get me out of this stream" action (owner report:
+     * hiding the button when the ranked cascade is exhausted left focus
+     * landing on the unrelated "Play in another app" instead). Walks to the
+     * next candidate if any remain (fast, same position); otherwise opens
+     * the full stream list for THIS video so there's always somewhere useful
+     * to go, never a dead/hidden button.
+     */
+    fun tryAnotherStream() {
+        if (!tryNextStream()) openCurrentStreamList()
+    }
+
+    private fun openCurrentStreamList() {
+        val req = request ?: return
+        val videoId = req.mediaRef?.externalId ?: return
+        _openStreams.tryEmit(OpenStreams(req.metaType, videoId, req.source.title, req.metaId, req.poster))
+    }
+
     fun retry() {
         val req = request ?: return
         val engine = engine.value ?: return
