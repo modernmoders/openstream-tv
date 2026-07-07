@@ -41,7 +41,7 @@
         android:name=".OpenStreamApp"
         android:label="${appLabel}"
         android:icon="@drawable/ic_launcher"
-        android:banner="@drawable/tv_banner"
+        android:banner="${appBanner}"
         android:theme="@style/Theme.OpenStream"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true">

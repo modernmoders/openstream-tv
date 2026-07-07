@@ -509,26 +509,39 @@ built yet unless marked [x]):
   delete/merge the stub, rename the live entry, carry the
   profiles.config.json link key over so the filename (and the box's saved
   link) survives, regenerate + re-upload.
-- [ ] **Discover: DOWN from the hero must land on the LEFT-MOST item of the
-  first row** — today it drops mid-row (e.g. 3rd item). Same §5 focus rule
-  already shipped for search rows; extend it here.
-- [ ] **Discover: focused-card art covers the title.** Redesign the focus
-  treatment: the title pushes down and a border extends from the artwork to
-  envelope it — must stay perfectly smooth under fast d-pad travel.
-- [ ] **Discover filters: selected vs focused are nearly
-  indistinguishable** — make the selected state obvious, and make the
-  filter bar itself more visible (backglow / subtle animated glow).
+- [x] **Discover: DOWN from the hero must land on the LEFT-MOST item of the
+  first row** — DONE session 16 (`9fda76a`): DOWN into a row/grid lands on
+  its first item (Home + Discover + ContinueWatchingCard). Deployed alpha.18+.
+- [x] **Discover: focused-card art covers the title.** DONE via the shared
+  `PosterCard` title reveal-on-focus (alpha.19, hardened alpha.20 — DECISIONS
+  #37): title lives inside the card as a bottom-scrim overlay that fades in
+  with focus, draw-phase only. PosterCard is shared by Home/Discover/Search,
+  so Discover got the fix too. (The owner chose "expand with artwork" over
+  the original push-down-border sketch.)
+- [x] **Discover filters: selected vs focused are nearly
+  indistinguishable** — DONE session 16 (`481f4a2`): selected state clearly
+  distinct from focus + filter-bar backglow. Deployed alpha.18+.
 - [ ] **Rebrand: SavoyStreams → "SStreams"** (public repo must never say
   "Savoy"). Logo concept to try: two S's merged/nested like spoons,
   different colors, a thin border between them; if it doesn't look good,
   Claude designs something better that makes "SStreams" look good.
   Touches: Home header brand title, `setup.brand` in local.properties,
   hosting bundle regen (`--brand`), app launcher label/icon.
-- [ ] **TV > Live TV and Events are EMPTY in Discover** (both AIOStreams
-  and MediaFusion) — investigate the catalog/type mapping. ALSO
-  miscategorized items: MediaFusion live events (football) appear under
-  Movies. Round-10 template decision: strip live-TV/events catalogs from
-  the per-person profiles anyway, and re-sort any wrong-category catalogs.
+- [x] **TV > Live TV and Events are EMPTY in Discover** — INVESTIGATED
+  2026-07-07 (session 17), **NOT an app bug**. Fetched the live catalogs
+  directly: MediaFusion's `tv/live_tv` and `events/live_sport_events`
+  return HTTP 200 with `metas: []` in every variant tested (plain, with
+  each genre, with skip) — the owner's MediaFusion instance simply serves
+  no live content. AIOStreams' "Live TV"/"Live Sport Events" (`5bde3b0.*`)
+  wrap that same empty MediaFusion source. The football-under-Movies
+  miscategorization is also MediaFusion's own manifest: its "Other Sports"
+  catalog (the football items, 40 metas) is declared `type: movie`.
+  App-side the URL grammar, type mapping, and `isUsable` filter are all
+  correct, and Discover already shows "Nothing in this catalog" rather
+  than a blank void. RESOLUTION: already in motion — MediaFusion is
+  excluded from generated profiles (session-16 trim) and the R1 templates
+  strip live-TV/events catalogs from the AIOStreams configs; once the
+  trimmed bundle is uploaded and boxes resync, both symptoms disappear.
 - [ ] **Networks UX**: keep as-is for now (owner will live with it); LATER
   a dedicated "Networks & Streaming services" page.
 - [ ] **Ambient background**: opaque pastel gradient / soft shapes behind

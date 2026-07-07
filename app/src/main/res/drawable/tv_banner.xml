@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder TV launcher banner (16:9). Android TV home screens show this
-     instead of the square icon. Replace with real art before release. -->
+<!-- Neutral TV launcher banner (16:9): the dual-S mark, centered, no
+     wordmark — the repo default carries no brand. Owner builds swap in
+     tv_banner_sstreams via the appBanner manifest placeholder. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="320dp"
     android:height="180dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
     <path
-        android:fillColor="#1A1A2E"
+        android:fillColor="#12121C"
         android:pathData="M0,0 L320,0 L320,180 L0,180 Z" />
     <path
-        android:fillColor="#4DA3FF"
-        android:pathData="M135,55 L205,90 L135,125 Z" />
+        android:strokeColor="#3FD8C7"
+        android:strokeWidth="5.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M160.55,70.47 C160.55,63.18 154.64,57.27 147.35,57.27 C140.06,57.27 134.15,63.18 134.15,70.47 C134.15,77.77 140.06,83.67 147.35,83.67 C154.64,83.67 160.55,89.58 160.55,96.88 C160.55,104.17 154.64,110.08 147.35,110.08 C140.06,110.08 134.15,104.17 134.15,96.88" />
+    <path
+        android:strokeColor="#12121C"
+        android:strokeWidth="7.4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M185.85,83.12 C185.85,75.83 179.94,69.92 172.65,69.92 C165.36,69.92 159.45,75.83 159.45,83.12 C159.45,90.42 165.36,96.33 172.65,96.33 C179.94,96.33 185.85,102.23 185.85,109.53 C185.85,116.82 179.94,122.73 172.65,122.73 C165.36,122.73 159.45,116.82 159.45,109.53" />
+    <path
+        android:strokeColor="#4DA3FF"
+        android:strokeWidth="5.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M185.85,83.12 C185.85,75.83 179.94,69.92 172.65,69.92 C165.36,69.92 159.45,75.83 159.45,83.12 C159.45,90.42 165.36,96.33 172.65,96.33 C179.94,96.33 185.85,102.23 185.85,109.53 C185.85,116.82 179.94,122.73 172.65,122.73 C165.36,122.73 159.45,116.82 159.45,109.53" />
 </vector>
