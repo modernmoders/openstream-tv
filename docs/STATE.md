@@ -1,4 +1,31 @@
-# STATE — updated 2026-07-07 by session 16
+# STATE — updated 2026-07-07 by session 16 (late)
+
+## ⚠️ READ FIRST (session 16 late — 2026-07-07 — alpha.19 DEPLOYED to both boxes)
+Second app-fix wave of the night, DEPLOYED (not just committed) to both onn
+boxes: poster/Continue-Watching title reveal-on-focus (was: artwork covering
+titles), Settings > Expert mode > "Reset this TV" (confirm dialog; clears
+addons + saved setup link, back to name-setup), Connect screen "Skip for
+now" replaced with a submit-only "Continue" button, player "Try a different
+stream" made always-available + explicitly focused (was: vanishing +
+DOWN-navigation landing on "Play in another app" instead), and
+`tools/make_profiles.py` addon trim + reorder (MediaFusion/TMDB dropped as
+redundant with what AIOStreams wraps internally, AIOMetadata+AIOStreams
+moved right after Cinemeta). Full detail: DECISIONS #37, MASTER_PLAN §10
+"Owner asks 2026-07-07". 256 tests green both builds. **versionCode 19 /
+0.3.0-alpha.19 — both boxes (.231, .117) confirmed on this version, smoke-
+tested (no crash, MainActivity resumed).** NOT emulator/visually verified —
+owner to eyeball on the real TVs.
+Also regenerated + staged (not yet uploaded) a trimmed hosting bundle at
+`~/Desktop/setup-upload-trim/` — all 11 existing profile filenames
+preserved (verified against the live `profiles.config.json`), so uploading
+it will NOT break any box's saved setup link.
+**Three items are genuinely blocked on the owner, not code:** (1) the 4
+saved AIOStreams templates (`templates/*.json`) are 0 bytes everywhere on
+this Mac — real content never saved or lost, stray macOS alias files next
+to them resolve back to the same empty files; (2) comparing Rachael's vs
+the owner's live AIOStreams service/addon config needs eyes inside both
+UIs, not file/API access; (3) AIOMetadata is still empty for everyone but
+Rachael (pre-existing, needs the owner's per-person accounts).
 
 ## ⚠️ READ FIRST (session 16 — 2026-07-07 — round-10 R2 wave BUILT + landed, build+tests GREEN)
 Session 16 (Fable 5) spawned a background coder that built the first wave of
