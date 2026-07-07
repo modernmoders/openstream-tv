@@ -52,6 +52,10 @@ class SettingsViewModel @Inject constructor(
     val autoPlayFirstStream: StateFlow<Boolean> = playbackPrefs.autoPlayFirstStream
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Subtle focus/select sounds (owner round 10). Default on. */
+    val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     /**
      * Concrete players installed right now (§6.2: only show what exists).
      * GENERIC is excluded — "always ask the system chooser" is just Ask.
@@ -77,6 +81,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setEpisodeNumbering(mode: EpisodeNumbering) {
         viewModelScope.launch { viewPrefs.setEpisodeNumbering(mode) }
+    }
+
+    fun setUiSounds(enabled: Boolean) {
+        viewModelScope.launch { viewPrefs.setUiSounds(enabled) }
     }
 
     /**

@@ -31,6 +31,7 @@ import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
 import dev.openstream.tv.player.rememberedLanguage
+import dev.openstream.tv.ui.sound.UiSounds
 import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -57,6 +58,7 @@ class PlayerViewModel @Inject constructor(
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
     playerHolder: PlayerHolder,
+    private val uiSounds: UiSounds,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) : ViewModel() {
 
@@ -108,6 +110,9 @@ class PlayerViewModel @Inject constructor(
     private var errorSkips = 0
 
     init {
+        // No UI ticks over playing video (owner round 10 "subtle" — a held
+        // seek would rattle constantly). Lifecycle-matched to this ViewModel.
+        uiSounds.suppressed = true
         val req = request
         if (req == null) {
             _uiState.value = UiState(hasSource = false)
@@ -351,6 +356,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        uiSounds.suppressed = false
         autoplay.stop()
         // Exit position — the one users actually resume from.
         engine.value?.let { persistProgress(it) }

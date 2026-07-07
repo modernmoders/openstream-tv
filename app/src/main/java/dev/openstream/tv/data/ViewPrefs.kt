@@ -59,11 +59,15 @@ interface ViewPrefs {
     /** Episode numbering style for series/anime episode lists (default seasonal). */
     val episodeNumbering: Flow<EpisodeNumbering>
 
+    /** Subtle focus/select sounds (owner round 10). Default on. */
+    val uiSounds: Flow<Boolean>
+
     suspend fun setDiscoverColumns(columns: Int)
     suspend fun setDiscoverSort(sort: DiscoverSortMode)
     suspend fun setPosterColumns(columns: Int)
     suspend fun setExpertMode(enabled: Boolean)
     suspend fun setEpisodeNumbering(mode: EpisodeNumbering)
+    suspend fun setUiSounds(enabled: Boolean)
 }
 
 private val Context.viewPrefsStore by preferencesDataStore("view_prefs")
@@ -125,11 +129,19 @@ class DataStoreViewPrefs @Inject constructor(
         context.viewPrefsStore.edit { it[EPISODE_NUMBERING] = mode.name }
     }
 
+    override val uiSounds: Flow<Boolean> =
+        context.viewPrefsStore.data.map { prefs -> prefs[UI_SOUNDS] ?: true }
+
+    override suspend fun setUiSounds(enabled: Boolean) {
+        context.viewPrefsStore.edit { it[UI_SOUNDS] = enabled }
+    }
+
     private companion object {
         val DISCOVER_COLUMNS = intPreferencesKey("discover_columns")
         val DISCOVER_SORT = stringPreferencesKey("discover_sort")
         val POSTER_COLUMNS = intPreferencesKey("poster_columns")
         val EXPERT_MODE = booleanPreferencesKey("expert_mode")
         val EPISODE_NUMBERING = stringPreferencesKey("episode_numbering")
+        val UI_SOUNDS = booleanPreferencesKey("ui_sounds")
     }
 }
