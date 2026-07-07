@@ -9,8 +9,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.openstream.tv.addon.Video
 import dev.openstream.tv.addon.toPlayableSource
 import dev.openstream.tv.autoplay.AutoplayController
+import dev.openstream.tv.autoplay.AutoplayGateway
 import dev.openstream.tv.autoplay.AutoplayOriginHolder
 import dev.openstream.tv.autoplay.AutoplayStateMachine
+import dev.openstream.tv.autoplay.NextEpisode
 import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
@@ -54,6 +56,7 @@ class PlayerViewModel @Inject constructor(
     private val progressRepository: ProgressRepository,
     private val autoplay: AutoplayController,
     private val autoplayOrigin: AutoplayOriginHolder,
+    private val autoplayGateway: AutoplayGateway,
     private val playbackPrefs: PlaybackPrefs,
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
@@ -84,7 +87,14 @@ class PlayerViewModel @Inject constructor(
         val canTryNext: Boolean = false,
         /** Friendly banner while a server switch spins up (elder rule: no raw errors). */
         val switching: Boolean = false,
+        /** The episode the ⏮ button jumps to; null = at the first episode (or a movie). */
+        val previousEpisode: EpisodeTarget? = null,
+        /** The episode the ⏭ button jumps to; null = at the last episode (or a movie). */
+        val nextEpisode: EpisodeTarget? = null,
     )
+
+    /** A neighbouring episode the player's prev/next buttons can open. */
+    data class EpisodeTarget(val videoId: String, val title: String)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
@@ -109,6 +119,10 @@ class PlayerViewModel @Inject constructor(
      *  can't cycle every server forever. A successful Ready resets it. */
     private var errorSkips = 0
 
+    /** Series episode list (binge order source) for the ⏮/⏭ buttons; empty
+     *  for movies or until the meta resolves. */
+    private var episodeVideos: List<Video> = emptyList()
+
     init {
         // No UI ticks over playing video (owner round 10 "subtle" — a held
         // seek would rattle constantly). Lifecycle-matched to this ViewModel.
@@ -119,6 +133,7 @@ class PlayerViewModel @Inject constructor(
         } else {
             _uiState.value = UiState(title = req.source.title, canTryNext = alternatives.hasNext())
             context.startService(Intent(context, PlaybackService::class.java))
+            resolveEpisodeNav(req)
             viewModelScope.launch {
                 autoAdvanceOnError = playbackPrefs.autoPlayFirstStream.first()
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
@@ -226,6 +241,45 @@ class PlayerViewModel @Inject constructor(
             title = source.title, ended = false, error = null, canTryNext = false,
         )
         engine.play(source)
+        updateEpisodeNav() // autoplay advanced an episode — refresh ⏮/⏭ targets
+    }
+
+    /**
+     * Resolve the series' episode list once so the player's ⏮/⏭ buttons know
+     * their neighbours. Silent no-op for movies or an unresolvable meta — the
+     * buttons simply stay hidden, exactly as autoplay stands down (§7.1).
+     */
+    private fun resolveEpisodeNav(req: PlaybackRequest) {
+        if (req.metaType != "series") return
+        val ref = req.mediaRef ?: return
+        if (ref.sourceKind != MediaRef.KIND_ADDON) return
+        viewModelScope.launch {
+            val meta = autoplayGateway.resolveMeta(req.metaType, req.metaId) ?: return@launch
+            episodeVideos = meta.videos
+            updateEpisodeNav()
+        }
+    }
+
+    private fun updateEpisodeNav() {
+        val currentId = request?.mediaRef?.externalId ?: return
+        if (episodeVideos.isEmpty()) return
+        val prev = NextEpisode.previousBefore(episodeVideos, currentId)
+        val next = NextEpisode.nextAfter(episodeVideos, currentId)
+        _uiState.value = _uiState.value.copy(
+            previousEpisode = prev?.let { EpisodeTarget(it.id, episodeTitle(it)) },
+            nextEpisode = next?.let { EpisodeTarget(it.id, episodeTitle(it)) },
+        )
+    }
+
+    /** ⏭ / ⏮: open a neighbouring episode's stream list — auto-playing if that
+     *  setting is on — via the same nav path autoplay's manual fallback uses. */
+    fun goToNextEpisode() = openEpisode(_uiState.value.nextEpisode)
+    fun goToPreviousEpisode() = openEpisode(_uiState.value.previousEpisode)
+
+    private fun openEpisode(target: EpisodeTarget?) {
+        val req = request ?: return
+        target ?: return
+        _openStreams.tryEmit(OpenStreams(req.metaType, target.videoId, target.title, req.metaId, req.poster))
     }
 
     /**

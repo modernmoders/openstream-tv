@@ -29,6 +29,8 @@ class AutoStartSelectionTest {
     private val playable = Stream(name = "Good", url = "http://example.invalid/v.mp4")
     private val playable2 = Stream(name = "Good 2", url = "http://example.invalid/v2.mp4")
     private val torrentOnly = Stream(name = "Torrent", infoHash = "abc")
+    private val spanish = Stream(name = "🇪🇸 Spanish", url = "http://example.invalid/es.mp4")
+    private val english = Stream(name = "English 1080p", url = "http://example.invalid/en.mp4")
 
     @Test
     fun `initializing means wait`() {
@@ -96,6 +98,50 @@ class AutoStartSelectionTest {
             listOf("a" to playable, "c" to playable2),
             alts.map { it.addonUrl to it.stream },
         )
+    }
+
+    @Test
+    fun `english audio is preferred over a higher-priority non-english stream`() {
+        // Spanish sits first in addon order, but the auto-start must skip it
+        // for the English release below (owner round 12).
+        val groups = listOf(
+            GroupState.Loaded(addon("a"), listOf(spanish)),
+            GroupState.Loaded(addon("b"), listOf(english)),
+        )
+        val found = firstPlayableWhenSettled(false, groups) as AutoStartResult.Found
+        assertEquals(english, found.stream)
+    }
+
+    @Test
+    fun `waits for a still-loading addon that might carry english`() {
+        // First addon is non-English-only; a later one is still loading and
+        // could yet provide English — don't auto-play the Spanish rip early.
+        val groups = listOf(
+            GroupState.Loaded(addon("a"), listOf(spanish)),
+            GroupState.Loading(addon("b")),
+        )
+        assertEquals(AutoStartResult.Waiting, firstPlayableWhenSettled(false, groups))
+    }
+
+    @Test
+    fun `foreign-only video falls back to first playable in addon order`() {
+        // No English anywhere, everything settled: the foreign film still plays.
+        val groups = listOf(
+            GroupState.Loaded(addon("a"), listOf(spanish)),
+            GroupState.Loaded(addon("b"), emptyList()),
+        )
+        val found = firstPlayableWhenSettled(false, groups) as AutoStartResult.Found
+        assertEquals(spanish, found.stream)
+    }
+
+    @Test
+    fun `alternatives walk lists english before non-english`() {
+        val groups = listOf(
+            GroupState.Loaded(addon("a"), listOf(spanish)),
+            GroupState.Loaded(addon("b"), listOf(english)),
+        )
+        val alts = orderedAlternatives(groups)
+        assertEquals(listOf(english, spanish), alts.map { it.stream })
     }
 
     @Test

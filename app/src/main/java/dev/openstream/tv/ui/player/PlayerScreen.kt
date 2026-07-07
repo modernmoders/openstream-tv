@@ -252,6 +252,12 @@ fun PlayerScreen(
                     focusRequester = scrubFocus,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Episode jumps (owner round 12): shown only for a series
+                    // with a neighbour in that direction, so a movie or the
+                    // first/last episode never gets a dead button.
+                    if (state.previousEpisode != null) {
+                        SurfacePill("⏮ Previous episode", onClick = { viewModel.goToPreviousEpisode(); wake() })
+                    }
                     SurfacePill("Audio & subtitles", onClick = { showTracks = true; wake() })
                     if (viewModel.externalPlayers.isNotEmpty()) {
                         SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
@@ -260,6 +266,9 @@ fun PlayerScreen(
                     // if one remains, else opens the full stream list for this
                     // video — never a dead/hidden button.
                     SurfacePill("Try a different stream", onClick = { viewModel.tryAnotherStream(); wake() })
+                    if (state.nextEpisode != null) {
+                        SurfacePill("Next episode ⏭", onClick = { viewModel.goToNextEpisode(); wake() })
+                    }
                 }
             }
         }

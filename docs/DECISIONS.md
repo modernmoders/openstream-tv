@@ -945,3 +945,37 @@ baseline-aligned, tight gap — so the mark's S IS the wordmark's first
 letter(s). Same generated-bezier + TextPath pipeline as #38; the neutral
 repo banner keeps the mark alone. Deployed alpha.22 to the pro box only
 (.231 offline).
+
+## 40. 2026-07-07 (session 18) — English-audio preference + player prev/next episode (round 12)
+
+Two owner round-12 asks, both built + unit-tested (build green, NOT yet
+device-verified).
+
+(a) **English audio unless a title is foreign-only.** The player can't read
+a container's audio tracks before opening the stream, so — exactly like the
+existing resolution/cache-marker heuristics — we read the addon's free-text
+label. `StreamCascade.isNonEnglishAudio(stream)` is deliberately CONSERVATIVE:
+a release counts non-English ONLY when it advertises another language
+(word-boundaried language names + non-English flag emojis) AND carries no
+English/dual/multi signal. Plain English rips are usually untagged, so
+"no tag" stays English-friendly — we only push a stream DOWN, never demote an
+unmarked English rip. Applied in three selection paths, NOT the visible list
+(owner chose "auto-play + try-another only"; the on-screen list stays in
+addon order, §4.1.7): `StreamCascade.rank` gets a new TOP tier (English above
+even bingeGroup), `firstPlayableWhenSettled` prefers the first English-friendly
+playable and waits on still-loading addons that might carry English, and
+`orderedAlternatives` lists English before non-English. Every path has a
+foreign-only fallback (when NO stream is English-friendly the tier is a
+constant / the list is left in addon order) so a foreign film is never
+stranded. Anime needs no special case — owner chose "prefer English dub", i.e.
+treat anime like everything else.
+
+(b) **Player ⏮/⏭ episode buttons.** New `NextEpisode.previousBefore` mirrors
+`nextAfter`. PlayerViewModel resolves the series' episode list once (via
+AutoplayGateway.resolveMeta — the same seam autoplay already uses; no screen
+smuggles the videos list) and exposes prev/next `EpisodeTarget`s in UiState,
+recomputed when autoplay advances an episode. The buttons open that episode's
+stream list through the EXISTING `onOpenStreams` nav path (which auto-plays if
+that setting is on) — so no new playback plumbing, and Back behaves like the
+autoplay manual fallback. Buttons render only when a neighbour exists (movies
+and the first/last episode never get a dead button).

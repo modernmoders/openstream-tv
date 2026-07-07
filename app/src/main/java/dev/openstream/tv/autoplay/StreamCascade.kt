@@ -52,10 +52,18 @@ object StreamCascade {
             }
         }
 
+        // English audio wins over everything (owner round 12): auto-play must
+        // pick an English-audio release unless the title is foreign-only. When
+        // no candidate is English-friendly the predicate is constant, so this
+        // tier is a no-op and the rip-consistency tiers below decide — a
+        // foreign film is never stranded, it just isn't reshuffled.
+        val hasEnglishOption = candidates.any { !isNonEnglishAudio(it.stream) }
+
         return candidates.sortedWith(
-            compareByDescending<Candidate> {
-                currentBinge != null && it.stream.behaviorHints.bingeGroup == currentBinge
-            }
+            compareByDescending<Candidate> { !hasEnglishOption || !isNonEnglishAudio(it.stream) }
+                .thenByDescending {
+                    currentBinge != null && it.stream.behaviorHints.bingeGroup == currentBinge
+                }
                 .thenByDescending { it.addonUrl == current.addonUrl }
                 .thenByDescending { currentRes != null && resolutionOf(it.stream) == currentRes }
                 .thenByDescending { tokenSimilarity(currentTokens, normalizedTokens(it.stream)) }
@@ -80,6 +88,39 @@ object StreamCascade {
     fun hasCacheMarker(stream: Stream): Boolean {
         val text = labelText(stream)
         return text.contains('⚡') || Regex("""\b(cached|instant)\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+    }
+
+    // --- audio-language preference (owner round 12) ---
+    // We can't read a stream's audio tracks before opening it, so — exactly as
+    // with resolution and cache flags — we read the addon's free-text label.
+    // A release counts as English-friendly UNLESS it advertises another
+    // language and NOT English/dual/multi. Plain English rips are usually
+    // untagged, so "no language tag" stays English-friendly: we only push a
+    // stream DOWN when it explicitly says it's another language, never up.
+
+    private val ENGLISH_MARKER =
+        Regex("""\benglish\b|\beng\b|\bdual\b|\bmulti\b|🇬🇧|🇺🇸|🇦🇺|🇨🇦""", RegexOption.IGNORE_CASE)
+
+    private val NON_ENGLISH_MARKER = Regex(
+        """\b(spanish|espanol|español|latino|french|francais|français|truefrench|vostfr|""" +
+            """german|deutsch|italian|italiano|hindi|tamil|telugu|malayalam|kannada|marathi|""" +
+            """bengali|gujarati|punjabi|urdu|portuguese|portugues|português|dublado|russian|""" +
+            """japanese|korean|mandarin|cantonese|chinese|arabic|turkish|polish|lektor|dutch|""" +
+            """swedish|danish|norwegian|finnish|thai|vietnamese|tagalog|hebrew|greek|czech|""" +
+            """hungarian|romanian|ukrainian|persian|farsi|indonesian)\b|""" +
+            """🇪🇸|🇲🇽|🇫🇷|🇩🇪|🇮🇹|🇷🇺|🇯🇵|🇰🇷|🇨🇳|🇮🇳|🇧🇷|🇵🇹|🇸🇦|🇹🇷|🇵🇱|🇳🇱""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * True when the label advertises a non-English audio language and gives no
+     * English/dual/multi signal. Conservative on purpose: false for untagged
+     * releases, so an English rip that simply doesn't announce its audio is
+     * never demoted.
+     */
+    fun isNonEnglishAudio(stream: Stream): Boolean {
+        val text = labelText(stream)
+        return NON_ENGLISH_MARKER.containsMatchIn(text) && !ENGLISH_MARKER.containsMatchIn(text)
     }
 
     private val EPISODE_TOKEN = Regex("""s\d{1,3}e\d{1,3}|\b\d+\b""", RegexOption.IGNORE_CASE)

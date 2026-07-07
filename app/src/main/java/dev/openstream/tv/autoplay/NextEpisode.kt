@@ -28,6 +28,18 @@ object NextEpisode {
         return ordered.getOrNull(currentIndex + 1)
     }
 
+    /**
+     * The episode before [currentVideoId] in binge order, or null at the start
+     * of the series (owner round 12: the player's "Previous episode" button).
+     * Mirror of [nextAfter] so both directions share the same ordering rules.
+     */
+    fun previousBefore(videos: List<Video>, currentVideoId: String): Video? {
+        val ordered = orderVideos(videos)
+        val currentIndex = ordered.indexOfFirst { it.id == currentVideoId }
+        if (currentIndex <= 0) return null
+        return ordered.getOrNull(currentIndex - 1)
+    }
+
     private fun sortKey(video: Video): Long {
         val season = video.season
         val episode = video.episode

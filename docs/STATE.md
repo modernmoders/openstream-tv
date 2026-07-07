@@ -1,3 +1,31 @@
+# STATE — updated 2026-07-07 by session 18
+
+## ⚠️ READ FIRST (session 18 — 2026-07-07 — round-12: English audio + player episode nav)
+Owner round-12 batch (DECISIONS #40). Two app features BUILT + unit-tested
+(`assembleDebug` + `testDebugUnitTest` GREEN), **NOT yet emulator/device-
+verified, versionCode NOT bumped (still alpha.22)**:
+1. **English audio unless foreign-only.** `StreamCascade.isNonEnglishAudio`
+   (conservative label heuristic: flags a stream non-English only when it
+   names another language AND gives no English/dual/multi signal — untagged
+   stays English-friendly). Wired into what AUTO-PLAYS + the "Try a different
+   stream" walk, NOT the visible list (owner chose "auto-play + try-another
+   only"; visible list keeps addon order, §4.1.7): new top tier in
+   `StreamCascade.rank`, English-preferring `firstPlayableWhenSettled`,
+   English-first `orderedAlternatives`. Foreign-only fallback everywhere.
+   Anime = no special case (owner: "prefer English dub").
+2. **Player ⏮ Previous / Next ⏭ episode buttons.** `NextEpisode.previousBefore`
+   + PlayerViewModel resolves the episode list (AutoplayGateway.resolveMeta)
+   and opens the neighbour's stream list via the existing `onOpenStreams`
+   path. Shown only when a neighbour exists.
+Owner still owns two non-code deliverables from this batch (answered in chat,
+nothing to build): (a) a PROMPT to hand another AI to design AIOStreams +
+AIOMetadata templates (Standard/NSFW/Anime); (b) the "add a person without
+AI" flow = add to the passport/users.json → `tools/make_hosting_bundle.py`
+→ upload to /setup → type their name on the box.
+⚠️ NEXT deploy should bundle these two features + the still-open round-11
+items (below) and bump versionCode. Emulator-verify the English auto-pick
+and the ⏮/⏭ buttons on a real Cinemeta series first.
+
 # STATE — updated 2026-07-07 by session 17 (afternoon — HANDOFF TO NEXT MODEL)
 
 ## ⚠️ READ FIRST (session 17 cont. — 2026-07-07 — ROUND 11 logged, alpha.22 logo v2)

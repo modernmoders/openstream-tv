@@ -35,6 +35,30 @@ class NextEpisodeTest {
     }
 
     @Test
+    fun `previous within a season`() {
+        val videos = listOf(ep(1, 1), ep(1, 2), ep(1, 3))
+        assertEquals("tt1:1:1", NextEpisode.previousBefore(videos, "tt1:1:2")?.id)
+    }
+
+    @Test
+    fun `previous crosses season boundary`() {
+        val videos = listOf(ep(1, 1), ep(1, 2), ep(2, 1))
+        assertEquals("tt1:1:2", NextEpisode.previousBefore(videos, "tt1:2:1")?.id)
+    }
+
+    @Test
+    fun `series start returns null for previous`() {
+        val videos = listOf(ep(1, 1), ep(1, 2))
+        assertNull(NextEpisode.previousBefore(videos, "tt1:1:1"))
+    }
+
+    @Test
+    fun `previous with unknown current id returns null`() {
+        val videos = listOf(ep(1, 1), ep(1, 2))
+        assertNull(NextEpisode.previousBefore(videos, "tt1:9:9"))
+    }
+
+    @Test
     fun `order is season-episode even when the array is shuffled`() {
         val videos = listOf(ep(2, 1), ep(1, 2), ep(1, 1))
         assertEquals(
