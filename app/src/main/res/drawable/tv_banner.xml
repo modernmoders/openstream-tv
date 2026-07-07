@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Neutral TV launcher banner (16:9): the dual-S mark, centered, no
-     wordmark — the repo default carries no brand. Owner builds swap in
+<!-- Neutral TV banner (repo default): the shadow-S mark alone, no wordmark —
+     the open-source repo carries no brand. SStreams builds swap in
      tv_banner_sstreams via the appBanner manifest placeholder. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="320dp"
@@ -12,20 +12,20 @@
         android:pathData="M0,0 L320,0 L320,180 L0,180 Z" />
     <path
         android:strokeColor="#3FD8C7"
-        android:strokeWidth="5.7"
+        android:strokeWidth="8.0"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M160.55,70.47 C160.55,63.18 154.64,57.27 147.35,57.27 C140.06,57.27 134.15,63.18 134.15,70.47 C134.15,77.77 140.06,83.67 147.35,83.67 C154.64,83.67 160.55,89.58 160.55,96.88 C160.55,104.17 154.64,110.08 147.35,110.08 C140.06,110.08 134.15,104.17 134.15,96.88" />
+        android:pathData="M176.25,66.75 C176.25,55.7 167.3,46.75 156.25,46.75 C145.2,46.75 136.25,55.7 136.25,66.75 C136.25,77.8 145.2,86.75 156.25,86.75 C167.3,86.75 176.25,95.7 176.25,106.75 C176.25,117.8 167.3,126.75 156.25,126.75 C145.2,126.75 136.25,117.8 136.25,106.75" />
     <path
         android:strokeColor="#12121C"
-        android:strokeWidth="7.4"
+        android:strokeWidth="10.0"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M185.85,83.12 C185.85,75.83 179.94,69.92 172.65,69.92 C165.36,69.92 159.45,75.83 159.45,83.12 C159.45,90.42 165.36,96.33 172.65,96.33 C179.94,96.33 185.85,102.23 185.85,109.53 C185.85,116.82 179.94,122.73 172.65,122.73 C165.36,122.73 159.45,116.82 159.45,109.53" />
+        android:pathData="M183.75,73.25 C183.75,62.2 174.8,53.25 163.75,53.25 C152.7,53.25 143.75,62.2 143.75,73.25 C143.75,84.3 152.7,93.25 163.75,93.25 C174.8,93.25 183.75,102.2 183.75,113.25 C183.75,124.3 174.8,133.25 163.75,133.25 C152.7,133.25 143.75,124.3 143.75,113.25" />
     <path
         android:strokeColor="#4DA3FF"
-        android:strokeWidth="5.7"
+        android:strokeWidth="8.0"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M185.85,83.12 C185.85,75.83 179.94,69.92 172.65,69.92 C165.36,69.92 159.45,75.83 159.45,83.12 C159.45,90.42 165.36,96.33 172.65,96.33 C179.94,96.33 185.85,102.23 185.85,109.53 C185.85,116.82 179.94,122.73 172.65,122.73 C165.36,122.73 159.45,116.82 159.45,109.53" />
+        android:pathData="M183.75,73.25 C183.75,62.2 174.8,53.25 163.75,53.25 C152.7,53.25 143.75,62.2 143.75,73.25 C143.75,84.3 152.7,93.25 163.75,93.25 C174.8,93.25 183.75,102.2 183.75,113.25 C183.75,124.3 174.8,133.25 163.75,133.25 C152.7,133.25 143.75,124.3 143.75,113.25" />
 </vector>

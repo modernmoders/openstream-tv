@@ -932,3 +932,16 @@ Discover already shows "Nothing in this catalog" instead of a blank
 grid. Resolution rides the existing plan: MediaFusion is already excluded
 from generated profiles (#37) and R1 templates strip live-TV/events
 catalogs from AIOStreams configs.
+
+## 39. 2026-07-07 (session 17 cont.) — Logo v2: shadow-S lockup (alpha.22)
+
+Owner rejected v1's side-by-side monogram: "wanted the spooned S's much
+closer, almost like a single S but the first S would be the shadow… and
+mix into the 'treams' part, so altogether it makes SStreams — not SS
+SStreams." v2 does literally that: the teal S sits (3.5,3.5) behind the
+blue S in the icon (reads as one letter with a colored shadow), and the
+banner is a single centered lockup — shadow-S mark + "treams" wordmark,
+baseline-aligned, tight gap — so the mark's S IS the wordmark's first
+letter(s). Same generated-bezier + TextPath pipeline as #38; the neutral
+repo banner keeps the mark alone. Deployed alpha.22 to the pro box only
+(.231 offline).

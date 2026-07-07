@@ -4,6 +4,21 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-07 — Logo v2 (shadow-S lockup), alpha.22 (session 17 cont.)
+
+Owner round 11: v1 read as "SS SStreams"; rebuilt as one blue S with the
+teal S tucked close behind (its shadow), banner mark flowing into "treams"
+so the lockup reads "SStreams". Geometry preview-rendered before emitting
+the vector XMLs (same generator pipeline as v1, which round-tripped
+pixel-accurately to the launcher).
+
+| Check | Result |
+|---|---|
+| `assembleRelease` + `testDebugUnitTest` | PASS — 262 tests green |
+| Deploy 192.168.1.117 (pro) `install -r` | PASS — versionName 0.3.0-alpha.22, launched, process alive, sent HOME |
+| Deploy 192.168.1.231 (non-pro) | **BLOCKED — box offline (no ping, adb connect timeout); still on alpha.21.** Retry command in STATE READ FIRST |
+| Launcher render of v2 banner | NOT re-verified on emulator (same generator as v1 which rendered correctly); owner judges on the pro box |
+
 ## 2026-07-07 — Ambient backgrounds + UI sounds + dual-S brand art (session 17, alpha.21)
 
 Round-10 wave 4 (DECISIONS #38). Cold-booted AVD `openstream_tv_api34`

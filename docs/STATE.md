@@ -1,6 +1,40 @@
-# STATE — updated 2026-07-07 by session 17
+# STATE — updated 2026-07-07 by session 17 (afternoon — HANDOFF TO NEXT MODEL)
 
-## ⚠️ READ FIRST (session 17 — 2026-07-07 — alpha.21 DEPLOYED to both boxes)
+## ⚠️ READ FIRST (session 17 cont. — 2026-07-07 — ROUND 11 logged, alpha.22 logo v2)
+**This is a HANDOFF checkpoint: the owner expects the next session (likely
+Opus 4.8) to execute the round-11 backlog below with no re-planning.**
+Facts:
+1. **alpha.22 (versionCode 22) = logo v2** — owner disliked v1 ("SS
+   SStreams"); rebuilt per his words: S's much closer (teal S reads as the
+   blue S's SHADOW, almost one letter) and the mark flows into "treams" so
+   the banner lockup itself reads "SStreams". Icon = tight shadow-S.
+   DEPLOYED + smoke-passed on the PRO box (.117, versionName confirmed
+   0.3.0-alpha.22). ⚠️ **.231 (non-pro) was OFFLINE (no ping) — still on
+   alpha.21.** When it's back:
+   `adb connect 192.168.1.231:5555 && adb -s 192.168.1.231:5555 install -r
+   app/build.nosync/outputs/apk/release/app-release.apk` (rebuild release
+   first if the tree moved past alpha.22).
+2. **Round-11 owner feedback is FULLY LOGGED in MASTER_PLAN §10 ("Owner
+   feedback round 11")** — that list IS the work queue: Discover focus
+   drift on up-scroll, poster art re-loading on scroll-back (Coil memory
+   cache), held-d-pad scroll perf, **video macroblocking artifacts that MX
+   Player doesn't show (owner screenshot; MX-parity is the bar)**,
+   resume-to-last-watched-episode in Details, hold-to-accelerate
+   scrubbing, prev/next-episode player buttons, and the migration-ready
+   per-person profiles project (investigate AIOStreams instances, curate
+   catalogs, 4 templates — owner approves before applying; NEVER touch the
+   family's current Stremio configs).
+3. **Interface-language switcher: owner said skip** ("all english for
+   now") — polish/beauty/efficiency/stability instead.
+4. Hosting: owner uploaded `setup-upload-trim/` (the correct, newest
+   bundle — confirmed to him). The passport server (127.0.0.1:5000) was
+   returning HTTP 500 on every route this day — restart/debug it before
+   trusting reads; gitignored hosting profiles are a fallback for manifest
+   URLs.
+5. Owner said Fable's usage window ends today; effort was set medium for
+   the last stretch. Everything below was left committed, pushed, green.
+
+## ⚠️ (prior) READ FIRST (session 17 — 2026-07-07 — alpha.21 DEPLOYED to both boxes)
 Round-10 wave 4, all built+deployed (DECISIONS #38, TESTLOG 2026-07-07):
 (1) **Ambient per-section backgrounds** — deep-tint washes (Home blue /
 Discover teal / Search violet / Settings slate / Connect warm), draw-phase
@@ -678,10 +712,31 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**Active backlog = owner feedback ROUND 10 (full detail in MASTER_PLAN §10
-"Owner feedback round 10"). The setup site is LIVE (verified session 15),
-`phase-3-done` is tagged. Owner's own priority: get RACHAEL's box going
-with the Family-no-anime template.** Execution order:
+**Active backlog = owner feedback ROUND 11 (MASTER_PLAN §10 "Owner
+feedback round 11") — owner's stated focus: polish, beauty, efficiency,
+stability. Suggested execution order for the next session:**
+
+N1. **Video macroblocking artifacts (owner's most painful item).** Same
+   streams play clean in MX Player on the same box. Start with the box's
+   App log + `adb logcat | grep -iE "codec|decoder|MediaCodec"` while
+   reproducing; try `setEnableDecoderFallback(true)` first (one-liner in
+   the ExoPlayer engine setup); full suspect list in MASTER_PLAN §10 R11.
+N2. **Poster art reload on scroll-back + held-d-pad scroll perf** (one
+   efficiency pass: app-wide Coil ImageLoader with bigger memory cache +
+   stable keys; profile grid travel on the box).
+N3. **Discover grid focus drift** (down 6, up 3 → column shifts right) —
+   repro on emulator, pin columns.
+N4. **Resume-to-last-episode in Details** (ProgressRepository already has
+   the data; pick initial season/episode + a "Continue" CTA).
+N5. **Player: hold-to-accelerate scrubbing + prev/next episode buttons.**
+N6. **Deploy alpha.22 to .231 when it's back online** (command in READ
+   FIRST above), then bump + deploy the next wave to BOTH.
+N7. **Profiles endgame** (standing): investigate the 3 live AIOStreams
+   instances → curate catalogs → 4 templates → owner approval →
+   per-person profiles as accounts arrive. Details in MASTER_PLAN §10
+   round-11 last item. Don't touch the family's Stremio configs.
+
+(Prior round-10 context below — mostly closed; R1/R5 still owner-gated.)
 
 R1. **Rachael end-to-end (owner's #1).** Blocked owner-side on account
    creation (Trakt/TMDB etc. — owner said he'll make them; test creds in

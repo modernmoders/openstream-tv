@@ -636,6 +636,89 @@ Owner asks 2026-07-07 (session 16):
   per-person accounts, Claude wires the manifest URL into users.json, then
   regenerate + re-upload.
 
+Owner feedback round 11 (2026-07-07 afternoon — logged session 17; owner
+deprioritized the interface-language switcher: "all english for now, focus
+on polish/beauty/efficiency/stability"):
+- [x] **Hosting upload confusion answered**: `setup-upload-trim/` is the
+  correct bundle (newest, trimmed addons, filenames preserved). Owner
+  already uploaded it.
+- [x] **Logo v2** (alpha.22): owner disliked v1's "SS SStreams" — wanted the
+  spooned S's much closer (almost one S, the teal one reading as its
+  shadow) and the mark flowing into "treams" so the lockup itself reads
+  "SStreams". Rebuilt exactly that (icon = tight shadow-S; banner =
+  shadow-S + "treams", one centered lockup). Owner to judge on the TV.
+- [ ] **Discover grid: focus drifts sideways on the way back up.** Owner:
+  down ~6 rows then up 3 lands in a different column ("as if it went to
+  the right some"). Likely 2D focus search picking a neighbor when the
+  poster reveal/scale shifts geometry, or grid item focus not pinned to
+  columns. Repro on emulator with d-pad bursts; consider
+  focusRestorer/focusGroup per row or an explicit column-preserving focus
+  strategy on LazyVerticalGrid.
+- [ ] **Poster art re-downloads/re-fades when scrolling back** ("reloads
+  titles I've scrolled past"). Coil's default memory cache is too small
+  for a 6-8-column TV grid. Fix bundle: app-wide ImageLoader with a bigger
+  memoryCache percent + respect cache on recomposition (stable keys,
+  `placeholderMemoryCacheKey`, no crossfade on memory hits). Measure
+  before/after on the emulator (Coil logs or a debug overlay).
+- [ ] **Held-d-pad scrolling is slow/glitchy in grids/rows.** Profile on
+  the box (gfxinfo / systrace) — suspects: bring-into-view animations
+  fighting key-repeat, poster reveal recompositions, image decoding on
+  the main thread. Goal: fast-travel feels smooth on the 32-bit boxes.
+- [ ] **Video artifacts (macroblocking) on some streams the boxes decode
+  wrong** — owner screenshot shows heavy colored blocking; the SAME
+  streams play clean in MX Player on the same box. We use ExoPlayer/media3
+  (same engine family as Stremio's Android app, NOT MX). Investigate on
+  the box: App log (alpha.16+ records errorCodeName + codec detail),
+  `adb logcat | grep -iE "codec|decoder|MediaCodec"` while reproducing.
+  Suspects on the 32-bit onn boxes: HEVC 10-bit / interlaced H.264 /
+  AV1 handed to a broken hw decoder. Candidate fixes, in order:
+  `DefaultRenderersFactory.setEnableDecoderFallback(true)`;
+  prefer-software-decoder toggle for problem codecs; media3 ffmpeg
+  extension (audio-only is easy, video sw-decode may be too slow on these
+  boxes); worst case surface "Play in another app" proactively when the
+  codec is known-bad. MX-parity is the acceptance bar.
+- [ ] **Resume to last-watched episode.** Search → Naruto → Details should
+  land on the last-watched season chip with the last-watched episode
+  focused (owner watched S3E40, closed app, reopened — wants to continue
+  from there, not scroll from S1E1). ProgressRepository already stores
+  per-episode positions keyed by MediaRef; DetailsScreen needs a
+  "most-recently-watched episode for this meta" query to pick initial
+  season + episode focus (and ideally a "Continue: S3 E40" row/CTA above
+  the episode list). Continue Watching on Home already does this for
+  in-progress items — Details should match.
+- [ ] **Player: hold-to-accelerate scrubbing.** Holding ◀/▶ on the scrub
+  bar should ramp the seek step the longer it's held (e.g. 10s → 30s →
+  60s per repeat after N repeats). Pure step-policy fn + tests, wire into
+  PlayerScreen's scrub-bar key handling.
+- [ ] **Player: previous/next episode buttons** (‹ ›) on the control bar
+  for series — jump straight to the adjacent episode's §7.1 stream
+  resolution (reuse the Up Next / autoplay advance machinery; prev is the
+  mirror). Hide for movies.
+- [ ] Interface-language switcher: DEPRIORITIZED by owner (round 11) —
+  do not build until asked again.
+- [ ] **Migration-ready profiles for every family member (owner round 11,
+  standing project).** The family currently uses the STREMIO app with
+  their existing addon configs — those must NOT be disturbed. Goal: when
+  the owner moves each person to SStreams, their hosted profile is already
+  right. Work plan (Claude-side, in order):
+  1. INVESTIGATE the owner's live AIOStreams instances (main, [BAK],
+     ANOtherOne): what services/addons each wraps, which catalogs each
+     exposes (fetch manifests via the gitignored hosting profiles —
+     passport server was 500ing on 2026-07-07, see STATE), catalog caps.
+  2. DESIGN the "best catalogs for the app": a curated, auto-updating
+     Home-row set (popular/trending/top split across AIOStreams +
+     AIOMetadata within caps), coherent Discover types, no dead or
+     duplicate rows — the 4 templates (Family-Anime, NSFW-Anime,
+     Family-no-anime, NSFW-no-anime) from round 10 are the deliverable
+     shape; owner APPROVES before anything is applied.
+  3. Per-person: owner creates accounts/keys (Trakt/TMDB/RD/AIOMetadata) →
+     Claude wires manifest URLs into the LIVE passport users.json (POST
+     whole structure; verify save persisted!) → make_profiles.py
+     --users <live> → hosting bundle regen (filenames preserved via
+     profiles.config.json) → owner uploads → box types the name once.
+  4. NEVER touch the family's existing Stremio-app configs; the hosted
+     profile is a parallel artifact. Rachael is the pilot (round 10).
+
 ### Phase 5 — Release + community
 - [ ] Release CI: tag → build signed APK (repo-secret keystore) → GitHub Release.
 - [ ] In-app updater: background check of GitHub Releases API, dismissible prompt, download + `ACTION_VIEW` package-installer intent (sideload-friendly; needs `REQUEST_INSTALL_PACKAGES`).
