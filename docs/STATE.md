@@ -117,6 +117,26 @@ sounds, live-TV/events cleanup, 4 addon templates + Rachael onboarding.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 16 cont. (2026-07-07) — anime episode-numbering toggle + SStreams
+  rename (DECISIONS #36). Built, 256 tests green, pushed `a4b09b8`.** Settings
+  > "Episode numbering": per-season vs straight-through absolute (Ep 115),
+  computed client-side (`absoluteEpisodeNumbers`, specials excluded) — verified
+  on real Naruto data (S3E32 = abs 115). Details episode list only
+  (player/UpNext titles unchanged — follow-up for full consistency). App
+  renamed **SStreams**: launcher label is now a `${appLabel}`
+  manifestPlaceholder from local.properties `setup.brand` (repo default stays
+  "OpenStream TV"); in-app title already used it. NOT emulator-verified;
+  versionCode still alpha.17 (bump at deploy). ALSO this session: **Rachael
+  reconciled + completed** — her AIOMetadata merged into the LIVE passport
+  (POST /api/users; all 13 users intact), hosting bundle regenerated (index.php
+  + `rachael-wv_EExTgN6I.json`, every existing filename preserved) staged at
+  `~/Desktop/setup-upload/` for owner upload → then type "rachael" on the
+  non-pro box (192.168.1.231). 4 Claude Code plugins installed globally.
+  **Data-truth:** the passport server (127.0.0.1:5000,
+  `~/Documents/Claude/StremioSurfer/`) is the SINGLE SOURCE OF TRUTH for
+  users.json; the repo `docs/reference/StremioSurfer/users.json` is a STALE
+  snapshot and `make_profiles.py`/`make_hosting_bundle.py` DEFAULT to it —
+  pass `--users <live file>`.
 - **Session 15 (2026-07-06 evening, new account) — round-10 checkpoint
   COMPLETED (docs only, no code).** Session 14 died mid-checkpoint (usage):
   it had ticked the §7.2 gate in MASTER_PLAN (gate D = owner-declared PASS)
@@ -596,10 +616,13 @@ R2. **Discover UX fixes (self-contained app code, no owner input):**
    pass with (b) before the next deploy. Also landed session 16 and awaiting
    the same visual pass: sticky season + episode thumbnails/synopses
    (`a8be757`) and easy-mode Info-screen/Back nav (`321f794`).
-R3. **Rebrand → SStreams** (no "Savoy" in anything public): dual-S
-   spoon-logo experiment (two colors, thin border; drop it if ugly and
-   design better), Home brand title, launcher label/icon, `setup.brand`,
-   hosting regen + owner re-upload of index.php.
+R3. **Rebrand → SStreams** (no "Savoy" in anything public):
+   ✅ DONE (session 16, `a4b09b8`) — in-app brand + launcher label now
+   SStreams (`setup.brand` + `${appLabel}` manifestPlaceholder); hosting
+   index.php regenerated with brand SStreams (staged at
+   `~/Desktop/setup-upload/` for owner upload). STILL TODO: dual-S spoon-logo
+   launcher ICON (web-asset-generator can source it); the "savoy"-in-filename
+   migration (regen tokens + re-paste each box — breaks boxes if careless).
 R4. **Live-TV/events**: empty Discover categories (AIOStreams +
    MediaFusion) + football-under-Movies — investigate type/catalog
    mapping app-side; template-side they get stripped anyway (R1).

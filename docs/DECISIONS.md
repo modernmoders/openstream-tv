@@ -765,3 +765,32 @@ newest report wins, and the family runs one box per person).
 box); per-device ids (meaningless to the owner; person names are the unit
 they think in); appending server-side (the box log is already a ring
 buffer — overwrite keeps the file bounded and idempotent).
+
+## 36. 2026-07-07 (session 16) — Client-side absolute episode numbering + brand-driven launcher label
+
+Two owner asks landed together.
+
+**Anime numbering.** Settings > "Episode numbering" toggles the episode list
+between per-season ("Season 3, Episode 32") and straight-through absolute
+("Episode 115"). The absolute number is computed IN THE APP
+(`absoluteEpisodeNumbers`): every episode with season >= 1, ordered by
+(season, episode), numbered 1..N; specials (season 0) are excluded and keep
+their per-season label. We compute rather than trust the addon because addons
+disagree — Cinemeta's `videos[].number` is only the within-season index
+(Naruto S3E32 has number=32, not 115), and MAL/AIOMetadata may emit absolute
+directly; computing makes the toggle uniform. Read once when Details opens (a
+fresh VM per navigation picks up changes). Scoped to the Details episode list;
+the player/Up-Next titles still build their own season·episode string.
+
+**Launcher name = brand.** The app is "SStreams". The launcher label was
+`@string/app_name` ("OpenStream TV"); it now uses a `${appLabel}`
+manifestPlaceholder fed from the SAME owner-private `setup.brand`
+(local.properties) that already drives the in-app title, defaulting to
+"OpenStream TV" when absent. Keeps the owner's brand out of the public repo
+(CLAUDE.md) instead of hard-coding it in strings.xml. Launcher ICON art is
+untouched — the separate R3 logo step.
+
+**Rejected:** trusting the addon's `number` field (per-season for Cinemeta,
+unreliable); flattening seasons into one list in absolute mode (kept the
+season selector for navigation, only relabeled episodes); hard-coding the
+brand in strings.xml (leaks the owner brand into the open-source repo).
