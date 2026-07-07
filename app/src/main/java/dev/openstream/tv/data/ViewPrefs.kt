@@ -15,6 +15,16 @@ import kotlinx.coroutines.flow.map
 /** How Discover orders the loaded items (client-side; §5.1 view options). */
 enum class DiscoverSortMode { ADDON_ORDER, ALPHABETICAL, NEWEST, TOP_RATED }
 
+/**
+ * How episode numbers read in series/anime episode lists.
+ * SEASONAL = per-season ("Episode 32" inside Season 3); ABSOLUTE = the
+ * straight-through count across all seasons ("Episode 115"). Anime addons
+ * disagree on this (MAL/AIOMetadata often number absolutely, Cinemeta per
+ * season), so the viewer picks — and we compute absolute ourselves so the
+ * choice holds no matter what the addon sends. Default seasonal.
+ */
+enum class EpisodeNumbering { SEASONAL, ABSOLUTE }
+
 data class DiscoverViewPrefs(
     /** Poster columns in the Discover grid (§5.1 density). */
     val columns: Int = 6,
@@ -45,10 +55,15 @@ interface ViewPrefs {
      * the bottom of Settings. Everyone else gets the friendly surface only.
      */
     val expertMode: Flow<Boolean>
+
+    /** Episode numbering style for series/anime episode lists (default seasonal). */
+    val episodeNumbering: Flow<EpisodeNumbering>
+
     suspend fun setDiscoverColumns(columns: Int)
     suspend fun setDiscoverSort(sort: DiscoverSortMode)
     suspend fun setPosterColumns(columns: Int)
     suspend fun setExpertMode(enabled: Boolean)
+    suspend fun setEpisodeNumbering(mode: EpisodeNumbering)
 }
 
 private val Context.viewPrefsStore by preferencesDataStore("view_prefs")
@@ -88,6 +103,14 @@ class DataStoreViewPrefs @Inject constructor(
     override val expertMode: Flow<Boolean> =
         context.viewPrefsStore.data.map { prefs -> prefs[EXPERT_MODE] ?: false }
 
+    override val episodeNumbering: Flow<EpisodeNumbering> =
+        context.viewPrefsStore.data.map { prefs ->
+            // Unknown value (renamed enum in an update) falls back to seasonal.
+            prefs[EPISODE_NUMBERING]
+                ?.let { raw -> EpisodeNumbering.entries.firstOrNull { it.name == raw } }
+                ?: EpisodeNumbering.SEASONAL
+        }
+
     override suspend fun setPosterColumns(columns: Int) {
         context.viewPrefsStore.edit {
             it[POSTER_COLUMNS] = columns.coerceIn(MIN_POSTER_COLUMNS, MAX_POSTER_COLUMNS)
@@ -98,10 +121,15 @@ class DataStoreViewPrefs @Inject constructor(
         context.viewPrefsStore.edit { it[EXPERT_MODE] = enabled }
     }
 
+    override suspend fun setEpisodeNumbering(mode: EpisodeNumbering) {
+        context.viewPrefsStore.edit { it[EPISODE_NUMBERING] = mode.name }
+    }
+
     private companion object {
         val DISCOVER_COLUMNS = intPreferencesKey("discover_columns")
         val DISCOVER_SORT = stringPreferencesKey("discover_sort")
         val POSTER_COLUMNS = intPreferencesKey("poster_columns")
         val EXPERT_MODE = booleanPreferencesKey("expert_mode")
+        val EPISODE_NUMBERING = stringPreferencesKey("episode_numbering")
     }
 }

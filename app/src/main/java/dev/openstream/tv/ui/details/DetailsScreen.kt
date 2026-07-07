@@ -46,6 +46,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.addon.Video
+import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
@@ -114,6 +115,8 @@ fun DetailsScreen(
                 seasons = state.seasons,
                 selectedSeason = state.selectedSeason,
                 episodes = state.episodesOfSeason,
+                numbering = state.numbering,
+                absoluteNumbers = state.absoluteNumbers,
                 onSelectSeason = viewModel::selectSeason,
                 onPlayMovie = {
                     // Movies: video id == meta id (spec)
@@ -144,6 +147,8 @@ private fun DetailsContent(
     seasons: List<Int>,
     selectedSeason: Int?,
     episodes: List<Video>,
+    numbering: EpisodeNumbering,
+    absoluteNumbers: Map<String, Int>,
     onSelectSeason: (Int) -> Unit,
     onPlayMovie: () -> Unit,
     onPlayEpisode: (Video) -> Unit,
@@ -268,8 +273,15 @@ private fun DetailsContent(
                 }
             }
             itemsIndexed(episodes, key = { _, it -> it.id }) { index, video ->
+                // Absolute numbering falls back to the per-season number for
+                // specials (season 0), which are left out of the absolute count.
+                val episodeNumber = when (numbering) {
+                    EpisodeNumbering.ABSOLUTE -> absoluteNumbers[video.id] ?: video.episode
+                    EpisodeNumbering.SEASONAL -> video.episode
+                }
                 EpisodeRow(
                     video = video,
+                    episodeNumber = episodeNumber,
                     onClick = { onPlayEpisode(video) },
                     // Season-less series (e.g. channels): anchor the first episode.
                     modifier = if (seasons.isEmpty() && index == 0) {
@@ -302,7 +314,12 @@ private fun DetailsContent(
  * as the image arrives — no jank on the 32-bit boxes.
  */
 @Composable
-private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun EpisodeRow(
+    video: Video,
+    episodeNumber: Int?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     SurfaceRow(onClick = onClick, modifier = modifier) {
         if (video.thumbnail != null) {
             AsyncImage(
@@ -323,7 +340,7 @@ private fun EpisodeRow(video: Video, onClick: () -> Unit, modifier: Modifier = M
                 // people who don't speak in TV shorthand, owner 2026-07-06).
                 // Addons without real episode names title them "Episode N"
                 // themselves — don't print "Episode 1 · Episode 1".
-                text = video.episode?.let { ep ->
+                text = episodeNumber?.let { ep ->
                     val label = "Episode $ep"
                     if (video.displayTitle.equals(label, ignoreCase = true)) label
                     else "$label  ·  ${video.displayTitle}"

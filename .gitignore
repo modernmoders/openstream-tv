@@ -27,4 +27,7 @@ tools/bbb_720p.mov
 # tokens and passwords. NEVER commit anything under it (CLAUDE.md security).
 docs/reference/StremioSurfer/
 docs/reference/MastaP/
+# Loose secrets drops (e.g. an exported users.json) sometimes land directly
+# in docs/reference/ — never commit any of them.
+docs/reference/*.json
 .DS_Store

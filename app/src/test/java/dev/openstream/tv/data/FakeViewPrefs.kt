@@ -9,10 +9,12 @@ class FakeViewPrefs : ViewPrefs {
     private val state = MutableStateFlow(DiscoverViewPrefs())
     private val columnsState = MutableStateFlow(DEFAULT_POSTER_COLUMNS)
     private val expertState = MutableStateFlow(false)
+    private val numberingState = MutableStateFlow(EpisodeNumbering.SEASONAL)
 
     override val discover: Flow<DiscoverViewPrefs> = state
     override val posterColumns: Flow<Int> = columnsState
     override val expertMode: Flow<Boolean> = expertState
+    override val episodeNumbering: Flow<EpisodeNumbering> = numberingState
 
     override suspend fun setDiscoverColumns(columns: Int) {
         state.update { it.copy(columns = columns) }
@@ -28,5 +30,9 @@ class FakeViewPrefs : ViewPrefs {
 
     override suspend fun setExpertMode(enabled: Boolean) {
         expertState.value = enabled
+    }
+
+    override suspend fun setEpisodeNumbering(mode: EpisodeNumbering) {
+        numberingState.value = mode
     }
 }

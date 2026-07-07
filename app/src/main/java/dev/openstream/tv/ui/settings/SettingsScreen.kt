@@ -33,6 +33,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.MAX_POSTER_COLUMNS
 import dev.openstream.tv.data.MIN_POSTER_COLUMNS
 import dev.openstream.tv.data.PLAYER_ASK
@@ -66,9 +67,11 @@ fun SettingsScreen(
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
+    val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
+    var pickingNumbering by remember { mutableStateOf(false) }
 
     // Predictable entry point: land on the first setting, not Back.
     val firstFocus = remember { FocusRequester() }
@@ -112,6 +115,11 @@ fun SettingsScreen(
                 title = "Poster size",
                 description = "$columns posters per row — smaller posters fit more on screen",
                 onClick = { pickingDensity = true },
+            )
+            SettingEntry(
+                title = "Episode numbering",
+                description = episodeNumberingLabel(numbering),
+                onClick = { pickingNumbering = true },
             )
             SettingEntry(
                 title = "Player",
@@ -185,6 +193,16 @@ fun SettingsScreen(
             onDismiss = { pickingPlayer = false },
         )
     }
+    if (pickingNumbering) {
+        EpisodeNumberingDialog(
+            current = numbering,
+            onPick = { picked ->
+                viewModel.setEpisodeNumbering(picked)
+                pickingNumbering = false
+            },
+            onDismiss = { pickingNumbering = false },
+        )
+    }
 }
 
 /** Human label for the stored player preference (§6.2). */
@@ -195,6 +213,15 @@ private fun playerPrefLabel(pref: String, installed: List<ExternalPlayerPort.Cho
         else -> installed.firstOrNull { it.player.name == pref }?.player?.label
             // Preferred player got uninstalled: say what actually happens.
             ?: "the internal player"
+    }
+
+/** Plain-words description of the episode-numbering choice (owner: anime). */
+private fun episodeNumberingLabel(mode: EpisodeNumbering): String =
+    when (mode) {
+        EpisodeNumbering.SEASONAL ->
+            "By season — e.g. Season 3, Episode 32"
+        EpisodeNumbering.ABSOLUTE ->
+            "Straight through — e.g. Episode 115 (counts every episode; good for anime)"
     }
 
 /**
@@ -401,6 +428,57 @@ private fun DensityDialog(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Episode-numbering picker (owner request: anime). Two plain-words choices —
+ * per-season vs the straight-through absolute count — in the same trapped-focus
+ * dialog language as the other pickers, initial focus on the current value.
+ */
+@Composable
+private fun EpisodeNumberingDialog(
+    current: EpisodeNumbering,
+    onPick: (EpisodeNumbering) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val selectedFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { selectedFocus.requestFocus() } }
+
+    @Composable
+    fun option(value: EpisodeNumbering, label: String) {
+        PickerRow(
+            label = label,
+            selected = value == current,
+            onClick = { onPick(value) },
+            modifier = if (value == current) Modifier.focusRequester(selectedFocus) else Modifier,
+        )
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .width(460.dp)
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
+        ) {
+            Text(
+                text = "Episode numbering",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            option(EpisodeNumbering.SEASONAL, "By season  ·  Season 3, Episode 32")
+            option(EpisodeNumbering.ABSOLUTE, "Straight through  ·  Episode 115")
+            Text(
+                text = "Absolute counts every episode from the start — handy for " +
+                    "long anime that some services number that way.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedText,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }

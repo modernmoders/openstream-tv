@@ -43,6 +43,12 @@ android {
             "String", "SETUP_BRAND",
             "\"${localProps.getProperty("setup.brand") ?: "OpenStream TV"}\"",
         )
+
+        // Launcher name follows the same owner-private brand as the in-app
+        // title (setup.brand): the public repo stays neutral ("OpenStream TV"),
+        // the owner's local.properties makes both say "SStreams".
+        manifestPlaceholders["appLabel"] =
+            localProps.getProperty("setup.brand") ?: "OpenStream TV"
     }
 
     buildTypes {

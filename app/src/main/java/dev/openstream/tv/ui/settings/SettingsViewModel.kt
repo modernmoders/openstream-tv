@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
+import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.SetupConfig
@@ -37,6 +38,10 @@ class SettingsViewModel @Inject constructor(
     val expertMode: StateFlow<Boolean> = viewPrefs.expertMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Seasonal vs absolute episode numbers (owner request: anime numbering). */
+    val episodeNumbering: StateFlow<EpisodeNumbering> = viewPrefs.episodeNumbering
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EpisodeNumbering.SEASONAL)
+
     val playerPref: StateFlow<String> = playbackPrefs.preferredPlayer
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PLAYER_INTERNAL)
 
@@ -64,5 +69,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setExpertMode(enabled: Boolean) {
         viewModelScope.launch { viewPrefs.setExpertMode(enabled) }
+    }
+
+    fun setEpisodeNumbering(mode: EpisodeNumbering) {
+        viewModelScope.launch { viewPrefs.setEpisodeNumbering(mode) }
     }
 }

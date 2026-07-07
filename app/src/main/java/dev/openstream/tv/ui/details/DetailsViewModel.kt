@@ -7,16 +7,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.addon.MetaRepository
 import dev.openstream.tv.addon.Video
+import dev.openstream.tv.addon.absoluteEpisodeNumbers
+import dev.openstream.tv.data.EpisodeNumbering
+import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.domain.ContentType
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class DetailsViewModel @Inject constructor(
     private val metaRepository: MetaRepository,
+    private val viewPrefs: ViewPrefs,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -31,6 +36,10 @@ class DetailsViewModel @Inject constructor(
         val seasons: List<Int> = emptyList(),
         val selectedSeason: Int? = null,
         val episodesOfSeason: List<Video> = emptyList(),
+        /** Viewer's numbering choice, read once when the meta loads. */
+        val numbering: EpisodeNumbering = EpisodeNumbering.SEASONAL,
+        /** video id -> absolute episode number, for ABSOLUTE numbering. */
+        val absoluteNumbers: Map<String, Int> = emptyMap(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -38,6 +47,10 @@ class DetailsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            // The setting is read once at load: it changes rarely and a fresh
+            // Details VM is created on every navigation, so re-entry picks up
+            // any change made in Settings meanwhile.
+            val numbering = viewPrefs.episodeNumbering.first()
             metaRepository.resolveMeta(type, id).fold(
                 onSuccess = { meta ->
                     val seasons = meta.videos
@@ -52,6 +65,8 @@ class DetailsViewModel @Inject constructor(
                         seasons = seasons,
                         selectedSeason = first,
                         episodesOfSeason = episodesFor(meta, first),
+                        numbering = numbering,
+                        absoluteNumbers = absoluteEpisodeNumbers(meta.videos),
                     )
                 },
                 onFailure = { e ->
