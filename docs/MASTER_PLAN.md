@@ -562,6 +562,59 @@ built yet unless marked [x]):
   gets a hero (their first catalog's first item). Rachael's box will be the
   real-world confirmation.
 
+Owner asks 2026-07-07 (session 16):
+- [x] **Anime episode numbering toggle.** Settings > Episode numbering:
+  per-season vs straight-through absolute, computed client-side (DECISIONS
+  #36). App-side only.
+- [x] **SStreams rename, app side.** Launcher label + in-app title both
+  follow `setup.brand`; repo default stays "OpenStream TV" (DECISIONS #36).
+  Logo/icon art still open (R3).
+- [x] **Poster/Continue-Watching title covered by artwork on focus.**
+  Root cause: title sat in a plain Text below the Card while the Card's
+  default 1.1x focus scale grew into that space uncontained. Title now
+  lives inside the Card as a reveal-on-focus overlay (fades in/out with the
+  artwork, alpha-only/draw-phase per DECISIONS #22).
+- [x] **"Reset this TV."** Settings > Expert mode > Reset this TV (confirm
+  dialog): clears every installed addon + the saved setup link, back to the
+  name-setup screen. Built as a discoverable Settings entry instead of a
+  hidden cheat code.
+- [x] **Connect screen's "Skip for now" removed.** A fresh box could be
+  left with zero addons installed; replaced with a "Continue" button that
+  submits the typed name (same action as the keyboard's Go/Done).
+- [x] **Player: "Try a different stream" was disappearing + wrong focus.**
+  Now always present (falls back to the full stream list if the ranked
+  cascade is exhausted) and explicitly focused when the error panel
+  appears, reordered to sit last before Back.
+- [x] **Addon trim + reorder (make_profiles.py).** AIOMetadata/AIOStreams
+  now assembled right after Cinemeta, ahead of the supplementary catalog
+  addons (was burying AIOStreams' own catalogs at the bottom of Home).
+  MediaFusion + TMDB (owner's per-person custom addons) excluded from the
+  generated profile by default — AIOStreams already wraps them internally.
+  users.json itself is untouched; verified against live data, all existing
+  filenames preserved. NOT yet re-uploaded to the setup site.
+- [ ] **Native Trakt scrobble — still not built.** Confirmed again: the
+  Trakt Scrobble addon gives catalog rows only; nothing scrobbles through
+  our app via that addon (real scrobbling is Stremio-app-native). Owner is
+  deciding whether to drop the addon now that AIOLists may already surface
+  the same Trakt lists — needs a look inside a live AIOStreams instance to
+  confirm before removing it (unlike MediaFusion/TMDB, not dropped yet).
+- [ ] **Rachael's AIOStreams doesn't match the owner's.** Owner: her
+  instance only shows 3 addons/services where his has more (minus
+  anime). Needs a side-by-side look inside both live AIOStreams UIs —
+  not something file/API access can answer.
+- [ ] **AIOStreams config templates (primary/backup + no-debridio
+  variants, a third "ANOtherOne" instance).** BLOCKED: all 4 saved files
+  at `templates/*.json` are 0 bytes in every copy found on this Mac
+  (MastaP, StremioSurfer, Projects/StremioSurfer) — the real config content
+  was never actually saved, or was lost. Stray macOS alias files sitting
+  next to them resolve back to the same empty files, not to a real backup
+  elsewhere. Needs either: the owner re-exporting config from each live
+  AIOStreams instance, or building fresh templates from scratch.
+- [ ] **AIOMetadata still empty for everyone except Rachael** (confirmed
+  again tonight, pre-existing gap from session 12) — owner creates the
+  per-person accounts, Claude wires the manifest URL into users.json, then
+  regenerate + re-upload.
+
 ### Phase 5 — Release + community
 - [ ] Release CI: tag → build signed APK (repo-secret keystore) → GitHub Release.
 - [ ] In-app updater: background check of GitHub Releases API, dismissible prompt, download + `ACTION_VIEW` package-installer intent (sideload-friendly; needs `REQUEST_INSTALL_PACKAGES`).

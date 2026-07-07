@@ -794,3 +794,72 @@ untouched — the separate R3 logo step.
 unreliable); flattening seasons into one list in absolute mode (kept the
 season selector for navigation, only relabeled episodes); hard-coding the
 brand in strings.xml (leaks the owner brand into the open-source repo).
+
+## 37. 2026-07-07 (session 16 cont.) — Poster focus-reveal, Reset this TV, player fallback, addon trim
+
+Four independent fixes landed together; grouping the rationale here.
+
+**Poster/Continue-Watching title reveal-on-focus.** Root cause of "artwork
+covers the title" (owner report): the title sat in a plain `Text` sibling
+below the `Card`, while the `Card` itself carries TV Material's default
+1.1x focus scale — a transform that grows the rendered card into that space
+without reserving any extra layout room, so the artwork drew over the
+static text on every focus. Fix: the title now lives INSIDE the Card as a
+bottom-scrim overlay, alpha-faded in/out with focus (`Modifier.alpha`,
+draw-phase only, same house rule as #22) — it scales and fades WITH the
+artwork instead of being run over by it. Trade-off, stated plainly: titles
+are no longer visible on unfocused cards (Netflix-style hover reveal) —
+this is what the owner explicitly asked for ("expand with artwork"), not an
+accessibility regression (AsyncImage's contentDescription still carries the
+name).
+
+**"Reset this TV."** Owner wanted a way back to the fresh-install
+"What's your name?" screen without adb (e.g. handing a box to someone
+else). Built as a real Settings > Expert mode entry behind a confirm
+dialog, not a hidden cheat code — discoverable, and destructive actions
+should never require remembering a secret gesture. Clears
+`AddonRepository.uninstallAll()` + `ProfileSyncPrefs.clear()` only —
+poster density, player choice, and other personal prefs are deliberately
+untouched; those aren't part of "who is this box."
+
+**Connect screen: "Skip for now" removed.** It let a fresh box exit to
+Home with zero addons installed. Replaced with a "Continue" button that
+calls the same `onSubmit` the keyboard's Go/Done action already used —
+submit-only, and DOWN-from-the-field now has a real, visible thing to land
+on instead of nothing.
+
+**Player: "Try a different stream" made unconditional.** It only rendered
+when `canTryNext` was true (the ranked stream cascade had another
+candidate); when exhausted, it vanished and DOWN-navigation from the scrub
+bar/error panel landed on "Play in another app" by 2D nearest-neighbor
+focus search instead — a different escape hatch than the one the owner
+wanted first. `PlayerViewModel.tryAnotherStream()` now always does
+something useful: walks to the next candidate if one exists, else opens
+the full stream list for the same video. The error panel also grabs focus
+on it explicitly via `FocusRequester` (deterministic, not a geometry
+guess), and it's ordered last, right before Back (owner: wants it
+rightmost for visibility).
+
+**Addon trim + reorder (`tools/make_profiles.py`).** Every profile still
+carried MediaFusion + TMDB + Trakt Scrobble alongside AIOStreams —
+duplicating catalogs AIOStreams already wraps internally (Service Wrap),
+per the finalize plan from 2026-07-06 that was logged but never executed.
+AIOStreams/AIOMetadata are now assembled right after Cinemeta instead of
+after the supplementary addons — Home/catalog order follows addon order
+(§4.1.7), so the old order buried AIOStreams' own rows at the bottom.
+MediaFusion + TMDB are excluded by default via
+`DEFAULT_EXCLUDED_ADDON_KEYS` (owner-approved 2026-07-07); Trakt Scrobble
+and Aiolists stay for now — the owner is still deciding on Trakt Scrobble
+(no real scrobbling happens through it either way; see MASTER_PLAN §10)
+pending confirmation that AIOLists doesn't already cover the same rows.
+**users.json itself is never touched or trimmed** — only which of its
+existing manifest URLs get bundled into a generated profile. Verified
+against live data: all 11 existing hosted filenames unchanged (no box
+re-pairing needed), Rachael keeps her AIOMetadata.
+
+**Rejected:** a hidden reset gesture/keycode (less discoverable, easy to
+trigger by accident, no confirm step); hiding the poster title permanently
+instead of a focus reveal (loses the "expand with artwork" look the owner
+asked for); silently dropping Trakt Scrobble alongside MediaFusion/TMDB
+(not yet confirmed redundant — a wrong guess here removes a family
+member's Trakt rows with no way to notice until someone complains).
