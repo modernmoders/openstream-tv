@@ -57,6 +57,11 @@ class MetaAndStreamParsingTest {
 
         // defaultVideoId sent as explicit null -> coerced to default
         assertNull(meta.behaviorHints.defaultVideoId)
+
+        // Easy-mode movie Info screen's "Watch trailer" button (owner
+        // request): trailers parse as bare YouTube ids per spec.
+        assertEquals("L0j-7X8CDpk", meta.trailers.single().source)
+        assertEquals("https://www.youtube.com/watch?v=L0j-7X8CDpk", meta.trailers.single().youtubeUrl)
     }
 
     @Test

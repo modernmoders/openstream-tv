@@ -1,5 +1,7 @@
 package dev.openstream.tv.ui.details
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,12 +34,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.openstream.tv.addon.MetaItem
@@ -196,13 +200,36 @@ private fun DetailsContent(
         }
 
         if (meta.videos.isEmpty()) {
-            // Movie (or any single-video item): one action.
+            // Movie (or any other single-video item, e.g. an addon that skips
+            // episodes): a big primary Play CTA, plus a trailer button ONLY
+            // when the meta actually carries one (owner round 10 easy-mode
+            // Info screen — most addons send no trailers at all).
             item(key = "play") {
-                Button(
-                    onClick = onPlayMovie,
-                    modifier = Modifier.focusRequester(primaryFocus),
-                ) { Text("View streams") }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = onPlayMovie,
+                        modifier = Modifier.focusRequester(primaryFocus),
+                    ) { Text("▶  Play") }
+                    val trailer = meta.trailers.firstOrNull()
+                    if (trailer != null) {
+                        val context = LocalContext.current
+                        OutlinedButton(onClick = {
+                            // External, not embedded: a broken/uninstalled
+                            // YouTube app must not dead-end this screen.
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(trailer.youtubeUrl))
+                                )
+                            }
+                        }) { Text("Watch trailer") }
+                    }
+                }
             }
+            // TODO(owner round 10, OUT OF SCOPE for this pass): a "More like
+            // this" row belongs here — same catalog/genre recommendations
+            // under the Play/trailer CTA, in the shared PosterCard row
+            // language. Needs a data source decision (related-catalog lookup
+            // vs. a genre-filtered Discover query) before it's worth building.
         } else {
             if (seasons.isNotEmpty()) {
                 // Sticky, not a plain item (owner: "the currently selected

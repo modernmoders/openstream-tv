@@ -67,13 +67,24 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
         true -> Routes.CONNECT
         false -> Routes.HOME
     }
+    // Easy vs Expert mode (owner round 10 — DECISIONS #27 default OFF):
+    // gates two navigation shapes below. Expert mode keeps every shortcut a
+    // technical user already relies on; easy mode never strands a viewer on
+    // a raw, addon-labelled screen.
+    val expertMode by launchViewModel.expertMode.collectAsStateWithLifecycle()
     val navController = rememberNavController()
-    // Movies skip the details screen: it held exactly one action ("View
-    // streams"), which the owner called an extra step (2026-07-05 round 5).
-    // Series/channels still need details for season & episode picking.
-    // For a movie the meta id IS the video id (§4.1 stream addressing).
+    // Expert mode: movies skip the details screen (it held exactly one
+    // action, "View streams" — an extra step, 2026-07-05 round 5) straight to
+    // the stream list. Easy mode instead opens a proper Info screen first
+    // (owner round 10: backdrop, description, rating, cast, a big Play CTA,
+    // an optional trailer button) — DetailsScreen already renders all of
+    // that for series, so movies now share the same screen instead of a
+    // second one (KISS). Series/channels always need Details for season &
+    // episode picking either way. For a movie the meta id IS the video id
+    // (§4.1 stream addressing).
     val openDetails: (MetaItem) -> Unit = { item ->
-        if (item.type.equals("movie", ignoreCase = true)) {
+        val isMovie = item.type.equals("movie", ignoreCase = true)
+        if (isMovie && expertMode) {
             navController.navigate(
                 Routes.streams(item.type, item.id, item.name, item.id, item.poster)
             )
@@ -169,7 +180,20 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
         }
         composable(Routes.PLAYER) {
             PlayerScreen(
-                onExit = { navController.popBackStack() },
+                // Easy mode (owner round 10): BACK from the player must land
+                // back on Details/episode-selection, never strand the viewer
+                // on the raw stream list — pop THROUGH the Streams entry
+                // instead of just one level. Expert mode keeps the original
+                // single-pop-to-streams behavior (it's a deliberately
+                // technical surface there). popBackStack(route, inclusive)
+                // is a no-op (returns false) if Streams somehow isn't on the
+                // stack — falling back to a plain pop keeps Back from ever
+                // doing nothing.
+                onExit = {
+                    val poppedThroughStreams = !expertMode &&
+                        navController.popBackStack(Routes.STREAMS, inclusive = true)
+                    if (!poppedThroughStreams) navController.popBackStack()
+                },
                 // Autoplay's manual fallback (§7.1 step 4): REPLACE the player
                 // with the next episode's stream list, so Back from there goes
                 // to the previous episode's list — not a dead ended player.

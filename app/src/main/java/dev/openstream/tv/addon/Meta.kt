@@ -38,10 +38,26 @@ data class MetaItem(
     val links: List<MetaLink> = emptyList(),
     /** Episodes/uploads for series and channels; absent for movies. */
     val videos: List<Video> = emptyList(),
+    /**
+     * YouTube trailers (spec: https://github.com/Stremio/stremio-addon-sdk/
+     * blob/master/docs/api/responses/meta.md#trailers). Most addons (incl.
+     * Cinemeta) omit this entirely — the easy-mode movie Info screen's
+     * "Watch trailer" button only appears when it's non-empty.
+     */
+    val trailers: List<Trailer> = emptyList(),
     val behaviorHints: MetaBehaviorHints = MetaBehaviorHints(),
 ) {
     val contentType: ContentType get() = ContentType.from(type)
     val isUsable: Boolean get() = id.isNotBlank() && name.isNotBlank()
+}
+
+/** One trailer: [source] is a bare YouTube video id (spec), not a full URL. */
+@Serializable
+data class Trailer(
+    val source: String = "",
+    val type: String = "",
+) {
+    val youtubeUrl: String get() = "https://www.youtube.com/watch?v=$source"
 }
 
 @Serializable

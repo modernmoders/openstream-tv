@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.data.SetupConfig
+import dev.openstream.tv.data.ViewPrefs
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.take
 class LaunchViewModel @Inject constructor(
     repository: AddonRepository,
     config: SetupConfig,
+    viewPrefs: ViewPrefs,
 ) : ViewModel() {
 
     /**
@@ -33,4 +35,16 @@ class LaunchViewModel @Inject constructor(
         .map { installed -> config.isConfigured && installed.isEmpty() }
         .take(1)
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Read here (not by each screen) because AppNavHost itself needs it for
+     * the easy-mode navigation shape (owner 2026-07-06 round 10): movies
+     * route through a proper Info screen instead of straight to streams, and
+     * Back from the player pops through the stream list instead of stranding
+     * the viewer there. Defaults false (safe: expert behavior is a superset,
+     * never hides a screen a technical user relies on) until the real
+     * DataStore value arrives.
+     */
+    val expertMode: StateFlow<Boolean> = viewPrefs.expertMode
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 }

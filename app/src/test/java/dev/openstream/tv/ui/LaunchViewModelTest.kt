@@ -4,6 +4,7 @@ import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.Fixtures
+import dev.openstream.tv.data.FakeViewPrefs
 import dev.openstream.tv.data.SetupConfig
 import dev.openstream.tv.data.db.InstalledAddonEntity
 import kotlin.time.Duration.Companion.seconds
@@ -38,6 +39,7 @@ class LaunchViewModelTest {
     private fun viewModel(setupUrl: String) = LaunchViewModel(
         AddonRepository(OkHttpAddonClient(OkHttpClient()), dao),
         SetupConfig(setupUrl, "TestBrand"),
+        FakeViewPrefs(),
     )
 
     private suspend fun LaunchViewModel.decision(): Boolean =

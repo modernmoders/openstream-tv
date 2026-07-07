@@ -15,6 +15,9 @@
         "links": [
             { "name": "Comedy", "category": "genre", "url": "stremio:///discover" }
         ],
+        "trailers": [
+            { "source": "L0j-7X8CDpk", "type": "Trailer" }
+        ],
         "behaviorHints": { "defaultVideoId": null },
         "videos": [
             {
