@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -38,10 +39,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.openstream.tv.ui.components.BackButton
+import dev.openstream.tv.ui.components.MicIconImage
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.search.SearchViewModel.RowState
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import dev.openstream.tv.ui.theme.MutedText
@@ -122,7 +125,12 @@ fun SearchScreen(
                         // Recognizer can vanish between resolve and click
                         // (app updates) — a dead mic must not crash Search.
                         runCatching { voiceLauncher.launch(voiceIntent) }
-                    }) { Text("🎤") }
+                    }) {
+                        // Crisp vector glyph, tinted to the theme accent —
+                        // replaces the "🎤" emoji (owner: "swap that
+                        // microphone for a better, clearer icon").
+                        MicIconImage(tint = Accent, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
