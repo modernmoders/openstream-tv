@@ -36,6 +36,8 @@ data class ProfileLink(
 interface ProfileSyncPrefs {
     suspend fun get(): ProfileLink?
     suspend fun save(link: ProfileLink)
+    /** Forgets the saved link (owner request: "Reset this TV" in Settings). */
+    suspend fun clear()
 }
 
 private val Context.profileSyncStore by preferencesDataStore("profile_sync_prefs")
@@ -57,6 +59,10 @@ class DataStoreProfileSyncPrefs @Inject constructor(
         context.profileSyncStore.edit { store ->
             store[BLOB] = json.encodeToString(ProfileLink.serializer(), link)
         }
+    }
+
+    override suspend fun clear() {
+        context.profileSyncStore.edit { store -> store.remove(BLOB) }
     }
 
     private companion object {

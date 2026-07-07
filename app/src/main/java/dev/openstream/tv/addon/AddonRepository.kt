@@ -52,6 +52,12 @@ class AddonRepository @Inject constructor(
 
     suspend fun uninstall(manifestUrl: String) = dao.delete(manifestUrl)
 
+    /** Removes every installed addon (owner request: a "Reset this TV" escape
+     *  hatch in Settings back to the Welcome/name-setup screen, no adb needed). */
+    suspend fun uninstallAll() {
+        dao.getAll().forEach { dao.delete(it.manifestUrl) }
+    }
+
     suspend fun setEnabled(manifestUrl: String, enabled: Boolean) =
         dao.setEnabled(manifestUrl, enabled)
 

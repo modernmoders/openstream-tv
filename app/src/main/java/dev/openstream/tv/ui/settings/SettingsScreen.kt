@@ -29,8 +29,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Border
+import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.EpisodeNumbering
@@ -62,6 +64,7 @@ fun SettingsScreen(
     onConnect: () -> Unit,
     onAddons: () -> Unit,
     onAppLog: () -> Unit,
+    onReset: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
@@ -72,6 +75,7 @@ fun SettingsScreen(
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
     var pickingNumbering by remember { mutableStateOf(false) }
+    var confirmingReset by remember { mutableStateOf(false) }
 
     // Predictable entry point: land on the first setting, not Back.
     val firstFocus = remember { FocusRequester() }
@@ -168,6 +172,14 @@ fun SettingsScreen(
                     description = "What went wrong lately — viewers never see errors, they land here",
                     onClick = onAppLog,
                 )
+                // Destructive + rare: last, and gated behind a confirm dialog
+                // (owner request: a way back to "What's your name?" with no
+                // adb — e.g. handing the box to a different person).
+                SettingEntry(
+                    title = "Reset this TV",
+                    description = "Forgets every addon and goes back to the name-setup screen",
+                    onClick = { confirmingReset = true },
+                )
             }
         }
     }
@@ -201,6 +213,15 @@ fun SettingsScreen(
                 pickingNumbering = false
             },
             onDismiss = { pickingNumbering = false },
+        )
+    }
+    if (confirmingReset) {
+        ResetTvDialog(
+            onConfirm = {
+                confirmingReset = false
+                viewModel.resetTv(onDone = onReset)
+            },
+            onDismiss = { confirmingReset = false },
         )
     }
 }
@@ -479,6 +500,53 @@ private fun EpisodeNumberingDialog(
                 color = MutedText,
                 modifier = Modifier.padding(top = 6.dp),
             )
+        }
+    }
+}
+
+/**
+ * "Reset this TV" confirmation (owner request: an in-app way back to the
+ * name-setup screen, e.g. handing the box to someone else — no adb needed).
+ * Destructive, so it defaults focus to Cancel, not the reset action, and the
+ * copy spells out exactly what happens rather than relying on a color cue —
+ * this codebase has no dedicated "danger" color token, and one dialog isn't
+ * reason enough to invent one.
+ */
+@Composable
+private fun ResetTvDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val cancelFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { cancelFocus.requestFocus() } }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .width(460.dp)
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
+        ) {
+            Text(
+                text = "Reset this TV?",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
+            Text(
+                text = "This box forgets every addon and the saved setup link, " +
+                    "then shows the \"What's your name?\" screen again — like it " +
+                    "just came out of the box.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MutedText,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.focusRequester(cancelFocus),
+                ) { Text("Cancel") }
+                Button(onClick = onConfirm) { Text("Reset this TV") }
+            }
         }
     }
 }

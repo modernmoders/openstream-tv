@@ -9,4 +9,8 @@ class FakeProfileSyncPrefs(var link: ProfileLink? = null) : ProfileSyncPrefs {
     override suspend fun save(link: ProfileLink) {
         this.link = link
     }
+
+    override suspend fun clear() {
+        link = null
+    }
 }

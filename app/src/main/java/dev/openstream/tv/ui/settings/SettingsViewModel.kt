@@ -3,10 +3,12 @@ package dev.openstream.tv.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
 import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
+import dev.openstream.tv.data.ProfileSyncPrefs
 import dev.openstream.tv.data.SetupConfig
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.player.ExternalPlayer
@@ -22,6 +24,8 @@ import kotlinx.coroutines.launch
 class SettingsViewModel @Inject constructor(
     private val viewPrefs: ViewPrefs,
     private val playbackPrefs: PlaybackPrefs,
+    private val addonRepository: AddonRepository,
+    private val profileSyncPrefs: ProfileSyncPrefs,
     externalPlayers: ExternalPlayerPort,
     setupConfig: SetupConfig,
 ) : ViewModel() {
@@ -73,5 +77,22 @@ class SettingsViewModel @Inject constructor(
 
     fun setEpisodeNumbering(mode: EpisodeNumbering) {
         viewModelScope.launch { viewPrefs.setEpisodeNumbering(mode) }
+    }
+
+    /**
+     * "Reset this TV" (owner request): forget every installed addon and the
+     * saved setup link, so this box goes back to the fresh-install "What's
+     * your name?" screen — the same state [dev.openstream.tv.ui.LaunchViewModel]
+     * shows a box that has never been set up. Deliberately narrow: poster
+     * density, player choice, and other personal preferences are NOT touched —
+     * those aren't part of "who is this box", and clearing them would be a
+     * surprise nobody asked for.
+     */
+    fun resetTv(onDone: () -> Unit) {
+        viewModelScope.launch {
+            addonRepository.uninstallAll()
+            profileSyncPrefs.clear()
+            onDone()
+        }
     }
 }

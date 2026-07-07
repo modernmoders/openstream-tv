@@ -109,7 +109,6 @@ fun ConnectScreen(
                         error = s.error,
                         onNameChange = { name = it },
                         onSubmit = { viewModel.submitName(name) },
-                        onSkip = onExit,
                         fieldFocus = primaryFocus,
                     )
                     is UiState.Busy -> LoadingMessage(
@@ -145,7 +144,6 @@ private fun AskNameStep(
     error: String?,
     onNameChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onSkip: () -> Unit,
     fieldFocus: FocusRequester,
 ) {
     Text(
@@ -174,7 +172,12 @@ private fun AskNameStep(
             textAlign = TextAlign.Center,
         )
     }
-    OutlinedButton(onClick = onSkip) { Text("Skip for now") }
+    // Submit only — no bypass. This is the FIRST thing a fresh box shows, and
+    // a "Skip for now" button here used to leave the box installed with zero
+    // addons (owner round 10: replace with a real Done/submit affordance, and
+    // give DOWN-from-the-field somewhere focusable to land — same action as
+    // the keyboard's Go/Done, just visible and discoverable without it).
+    Button(onClick = onSubmit) { Text("Continue") }
 }
 
 @Composable

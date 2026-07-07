@@ -131,6 +131,12 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
                 onConnect = { navController.navigate(Routes.CONNECT) },
                 onAddons = { navController.navigate(Routes.ADDONS) },
                 onAppLog = { navController.navigate(Routes.SETTINGS_APP_LOG) },
+                // "Reset this TV": land on Welcome/Connect with a clean back
+                // stack, same as ConnectScreen's own Done exit — there's
+                // nothing left to go "back" to once every addon is gone.
+                onReset = {
+                    navController.navigate(Routes.CONNECT) { popUpTo(0) { inclusive = true } }
+                },
             )
         }
         composable(Routes.SETTINGS_HOME_ROWS) {
