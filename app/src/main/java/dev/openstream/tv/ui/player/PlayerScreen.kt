@@ -42,6 +42,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
@@ -89,12 +92,34 @@ fun PlayerScreen(
     LaunchedEffect(Unit) {
         viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
     }
-    BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
+    // Remote BACK: during the Up Next countdown, cancel it and stay; otherwise
+    // leave the player the SAME way the on-screen exits do (onExit) — in easy
+    // mode that pops THROUGH the stream list back to Details/episode selection
+    // instead of landing on the raw stream list. Previously this only fired
+    // for the countdown, so a normal back press hit the nav default (a single
+    // pop onto Streams) — owner report: back showed streams, not the movie.
+    BackHandler {
+        if (autoplay.isCancellable()) viewModel.backPressed() else onExit()
+    }
 
     val engine = engineOrNull
     if (engine == null) {
         Box(Modifier.fillMaxSize().background(Color.Black))
         return
+    }
+
+    // Going Home (app backgrounded) pauses playback (owner request): a TV media
+    // service deliberately keeps ExoPlayer alive in the background, but viewers
+    // expect the Home button to pause, not keep playing. ON_STOP fires when the
+    // app leaves the screen; in-app navigation between our own screens doesn't
+    // trigger it, so this pauses only on a real background (Home/app switch).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, engine) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) engine.exoPlayer.pause()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     var overlayVisible by remember { mutableStateOf(true) }

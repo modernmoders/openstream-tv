@@ -11,15 +11,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,14 +30,18 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.theme.CardSizeTokens
+import kotlinx.coroutines.delay
+
+/** How long focus must REST on a card before its title reveals (ms). */
+private const val TITLE_REVEAL_SETTLE_MS = 120L
 
 /**
  * Poster card + progress bar for the Continue Watching row (§5.6). Same
  * dimensions and reveal-on-focus title treatment as [PosterCard] (owner
- * round 10: "expand with artwork") so the two row kinds align visually —
- * see that file's KDoc for why the title lives inside the card. The
- * watched-fraction bar stays visible regardless of focus; it's useful
- * information on its own, not decoration.
+ * round 10 "expand with artwork") — see that file's KDoc for why the title
+ * lives inside the card and how the settle-delay + draw-phase alpha keep a
+ * held d-pad flicker-free. The watched-fraction bar stays visible regardless
+ * of focus; it's useful information on its own, not decoration.
  *
  * [modifier] lands on the Card — the focusable — so callers can attach a
  * FocusRequester for the row-entry rule (§10: DOWN lands on the first card).
@@ -46,9 +51,18 @@ fun ContinueWatchingCard(progress: WatchProgress, onClick: () -> Unit, modifier:
     val width = CardSizeTokens.posterWidth()
     val height = CardSizeTokens.posterHeight()
     var focused by remember { mutableStateOf(false) }
-    val revealAlpha by animateFloatAsState(
-        targetValue = if (focused) 1f else 0f,
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(focused) {
+        revealed = if (focused) {
+            delay(TITLE_REVEAL_SETTLE_MS)
+            true
+        } else {
+            false
+        }
+    }
+    val revealAlpha = animateFloatAsState(
+        targetValue = if (revealed) 1f else 0f,
+        animationSpec = tween(160, easing = FastOutSlowInEasing),
         label = "cw-title-reveal",
     )
 
@@ -70,7 +84,7 @@ fun ContinueWatchingCard(progress: WatchProgress, onClick: () -> Unit, modifier:
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .height(height * 0.42f)
-                    .alpha(revealAlpha)
+                    .graphicsLayer { alpha = revealAlpha.value }
                     .background(TitleScrim),
             ) {
                 Text(
