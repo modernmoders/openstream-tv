@@ -521,12 +521,16 @@ built yet unless marked [x]):
 - [x] **Discover filters: selected vs focused are nearly
   indistinguishable** — DONE session 16 (`481f4a2`): selected state clearly
   distinct from focus + filter-bar backglow. Deployed alpha.18+.
-- [ ] **Rebrand: SavoyStreams → "SStreams"** (public repo must never say
-  "Savoy"). Logo concept to try: two S's merged/nested like spoons,
-  different colors, a thin border between them; if it doesn't look good,
-  Claude designs something better that makes "SStreams" look good.
-  Touches: Home header brand title, `setup.brand` in local.properties,
-  hosting bundle regen (`--brand`), app launcher label/icon.
+- [x] **Rebrand: SavoyStreams → "SStreams"** (public repo must never say
+  "Savoy"). Name: DONE session 16 (`a4b09b8`, DECISIONS #36) — in-app title
+  + launcher label follow setup.brand. Logo: DONE session 17 (alpha.21,
+  DECISIONS #38) — the owner's dual-S spoon concept built as vector art:
+  launcher icon (mark) + TV banner (mark + wordmark, brand-switched via
+  the new appBanner placeholder; repo default stays neutral).
+  Emulator-verified in the Google TV launcher. STILL OPEN: hosting bundle
+  with brand SStreams staged at ~/Desktop/setup-upload/ awaiting owner
+  upload; the "savoy"-in-filename token migration (breaks saved box links
+  if careless — coordinate with the owner).
 - [x] **TV > Live TV and Events are EMPTY in Discover** — INVESTIGATED
   2026-07-07 (session 17), **NOT an app bug**. Fetched the live catalogs
   directly: MediaFusion's `tv/live_tv` and `events/live_sport_events`
@@ -544,10 +548,14 @@ built yet unless marked [x]):
   trimmed bundle is uploaded and boxes resync, both symptoms disappear.
 - [ ] **Networks UX**: keep as-is for now (owner will live with it); LATER
   a dedicated "Networks & Streaming services" page.
-- [ ] **Ambient background**: opaque pastel gradient / soft shapes behind
-  the app, possibly a different palette per section (extends the pastel
-  "Theme accents" item above).
-- [ ] **UI sounds**: subtle focus/select sounds that fit the refined design.
+- [x] **Ambient background**: DONE session 17 (alpha.21, DECISIONS #38) —
+  deep-tint per-section washes (Home blue / Discover teal / Search violet /
+  Settings slate / Connect warm), draw-phase-only gradient + soft glow;
+  media surfaces stay flat by design. Emulator-verified on all sections.
+- [x] **UI sounds**: DONE session 17 (alpha.21, DECISIONS #38) — soft focus
+  tick + select dink via SoundPool, key-down driven, repeat-throttled,
+  player-suppressed; Settings > "Interface sounds" toggle (default on).
+  Audibility itself needs the owner's ears (emulator is silent to Claude).
 - [ ] **Four addon templates** (AIOStreams + AIOMetadata pairs, based on
   the owner's own instances, tweaked by Claude, OWNER-APPROVED before use):
   Family-Anime, NSFW-Anime, Family-no-anime, NSFW-no-anime — family builds

@@ -4,6 +4,35 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-07 — Ambient backgrounds + UI sounds + dual-S brand art (session 17, alpha.21)
+
+Round-10 wave 4 (DECISIONS #38). Cold-booted AVD `openstream_tv_api34`
+(windowed); both boxes were on network adb the whole time — every command
+pinned `-s`. Deployed to both boxes at the end.
+
+| Check | Result |
+|---|---|
+| `assembleDebug` + `testDebugUnitTest` | PASS — 262 tests, 0 failures (6 new UiSoundPolicyTest) |
+| Ambient wash, Home (blue, glow up-left) | PASS — screenshot, debug build |
+| Ambient wash, Discover (teal) + filter bar backglow | PASS — screenshot (also visually covers R2(c) `481f4a2`) |
+| Ambient wash, Search (violet) | PASS — screenshot |
+| Ambient wash, Settings (slate) | PASS — screenshot |
+| Settings > "Interface sounds" toggle On↔Off, descriptions flip | PASS — screenshots both states, restored ON |
+| Sounds audible | NOT TESTABLE via adb — owner's ears on the real boxes |
+| No crash with sound engine active (dozens of key events) | PASS — logcat clean, process alive |
+| SStreams TV banner renders in Google TV launcher Apps row | PASS — screenshot: dual-S mark + wordmark tile next to VLC |
+| `aapt2 dump badging`: label=SStreams, banner=tv_banner_sstreams | PASS — appBanner placeholder resolves |
+| R8 release smoke on emulator (`install -r`, launch) | PASS — resumed, ambient intact, no FATAL in logcat |
+| Deploy 192.168.1.231 + .117 (`install -r` release) | PASS — both report versionCode=21 / 0.3.0-alpha.21, MainActivity resumed, process alive; boxes sent HOME after |
+
+Also this session, no code: Live TV/Events (R4) investigated by fetching
+the owner's live addon catalogs directly — MediaFusion serves `metas: []`
+for live_tv/live_sport_events (every genre/skip variant) and declares the
+football "Other Sports" catalog as `type: movie`; AIOStreams wraps the
+same empty source. Addon-side, not app-side (DECISIONS #38). One box log
+(adam's) fetched from the setup site: only two AIOMetadata 504s — the
+api=log pipeline works end-to-end on real hardware.
+
 ## 2026-07-06 — Daily log upload + weebs-addon diagnosis (session 14 day 2, alpha.17)
 
 Owner asks: "aiostreamsfortheweebs addon missing" + "everyone's logs uploaded

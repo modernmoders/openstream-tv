@@ -863,3 +863,72 @@ instead of a focus reveal (loses the "expand with artwork" look the owner
 asked for); silently dropping Trakt Scrobble alongside MediaFusion/TMDB
 (not yet confirmed redundant — a wrong guess here removes a family
 member's Trakt rows with no way to notice until someone complains).
+
+## 38. 2026-07-07 (session 17) — Ambient section backgrounds, interface sounds, dual-S brand art (alpha.21)
+
+Three round-10 requests landed together, plus the Live-TV investigation
+that closed R4 without code.
+
+**Ambient per-section backgrounds.** Owner asked for "opaque pastel
+gradient / soft shapes behind the app, possibly per section." On a TV-dark
+app (§5.8) literal pastels would wreck poster/text contrast, so the
+interpretation is DEEP TINTS: each section keeps near-black value but gets
+its own hue — Home blue, Discover teal, Search violet, Settings-family
+slate, Connect warm — as a vertical gradient plus ONE soft radial glow.
+`Modifier.ambientBackground(section)` (theme/AmbientBackground.kt) is a
+drop-in replacement for `background(AppBackground)`: drawBehind only, no
+animation, no recomposition — zero per-frame cost on the 32-bit boxes
+(#22 house rule). Media surfaces (Details/Streams/Player) deliberately
+stay flat AppBackground: their backdrop scrims blend to that exact color,
+and artwork supplies the ambience there. Rejected: animated/blurred blobs
+(GPU cost + visual noise), per-section wallpaper images (asset weight,
+contrast risk).
+
+**Interface sounds (focus tick + select dink).** The trigger is
+MainActivity.dispatchKeyEvent key-downs, NOT real focus changes — Compose
+has no global focus listener and instrumenting every focusable spreads
+sound concerns everywhere. Consequence, stated honestly: an edge press
+that moves nothing still ticks (native TV launchers share this tell).
+Pure `UiSoundPolicy` (JVM-tested ×6) decides: d-pad → focus tick, with
+held-repeat throttled to one per 90ms so fast travel purrs instead of
+machine-gunning; OK/Enter → select dink, never on repeat (held-OK is a
+long-press gesture); everything silent while the player owns the screen —
+PlayerViewModel sets `UiSounds.suppressed` for its lifetime (a held seek
+would rattle constantly over content). The two samples are ~45/200ms WAVs
+generated in-repo (soft 1975Hz tick; E5→B5 two-note dink as overlapping
+decaying sines — no phase-jump click), played via one app-lifetime
+SoundPool at 0.20/0.35 volume, USAGE_ASSISTANCE_SONIFICATION. Settings
+toggle "Interface sounds", default ON (the owner asked for the feature;
+anyone can turn it off in one click). Emulator can't prove audibility —
+owner's ears are the final check.
+
+**Dual-S brand art (launcher icon + TV banner).** The owner's sketch:
+two S's merged/nested like spoons, different colors, thin border between.
+Built exactly that: two stacked-circle S strokes — teal behind, accent
+blue in front, the "border" is a background-colored halo stroke under the
+front S. Geometry generated programmatically (bezier circle-quarters),
+previewed as PNG before committing. The TV launcher shows the BANNER
+instead of the label, so the brand must live in the art itself: new
+`appBanner` manifest placeholder (same pattern as appLabel, DECISIONS #36)
+picks `tv_banner_sstreams` (mark + "SStreams" wordmark converted to vector
+paths — DejaVu Sans Bold via matplotlib TextPath) when
+local.properties setup.brand=SStreams, and the neutral mark-only
+`tv_banner` otherwise — the public repo stays unbranded. The square
+ic_launcher carries the mark alone (no text) and is shared by both brands.
+Emulator-verified: the SStreams banner tile renders in the Google TV
+launcher Apps row. Rejected: committing the wordmark into the default
+banner (brands the open-source repo), adaptive mipmap icons (minSdk 23
+still needs the legacy path anyway; the TV launcher uses the banner).
+
+**Live TV / Events (R4) — investigated, NOT an app bug.** Direct fetches
+against the owner's live addons: MediaFusion `tv/live_tv` and
+`events/live_sport_events` return 200 with `metas: []` in every variant
+(plain / each genre / skip); AIOStreams' same-named catalogs are wrappers
+around that same empty MediaFusion source (`5bde3b0.*` ids). The
+football-under-Movies complaint is also MediaFusion's own manifest: its
+"Other Sports" catalog (40 items) declares `type: movie`. App-side URL
+grammar, type mapping, and isUsable were all checked correct, and
+Discover already shows "Nothing in this catalog" instead of a blank
+grid. Resolution rides the existing plan: MediaFusion is already excluded
+from generated profiles (#37) and R1 templates strip live-TV/events
+catalogs from AIOStreams configs.

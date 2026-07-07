@@ -1,6 +1,33 @@
-# STATE — updated 2026-07-07 by session 16 (late)
+# STATE — updated 2026-07-07 by session 17
 
-## ⚠️ READ FIRST (session 16 latest — 2026-07-07 — alpha.20 DEPLOYED to both boxes)
+## ⚠️ READ FIRST (session 17 — 2026-07-07 — alpha.21 DEPLOYED to both boxes)
+Round-10 wave 4, all built+deployed (DECISIONS #38, TESTLOG 2026-07-07):
+(1) **Ambient per-section backgrounds** — deep-tint washes (Home blue /
+Discover teal / Search violet / Settings slate / Connect warm), draw-phase
+only; media surfaces stay flat by design. Emulator-verified per section.
+(2) **Interface sounds** — soft focus tick + select dink (generated WAVs,
+SoundPool), key-down driven via MainActivity.dispatchKeyEvent, held-repeat
+throttled 90ms, suppressed while the player is up; Settings > "Interface
+sounds" toggle default ON. ⚠️ Audibility itself is owner-ears-only — adb
+can't hear; if the family hates them, one Settings click kills them.
+(3) **Dual-S brand art** — the owner's spoon-nested SS concept as vector
+drawables: launcher icon (mark) + TV banner; new `appBanner` manifest
+placeholder picks the SStreams wordmark banner when setup.brand=SStreams,
+neutral mark otherwise (repo unbranded). Verified rendering in the Google
+TV launcher Apps row. (4) **R4 Live TV/Events CLOSED, no app bug** — the
+owner's MediaFusion instance serves `metas: []` for live_tv +
+live_sport_events (tested every genre/skip variant, direct fetch);
+AIOStreams' entries wrap that same empty source; football-under-Movies is
+MediaFusion declaring "Other Sports" as type=movie. Fix rides the addon
+trim (#37) + R1 templates. ALSO: R2(b) confirmed closed — PosterCard is
+shared by Home/Discover/Search, so the alpha.19/20 title reveal covers
+Discover. 262 tests green. Both boxes CONFIRMED versionCode 21 /
+0.3.0-alpha.21, smoke-launched, sent back HOME. Owner to eyeball: section
+colors, sound feel/volume, the new launcher tile. Box log pipeline
+LIVE-CONFIRMED: adam's box log fetched from the setup site (two
+AIOMetadata 504s in it, harmless).
+
+## ⚠️ (prior) READ FIRST (session 16 latest — 2026-07-07 — alpha.20 DEPLOYED to both boxes)
 Third fix wave, DEPLOYED to both onn boxes (.231, .117 both confirmed
 versionCode 20): (1) **Back from the player now lands on Details/episode,
 not the stream list** — the remote BACK was only intercepted during the Up
@@ -669,43 +696,40 @@ R1. **Rachael end-to-end (owner's #1).** Blocked owner-side on account
    dashboard save persists this time!) → `make_profiles.py` + upload →
    type "rachael" on the non-pro box. Then derive the other 3 templates
    (Family-Anime, NSFW-Anime, NSFW-no-anime).
-R2. **Discover UX fixes (self-contained app code, no owner input):**
-   (a) ✅ DONE (session 16, `9fda76a`) — DOWN lands on the row's first item;
-   (b) **STILL OPEN** — focused-card redesign: art must not cover the title,
-   title pushes down inside a border that extends from the artwork, silky
-   under fast d-pad travel;
-   (c) ✅ DONE (session 16, `481f4a2`) — filter bar selected vs focus distinct
-   + backglow.
-   ⚠️ (a)+(c) are build/test-green but NOT emulator-verified yet — do a visual
-   pass with (b) before the next deploy. Also landed session 16 and awaiting
-   the same visual pass: sticky season + episode thumbnails/synopses
-   (`a8be757`) and easy-mode Info-screen/Back nav (`321f794`).
-R3. **Rebrand → SStreams** (no "Savoy" in anything public):
-   ✅ DONE (session 16, `a4b09b8`) — in-app brand + launcher label now
-   SStreams (`setup.brand` + `${appLabel}` manifestPlaceholder); hosting
-   index.php regenerated with brand SStreams (staged at
-   `~/Desktop/setup-upload/` for owner upload). STILL TODO: dual-S spoon-logo
-   launcher ICON (web-asset-generator can source it); the "savoy"-in-filename
-   migration (regen tokens + re-paste each box — breaks boxes if careless).
-R4. **Live-TV/events**: empty Discover categories (AIOStreams +
-   MediaFusion) + football-under-Movies — investigate type/catalog
-   mapping app-side; template-side they get stripped anyway (R1).
+R2. ✅ **Discover UX fixes — ALL CLOSED.** (a) `9fda76a`; (b) closed by the
+   shared-PosterCard title reveal (alpha.19/20 — Discover uses the same
+   card; owner chose "expand with artwork" over the border sketch);
+   (c) `481f4a2` — filter bar visually verified session 17 (TESTLOG).
+   Owner-eyeball still welcome on the real TVs.
+R3. **Rebrand → SStreams**: name ✅ (session 16, `a4b09b8`); logo/banner ✅
+   (session 17, alpha.21, DECISIONS #38 — dual-S icon + brand-switched TV
+   banner, launcher-verified). STILL TODO owner-side: upload the staged
+   hosting bundle (~/Desktop/setup-upload-trim/ has the newest, trimmed
+   one); LATER: the "savoy"-in-filename token migration (regen + re-paste
+   each box — breaks saved box links if careless, coordinate with owner).
+R4. ✅ **Live-TV/events CLOSED — not an app bug** (session 17, DECISIONS
+   #38): MediaFusion serves zero metas for those catalogs and types
+   football as movie; AIOStreams wraps the same source. Disappears with
+   the addon trim (#37) + R1 templates.
 R5. **Myles rename** — WAITING ON OWNER: confirm deleting/merging the
    `Myles Dad` stub so `Myles Manuel` can become `Myles Dad` (keep the
    hosted filename via profiles.config.json so his box's saved link
    survives).
-R6. Ambience + sounds (round 10): pastel gradient/soft-shape backgrounds
-   (maybe per-section) + subtle focus/select sounds fitting the design.
-R7. Standing Phase-4 queue after round 10: interface-language switcher,
-   watched-history row, Discover scroll prefetch, autoplay settings /
-   tunneling toggle / debug overlay.
+R6. ✅ Ambience + sounds — BOTH DONE session 17 (alpha.21, DECISIONS #38);
+   owner to judge colors + sound feel on the real TVs.
+R7. Standing Phase-4 queue after round 10 (the NEXT app-side work):
+   interface-language switcher, watched-history row, Discover scroll
+   prefetch, autoplay settings / tunneling toggle / debug overlay.
+   Also owner-decision-gated: skip-intro (AniSkip vs manual +85s button),
+   Myles rename (R5), Trakt Scrobble drop.
 
-Owner-side hardware steps still open (unchanged): deploy **alpha.17** to
-both boxes (on alpha.16 now), **reconnect each box once** (Settings →
-Connect this TV — also fixes the missing "[BAK]AIOStreams" addon and
-enables the daily log upload), confirm hold-UP with the real remote
-(DECISIONS #33), and read <setup-url>/logs/<person>.log when anything
-misbehaves (Naruto codec question 1b will self-document there).
+Owner-side steps still open: **reconnect each box once** (Settings →
+Connect this TV — fixes the missing "[BAK]AIOStreams" addon and lets
+ProfileSync + daily log upload track the hosted profile; adam's box
+already uploads logs), upload the staged trimmed hosting bundle
+(~/Desktop/setup-upload-trim/), confirm hold-UP with the real remote
+(DECISIONS #33), judge alpha.21's ambience/sounds/launcher art, and read
+<setup-url>/logs/<person>.log when anything misbehaves.
 
 0a. ✅ **DONE (session 14) — session-13 one-step setup EMULATOR-VERIFIED,
    no bugs.** Full flow passed against a contract mock of the `api=1` site
