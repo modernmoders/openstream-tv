@@ -1,5 +1,26 @@
 # STATE — updated 2026-07-07 by session 16 (late)
 
+## ⚠️ READ FIRST (session 16 latest — 2026-07-07 — alpha.20 DEPLOYED to both boxes)
+Third fix wave, DEPLOYED to both onn boxes (.231, .117 both confirmed
+versionCode 20): (1) **Back from the player now lands on Details/episode,
+not the stream list** — the remote BACK was only intercepted during the Up
+Next countdown (`BackHandler(enabled = isCancellable)`), so a normal press
+fell through to the nav default (single pop onto Streams); BACK now always
+routes through `onExit` (the pop-THROUGH-streams logic on-screen buttons
+already used). (2) **Going Home pauses playback** — `ON_STOP` lifecycle
+hook pauses ExoPlayer when the app backgrounds (media service otherwise
+keeps it alive); in-app nav doesn't fire ON_STOP; default on, no toggle.
+(3) **Held up/down no longer glitches poster titles** — reveal now waits
+for focus to REST ~120ms (fast d-pad hold flies past without firing) + fades
+via `graphicsLayer` draw-phase (no recomposition during scroll), DECISIONS
+#22. 256 tests green (first run hit the known HomeViewModelTest Main-
+dispatcher flake; cleared on rerun). Smoke-passed on .231 (no crash,
+MainActivity resumed). versionCode/Name = 20 / 0.3.0-alpha.20. Commit
+`af4083a`. NOT emulator/visually verified beyond the smoke launch.
+**Skip intro/credits: explained, NOT built** — recommended AniSkip API for
+anime (needs MAL-id resolution + timed overlay + setting; its own session)
+or a crude manual "+85s" button as a stopgap; owner to choose.
+
 ## ⚠️ READ FIRST (session 16 late — 2026-07-07 — alpha.19 DEPLOYED to both boxes)
 Second app-fix wave of the night, DEPLOYED (not just committed) to both onn
 boxes: poster/Continue-Watching title reveal-on-focus (was: artwork covering
