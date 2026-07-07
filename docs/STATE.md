@@ -1,6 +1,33 @@
-# STATE — updated 2026-07-06 by session 14 (day 2, cont.)
+# STATE — updated 2026-07-06 by session 15 (evening)
 
-## ⚠️ READ FIRST (session 14 day 2 cont. — alpha.17: daily log upload SHIPPED)
+## ⚠️ READ FIRST (session 15 — round-10 feedback LOGGED, phase 3 CLOSED, site LIVE)
+Session 14 ran out of usage MID-CHECKPOINT while logging owner feedback
+round 10; session 15 (new account) completed the checkpoint. **No round-10
+work is built yet** — it is fully logged in MASTER_PLAN §10 ("Owner feedback
+round 10") and prioritized in NEXT ACTION below. Facts established:
+1. **Phase 3 is CLOSED.** Owner declared gate D PASS ("Mark D as done") →
+   §7.2 gate ticked, tag `phase-3-done` created + pushed.
+2. **The setup site is LIVE.** Owner uploaded the regenerated `api=1`
+   index.php and created `logs/`. LIVE-VERIFIED this session: POST api=1
+   "adam" → correct link; "myles" → two choices. Name-setup on real boxes
+   AND the alpha.17 daily log upload are now fully unblocked — the
+   long-standing "owner must upload index.php" item is DONE.
+3. **Rachael is NOT in users.json** — her round-9 dashboard add never
+   saved. Her onboarding (Family-no-anime template test, non-pro onn box,
+   test creds) is in the gitignored
+   docs/reference/StremioSurfer/rachael-onboarding.md. NEVER put her creds
+   in tracked files.
+4. **Myles rename has a data conflict**: users.json already holds a skipped
+   `Myles Dad` stub next to the live `Myles Manuel` (active RD premium) —
+   owner must confirm the merge before renaming (MASTER_PLAN §10 round 10).
+5. Ambiguous-name UX already exists ("Which one are you?" chooser, session
+   13) — round 10's "ask kindly to specify" is already satisfied; only the
+   rename remains.
+6. Boxes are on **alpha.16**; deploy target is **alpha.17** (adds the daily
+   log upload). Owner-side hardware steps: deploy alpha.17, reconnect each
+   box once (Settings → Connect this TV), confirm hold-UP with the remote.
+
+## (prior) READ FIRST (session 14 day 2 cont. — alpha.17: daily log upload SHIPPED)
 Owner round 9 (2026-07-06): (a) "weebs addon missing" DIAGNOSED, no app bug —
 the live profile HAS it (named "[BAK]AIOStreams"), servers up, boxes already
 on alpha.16 (owner deployed!), but the box predates the addon + has no saved
@@ -50,17 +77,33 @@ setup name flow on real boxes is still gated on the owner re-uploading the
 `api=1` index.php — see NEXT ACTION.
 
 ## Phase
-Phase 3 — build units DONE; gate (§7.2 on owner's onn box) still the only
-item before `phase-3-done` (A PASS 2026-07-04, B PASS 2026-07-05, C
-effectively passing on sentiment; D = last box — setup hosting now 9/10
-verified, see below). Phase 4 units 1–4 shipped (sessions 11–12); new
-owner directives recorded in MASTER_PLAN §10 (remote management SHIPPED,
-addons-screen guard / error logging / language switcher pending).
+**Phase 3 COMPLETE + tagged `phase-3-done`** (A PASS 07-04, B PASS 07-05,
+C on sentiment, D owner-declared PASS 07-06 round 10). Phase 4 in
+progress: units 1–4 + error log + daily log upload shipped (sessions
+11–14); the active backlog is owner feedback ROUND 10 (MASTER_PLAN §10) —
+Discover focus/filter fixes, SStreams rebrand, ambient background, UI
+sounds, live-TV/events cleanup, 4 addon templates + Rachael onboarding.
 
 ## Branch
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 15 (2026-07-06 evening, new account) — round-10 checkpoint
+  COMPLETED (docs only, no code).** Session 14 died mid-checkpoint (usage):
+  it had ticked the §7.2 gate in MASTER_PLAN (gate D = owner-declared PASS)
+  and written the gitignored rachael-onboarding.md, but the STATE.md
+  round-10 write and the `phase-3-done` tag never happened. This session:
+  logged the FULL round-10 backlog into MASTER_PLAN §10 + NEXT ACTION,
+  created/pushed `phase-3-done`, and VERIFIED live that the owner's
+  index.php upload works (api=1 "adam" → link; "myles" → choices — the
+  name-setup flow + log drop-off are live). Confirmed Rachael absent from
+  users.json (dashboard save didn't stick) and found the `Myles Dad` stub
+  conflict blocking the Myles rename. Code answers pulled for the owner:
+  first-name-only match is by design; ambiguous names already get the
+  "Which one are you?" chooser; the Home hero = first item of the first
+  catalog row (works with zero Trakt history); duplicate catalogs come
+  from addons configured INSIDE AIOStreams, so disabling everything but
+  AIOStreams+AIOMetadata is fine.
 - **Session 14 day 2 (cont. 4, 2026-07-06) — alpha.17: daily log upload +
   weebs diagnosis (DECISIONS #35).** New `DiagnosticsUpload` (+ prefs) runs
   beside ProfileSync on app start: ≤1 successful upload/24h, POST api=log +
@@ -495,18 +538,53 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**The app side is DONE and emulator-verified through alpha.17. Everything
-remaining is OWNER-SIDE** — the owner must (a) upload the regenerated
-`hosting/index.php` (ONE file: enables the name-setup api AND daily log
-receiving), (b) deploy **alpha.17** to both boxes (they're on alpha.16 —
-owner deployed it 2026-07-06), (c) **reconnect each box once** (Settings →
-Connect this TV) — this is ALSO the fix for the owner's missing
-"[BAK]AIOStreams / aiostreamsfortheweebs" addon (see READ FIRST) and what
-lets each box upload its log daily, (d) run gate D, (e) confirm with the
-REMOTE that holding UP in Home no longer sticks (DECISIONS #33), and
-(f) read box logs at <setup-url>/logs/<person>.log (or App log on the TV)
-when anything misbehaves — incl. the Naruto codec question (1b). After
-that, continue Phase 4 (3): next unit = interface-language switcher.
+**Active backlog = owner feedback ROUND 10 (full detail in MASTER_PLAN §10
+"Owner feedback round 10"). The setup site is LIVE (verified session 15),
+`phase-3-done` is tagged. Owner's own priority: get RACHAEL's box going
+with the Family-no-anime template.** Execution order:
+
+R1. **Rachael end-to-end (owner's #1).** Blocked owner-side on account
+   creation (Trakt/TMDB etc. — owner said he'll make them; test creds in
+   gitignored rachael-onboarding.md; a Stremio ACCOUNT is not needed for
+   OUR app — only if the owner also wants the Stremio app as fallback).
+   Claude-side once keys exist: design the **Family-no-anime** template
+   (AIOStreams + AIOMetadata configs based on the owner's instances: block
+   porn, no anime catalogs, NO live-TV/events catalogs, auto-updating
+   popular/top lists split across both instances within catalog caps,
+   coherent Home-row order + Discover types) → owner approves → configure
+   her instances with HER keys → add her to users.json (verify the
+   dashboard save persists this time!) → `make_profiles.py` + upload →
+   type "rachael" on the non-pro box. Then derive the other 3 templates
+   (Family-Anime, NSFW-Anime, NSFW-no-anime).
+R2. **Discover UX fixes (self-contained app code, no owner input):**
+   (a) DOWN from the hero lands on the LEFT-MOST item of the first row;
+   (b) focused-card redesign — art must not cover the title: title pushes
+   down inside a border that extends from the artwork, silky under fast
+   d-pad travel; (c) filter bar — selected state clearly distinct from
+   focus + backglow/glow visibility pass.
+R3. **Rebrand → SStreams** (no "Savoy" in anything public): dual-S
+   spoon-logo experiment (two colors, thin border; drop it if ugly and
+   design better), Home brand title, launcher label/icon, `setup.brand`,
+   hosting regen + owner re-upload of index.php.
+R4. **Live-TV/events**: empty Discover categories (AIOStreams +
+   MediaFusion) + football-under-Movies — investigate type/catalog
+   mapping app-side; template-side they get stripped anyway (R1).
+R5. **Myles rename** — WAITING ON OWNER: confirm deleting/merging the
+   `Myles Dad` stub so `Myles Manuel` can become `Myles Dad` (keep the
+   hosted filename via profiles.config.json so his box's saved link
+   survives).
+R6. Ambience + sounds (round 10): pastel gradient/soft-shape backgrounds
+   (maybe per-section) + subtle focus/select sounds fitting the design.
+R7. Standing Phase-4 queue after round 10: interface-language switcher,
+   watched-history row, Discover scroll prefetch, autoplay settings /
+   tunneling toggle / debug overlay.
+
+Owner-side hardware steps still open (unchanged): deploy **alpha.17** to
+both boxes (on alpha.16 now), **reconnect each box once** (Settings →
+Connect this TV — also fixes the missing "[BAK]AIOStreams" addon and
+enables the daily log upload), confirm hold-UP with the real remote
+(DECISIONS #33), and read <setup-url>/logs/<person>.log when anything
+misbehaves (Naruto codec question 1b will self-document there).
 
 0a. ✅ **DONE (session 14) — session-13 one-step setup EMULATOR-VERIFIED,
    no bugs.** Full flow passed against a contract mock of the `api=1` site
@@ -519,15 +597,10 @@ that, continue Phase 4 (3): next unit = interface-language switcher.
    `setup.url=http://10.0.2.2:8095/`, run both the mock and
    `tools/test_addon_server.py`, `assembleDebug`, install to `emulator-5554`,
    `pm clear dev.openstream.tv`, then RESTORE `setup.url` to the real domain.
-0b. **OWNER: re-upload the regenerated `api=1` index.php.** The name-setup
-   flow works in the app but the LIVE <setup-domain>/setup/index.php is still
-   the OLD HTML-only page. Until the owner re-uploads the regenerated
-   `docs/reference/StremioSurfer/hosting/index.php` (gitignored — has the JSON
-   `api=1` mode, built with `tools/make_hosting_bundle.py --brand SavoyStreams`),
-   real boxes can't do the name lookup. This is the one thing gating the
-   name flow on hardware.
-0c. Gate D is CLOSE: hosting is 9/10 verified (session 12) — one file re-drag
-   + a clean retest away.
+0b. ✅ **DONE (owner, round 10; live-verified session 15)** — the `api=1`
+   index.php is uploaded and `logs/` exists; POST api=1 lookups return
+   correct JSON. The name flow is live on hardware.
+0c. ✅ Gate D declared PASS by owner (round 10) — phase 3 closed + tagged.
 Quick verify next session: subtitle-language persistence round-trip on
 the fixture movie (Settings → Home rows → move "Local Test" row up for a
 fast path, then pick a subtitle → exit → replay → auto-selected).

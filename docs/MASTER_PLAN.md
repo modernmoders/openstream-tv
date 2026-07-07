@@ -321,7 +321,7 @@ Mark checkboxes as phases complete; each phase ends with: build green, tests gre
 ### Phase 3 — Autoplay + external players
 - [x] `AutoplayController` per §7 (state machine unit-tested first, then wired). *(2026-07-04/05: machine+cascade pure & table-tested (DECISIONS #10), controller wired via AutoplayGateway; 3-episode chain + 20s-delayed addon verified on emulator vs local fixture series; patient HTTP client for autoplay fetches (DECISIONS #11).)*
 - [x] VLC + MX Player + generic launchers, resume-position round-trip. *(2026-07-05: per-launch "Play with…" long-press (DECISIONS #12); pure intent specs + result mapping, 20 unit tests; emulator verified detection/handoff/responsive-return with sideloaded VLC — VLC can't create a video output on the goldfish GPU, so the live position round-trip is folded into the owner's onn-box §7.2 run.)*
-- [ ] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner). *(Emulator half done 2026-07-05 — TESTLOG; owner's onn box run pending.)*
+- [x] Gate: §7.2 acceptance test passes on emulator, then on an onn box (owner). *(Emulator half 2026-07-05; owner box runs: A PASS 07-04, B PASS 07-05, C on sentiment, D declared PASS by owner 2026-07-06 round 10 ("Mark D as done") — PHASE 3 GATE CLOSED, tagged phase-3-done.)*
 
 ### Phase 4 — Customization + settings + polish
 - [ ] Row/catalog manager (reorder/rename/hide), density settings, player preference, autoplay settings, tunneling toggle, debug overlay. *(2026-07-05 session 11: row/catalog manager + Settings skeleton (DECISIONS #23), global density 4–8, "Always use" player, and audio/subtitle language memory (DECISIONS #24) ALL SHIPPED — remaining: autoplay settings, tunneling toggle, debug overlay.)*
@@ -484,6 +484,83 @@ Owner asks 2026-07-06 (session 13):
   Aptoide (and another store that installs via an entered code — owner to
   supply names). Track store listing + the "enter a code" install path;
   pair with the Phase 5 in-app updater and README install docs.
+
+Owner feedback round 10 (2026-07-06 evening — logged session 15; nothing
+built yet unless marked [x]):
+- [x] **Gate D declared PASS by the owner** ("Mark D as done") → §7.2 gate
+  ticked above, `phase-3-done` tagged. Phase 3 CLOSED.
+- [x] **Setup site is LIVE.** Owner uploaded the regenerated `api=1`
+  index.php and created the `logs/` folder. LIVE-VERIFIED session 15:
+  POST api=1 "adam" → correct name+link JSON; "myles" → two choices.
+  The name-setup flow AND the daily log drop-off are now unblocked on
+  real boxes — nothing owner-side gates them anymore.
+- [x] **First-name-only lookup confirmed as designed.** "adam" alone works
+  because the match is first name + optional last-name INITIAL and Adam is
+  unique. Owner likes it — keep.
+- [x] **Ambiguous first names already handled kindly**: the app shows
+  "Which one are you?" with one button per person (ConnectScreen
+  `WhichOneStep`, shipped session 13) — typing "myles" gets choices, not an
+  error.
+- [ ] **Rename users.json "Myles Manuel" → "Myles Dad"** (owner: "Myles
+  manual dad should be changed to Myles dad"). ⚠️ CONFLICT found session 15:
+  users.json ALREADY holds a `Myles Dad` stub (skipped in
+  profiles.config.json, no RD token, no profile) alongside the live
+  `Myles Manuel` (active RD premium, hosted profile). Owner must confirm:
+  delete/merge the stub, rename the live entry, carry the
+  profiles.config.json link key over so the filename (and the box's saved
+  link) survives, regenerate + re-upload.
+- [ ] **Discover: DOWN from the hero must land on the LEFT-MOST item of the
+  first row** — today it drops mid-row (e.g. 3rd item). Same §5 focus rule
+  already shipped for search rows; extend it here.
+- [ ] **Discover: focused-card art covers the title.** Redesign the focus
+  treatment: the title pushes down and a border extends from the artwork to
+  envelope it — must stay perfectly smooth under fast d-pad travel.
+- [ ] **Discover filters: selected vs focused are nearly
+  indistinguishable** — make the selected state obvious, and make the
+  filter bar itself more visible (backglow / subtle animated glow).
+- [ ] **Rebrand: SavoyStreams → "SStreams"** (public repo must never say
+  "Savoy"). Logo concept to try: two S's merged/nested like spoons,
+  different colors, a thin border between them; if it doesn't look good,
+  Claude designs something better that makes "SStreams" look good.
+  Touches: Home header brand title, `setup.brand` in local.properties,
+  hosting bundle regen (`--brand`), app launcher label/icon.
+- [ ] **TV > Live TV and Events are EMPTY in Discover** (both AIOStreams
+  and MediaFusion) — investigate the catalog/type mapping. ALSO
+  miscategorized items: MediaFusion live events (football) appear under
+  Movies. Round-10 template decision: strip live-TV/events catalogs from
+  the per-person profiles anyway, and re-sort any wrong-category catalogs.
+- [ ] **Networks UX**: keep as-is for now (owner will live with it); LATER
+  a dedicated "Networks & Streaming services" page.
+- [ ] **Ambient background**: opaque pastel gradient / soft shapes behind
+  the app, possibly a different palette per section (extends the pastel
+  "Theme accents" item above).
+- [ ] **UI sounds**: subtle focus/select sounds that fit the refined design.
+- [ ] **Four addon templates** (AIOStreams + AIOMetadata pairs, based on
+  the owner's own instances, tweaked by Claude, OWNER-APPROVED before use):
+  Family-Anime, NSFW-Anime, Family-no-anime, NSFW-no-anime — family builds
+  block porn, NSFW builds block nothing. **Family-no-anime FIRST** (it's
+  Rachael's). Per-person credentials rule: each person's instances embed
+  THAT person's own API keys (Trakt, TMDB, RD…) — owner creates the
+  accounts, Claude wires them in. Catalog strategy: frequently-auto-updating
+  popular/top lists, split across the two instances within their catalog
+  caps, with Home row order and Discover filtering kept coherent (no
+  Stremio-style random category sprawl).
+- [ ] **Rachael onboarding = the live Family-no-anime test** on the non-pro
+  onn box. users.json does NOT contain her (the round-9 dashboard add never
+  saved — verified session 15); add her (and verify the dashboard save
+  actually persists). Private details in the gitignored
+  docs/reference/StremioSurfer/rachael-onboarding.md.
+- [x] **Answered — what were the other addons doing?** Cinemeta is
+  Stremio's core metadata/catalog addon (kept as meta fallback + extra
+  rows); the other entries were catalogs exposed by addons configured
+  INSIDE AIOStreams, which duplicate its rows. Running only
+  AIOStreams + AIOMetadata is fine and matches the finalize plan
+  (trim every profile to 4–5 addons).
+- [x] **Answered — where the Home hero comes from.** The hero is the FIRST
+  ITEM of the FIRST Home catalog row (addon order decides), not a Trakt
+  recommendation per se — a brand-new user with zero Trakt history still
+  gets a hero (their first catalog's first item). Rachael's box will be the
+  real-world confirmation.
 
 ### Phase 5 — Release + community
 - [ ] Release CI: tag → build signed APK (repo-secret keystore) → GitHub Release.
