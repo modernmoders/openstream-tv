@@ -48,6 +48,7 @@ import dev.openstream.tv.ui.components.OptionRow
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfacePill
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 
@@ -107,44 +108,70 @@ fun DiscoverScreen(
             .background(AppBackground)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
-        // Filter bar: the category tree, one picker per level.
+        // Page header: Back + title sit above the filter bar, plain (no
+        // surface chrome) so the bar below reads as its own distinct band.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(bottom = 14.dp),
         ) {
             BackButton(onBack)
             Text(
                 text = "Discover",
                 style = MaterialTheme.typography.headlineLarge,
                 color = Color.White,
-                modifier = Modifier.padding(end = 16.dp),
             )
-            if (state.types.isNotEmpty()) {
-                SurfacePill(
-                    label = typeLabel(state.selectedType),
-                    onClick = { openPicker = Picker.TYPE },
-                    modifier = Modifier.focusRequester(typeFocus),
-                )
-            }
-            if (state.catalogs.isNotEmpty()) {
-                SurfacePill(
-                    label = state.selected?.title ?: "Catalog",
-                    onClick = { openPicker = Picker.CATALOG },
-                    modifier = Modifier.widthIn(max = 300.dp),
-                )
-            }
-            if (state.genres.isNotEmpty()) {
-                SurfacePill(
-                    label = state.selectedGenre ?: "Genre",
-                    onClick = { openPicker = Picker.GENRE },
-                )
-            }
-            if (state.types.isNotEmpty()) {
-                // View is display settings, not a tree level — pushed to the
-                // far edge so it reads apart from the pickers (owner 2026-07-05).
-                Spacer(Modifier.weight(1f))
-                SurfacePill(label = "⚙ View", onClick = { openPicker = Picker.VIEW })
+        }
+
+        // Filter bar: the category tree, one picker per level. Given its own
+        // subtly-elevated surface + soft accent backglow (owner round 10:
+        // "give the filter bar itself more presence... no gaudy neon") so it
+        // reads as a distinct control strip instead of floating text pills
+        // directly on the page background. The glow is a larger, softer-cornered
+        // rect painted first so it "bleeds" a few dp past the card's own edge
+        // — two backgrounds at IDENTICAL bounds would just paint over each
+        // other and hide the glow entirely.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+                .background(FilterBarGlow, RoundedCornerShape(26.dp))
+                .padding(4.dp)
+                .background(FilterBarSurface, RoundedCornerShape(20.dp)),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) {
+                if (state.types.isNotEmpty()) {
+                    SurfacePill(
+                        label = typeLabel(state.selectedType),
+                        onClick = { openPicker = Picker.TYPE },
+                        modifier = Modifier.focusRequester(typeFocus),
+                    )
+                }
+                if (state.catalogs.isNotEmpty()) {
+                    SurfacePill(
+                        label = state.selected?.title ?: "Catalog",
+                        onClick = { openPicker = Picker.CATALOG },
+                        modifier = Modifier.widthIn(max = 300.dp),
+                    )
+                }
+                if (state.genres.isNotEmpty()) {
+                    SurfacePill(
+                        label = state.selectedGenre ?: "Genre",
+                        onClick = { openPicker = Picker.GENRE },
+                    )
+                }
+                if (state.types.isNotEmpty()) {
+                    // View is display settings, not a tree level — pushed to the
+                    // far edge so it reads apart from the pickers (owner 2026-07-05).
+                    Spacer(Modifier.weight(1f))
+                    SurfacePill(label = "⚙ View", onClick = { openPicker = Picker.VIEW })
+                }
             }
         }
 
@@ -244,6 +271,16 @@ fun DiscoverScreen(
 }
 
 private enum class Picker { TYPE, CATALOG, GENRE, VIEW }
+
+/**
+ * The filter bar's own quiet elevation (owner round 10: "give the filter bar
+ * itself more presence... no gaudy neon"). A hairline-lit card slightly
+ * lighter than the page background, with a soft accent tint UNDER it acting
+ * as a backglow — subtle enough to read as depth, not a light show. Static
+ * colors, not an animation, so it costs nothing on the 32-bit boxes.
+ */
+private val FilterBarSurface = Color(0xFF1B1B26)
+private val FilterBarGlow = Accent.copy(alpha = 0.10f)
 
 /** "movie" → "Movie", "tv" → "TV"; manifest types are raw strings (§8). */
 private fun typeLabel(type: String?): String = when (type) {
