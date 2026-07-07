@@ -35,7 +35,8 @@ import androidx.tv.material3.Text
 import dev.openstream.tv.data.HomeRow
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.TvTextField
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
 import dev.openstream.tv.ui.theme.SurfaceCard
@@ -66,7 +67,7 @@ fun HomeRowsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.SETTINGS)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
         Row(

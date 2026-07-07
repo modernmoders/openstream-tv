@@ -53,7 +53,8 @@ import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
 import dev.openstream.tv.ui.theme.Accent
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
@@ -86,7 +87,7 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.HOME)
             // Vertical overscan only: rows manage their own horizontal
             // padding so posters can scroll edge-to-edge (§5.3).
             .padding(vertical = 27.dp),

@@ -44,7 +44,8 @@ import androidx.tv.material3.Text
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.connect.ConnectViewModel.UiState
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.MutedText
 
 /** Warm success green for the finished state — the one accent on this screen. */
@@ -80,7 +81,7 @@ fun ConnectScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground),
+            .ambientBackground(AmbientSection.CONNECT),
         contentAlignment = if (liftToTop) Alignment.TopCenter else Alignment.Center,
     ) {
         AnimatedContent(

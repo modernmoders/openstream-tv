@@ -43,7 +43,8 @@ import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.theme.Accent
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
 import dev.openstream.tv.ui.theme.SurfaceCard
@@ -71,6 +72,7 @@ fun SettingsScreen(
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
+    val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
@@ -84,7 +86,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.SETTINGS)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
         Row(
@@ -141,6 +143,16 @@ fun SettingsScreen(
                     "Off — picking a movie or episode shows the list of streams"
                 },
                 onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
+            )
+            // OK toggles directly, same as autoplay above.
+            SettingEntry(
+                title = "Interface sounds",
+                description = if (sounds) {
+                    "On — soft ticks while moving around the menus"
+                } else {
+                    "Off — the interface stays silent"
+                },
+                onClick = { viewModel.setUiSounds(!sounds) },
             )
             if (viewModel.setupConfigured) {
                 SettingEntry(

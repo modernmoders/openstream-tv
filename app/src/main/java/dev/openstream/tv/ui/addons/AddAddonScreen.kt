@@ -34,7 +34,8 @@ import dev.openstream.tv.addon.Manifest
 import dev.openstream.tv.ui.addons.AddAddonViewModel.UiState
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.TvTextField
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.MutedText
 
 /**
@@ -80,7 +81,7 @@ fun AddAddonScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.SETTINGS)
             .verticalScroll(rememberScrollState()) // previews can outgrow 1080p
             .padding(horizontal = 48.dp, vertical = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

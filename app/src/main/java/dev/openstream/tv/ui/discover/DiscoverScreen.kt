@@ -49,7 +49,8 @@ import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.theme.Accent
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 
 /**
@@ -105,7 +106,7 @@ fun DiscoverScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.DISCOVER)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
         // Page header: Back + title sit above the filter bar, plain (no

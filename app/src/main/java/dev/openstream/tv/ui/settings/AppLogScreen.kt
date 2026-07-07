@@ -1,6 +1,5 @@
 package dev.openstream.tv.ui.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,7 +31,8 @@ import androidx.tv.material3.Text
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.diagnostics.DiagnosticsLog
 import dev.openstream.tv.ui.components.BackButton
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.MutedText
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,7 +76,7 @@ fun AppLogScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.SETTINGS)
             .padding(horizontal = 48.dp, vertical = 27.dp),
     ) {
         Row(

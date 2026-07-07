@@ -4,7 +4,6 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -45,7 +44,8 @@ import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.search.SearchViewModel.RowState
 import dev.openstream.tv.ui.theme.Accent
-import dev.openstream.tv.ui.theme.AppBackground
+import dev.openstream.tv.ui.theme.AmbientSection
+import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import dev.openstream.tv.ui.theme.MutedText
 
@@ -64,7 +64,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppBackground)
+            .ambientBackground(AmbientSection.SEARCH)
             .padding(vertical = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
