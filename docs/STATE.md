@@ -117,6 +117,22 @@ sounds, live-TV/events cleanup, 4 addon templates + Rachael onboarding.
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 16 cont. (2026-07-07) — DEPLOYED alpha.18 (versionCode 18) to BOTH
+  boxes (192.168.1.231 non-pro + 192.168.1.117 pro) via adb `install -r`.**
+  This is the FIRST build carrying the round-10 wave + anime numbering +
+  SStreams rename to real hardware. ROOT CAUSE of "the easy-mode back-fix and
+  episode photos aren't working": the boxes ran an OLD alpha.17 — versionCode
+  was never bumped past 17, so Android blocked every `install -r` and the new
+  code never reached them. Verified in source this session that the fixes ARE
+  correct (AppNavHost easy-mode Back pops THROUGH Streams to Details/episode;
+  DetailsScreen renders episode thumbnail+synopsis; streams stay in AIO order,
+  autoplay picks first-playable in that order). R8 release built clean,
+  smoke-passed on .231 (no crash, MainActivity resumed, process alive; TV
+  `screencap` returns black = hardware-overlay limitation, NOT a render bug).
+  **Owner to eyeball on the real TVs:** easy-mode Back from a playing movie →
+  Info screen (not the stream list); episode thumbnails/synopses on a
+  Cinemeta-sourced series; the SStreams name. versionCode/Name = 18 /
+  0.3.0-alpha.18.
 - **Session 16 cont. (2026-07-07) — anime episode-numbering toggle + SStreams
   rename (DECISIONS #36). Built, 256 tests green, pushed `a4b09b8`.** Settings
   > "Episode numbering": per-season vs straight-through absolute (Ep 115),
