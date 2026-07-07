@@ -737,3 +737,31 @@ diagnosis).
 **Rejected:** logging in each ViewModel (5× the call sites, breaks VM test
 constructors); logcat-only (the owner has no adb); a Room table (a text file
 the size of a poster is not a database problem).
+
+## 35. 2026-07-06 (session 14) — Daily App-log upload to the setup site
+
+Owner ask ("have everyone's logs sent to me or uploaded to the site once a
+day"). `DiagnosticsUpload` runs beside ProfileSync on every app start: at
+most one SUCCESSFUL upload per 24h (failure = silent retry next launch,
+same posture), POSTing `api=log` + `who` + the log text to the setup site's
+index.php, which stores it as `logs/<profile-stem>.log` next to the
+profiles. The owner reads every box at
+`<setup-url>/logs/<stem>.log` — no TV visits, no adb.
+
+Privacy/security: only the ALREADY-SANITIZED log leaves the box
+(DiagnosticsLog strips URLs before disk, DECISIONS #34); the box
+identifies itself by its profile FILENAME STEM (unguessable, token-free) —
+never the link; the PHP endpoint only accepts a `who` matching an existing
+profile file (strangers can't write arbitrary files) and caps the body at
+128 KB. Same family-scale-obscurity model as the profiles themselves.
+Upload failures are deliberately NOT recorded to the log — that would grow
+the very log we failed to ship, every launch.
+
+No box is identified by device id — identity IS the profile, so two boxes
+connected to the same person overwrite each other's log (accepted: the
+newest report wins, and the family runs one box per person).
+
+**Rejected:** email ("sent to me" literally — needs credentials on every
+box); per-device ids (meaningless to the owner; person names are the unit
+they think in); appending server-side (the box log is already a ring
+buffer — overwrite keeps the file bounded and idempotent).

@@ -1,6 +1,21 @@
 # STATE — updated 2026-07-06 by session 14 (day 2, cont.)
 
-## ⚠️ READ FIRST (session 14 day 2 cont. — alpha.16: error log SHIPPED)
+## ⚠️ READ FIRST (session 14 day 2 cont. — alpha.17: daily log upload SHIPPED)
+Owner round 9 (2026-07-06): (a) "weebs addon missing" DIAGNOSED, no app bug —
+the live profile HAS it (named "[BAK]AIOStreams"), servers up, boxes already
+on alpha.16 (owner deployed!), but the box predates the addon + has no saved
+setup link (pre-alpha.10 install) → ProfileSync idle. FIX = owner reconnects
+each box once (Settings → Connect this TV). (b) **Daily App-log upload
+SHIPPED (alpha.17, DECISIONS #35)**: DiagnosticsUpload posts each box's
+sanitized log to index.php api=log once/day → site stores
+logs/<profile-stem>.log; VERIFIED end-to-end against a contract mock
+(TESTLOG). Hosting bundle REGENERATED with api=log — the owner's ONE pending
+index.php upload now enables BOTH the name-setup api and log receiving.
+252 tests, R8 smoke PASS, versionCode 17. Deploy target:
+`app-release.apk` **alpha.17**. AVD now holds a mock ProfileLink (harmless,
+see TESTLOG); CW rows were reset.
+
+## (prior) READ FIRST (session 14 day 2 cont. — alpha.16: error log SHIPPED)
 Three arcs closed this stretch, all emulator-verified on a cold-booted AVD:
 (1) round-7 Details VISUALLY VERIFIED (+ "Episode 1 · Episode 1" dedupe);
 (2) the owner's **Home hold-UP stick** root-caused + fixed structurally —
@@ -46,6 +61,19 @@ addons-screen guard / error logging / language switcher pending).
 main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## Just finished
+- **Session 14 day 2 (cont. 4, 2026-07-06) — alpha.17: daily log upload +
+  weebs diagnosis (DECISIONS #35).** New `DiagnosticsUpload` (+ prefs) runs
+  beside ProfileSync on app start: ≤1 successful upload/24h, POST api=log +
+  who=<profile-stem> + sanitized log text; index.php (make_hosting_bundle)
+  gained the api=log receiver (validates who against existing profile files,
+  128 KB cap → logs/<stem>.log, overwrite). 252 tests (9 new). END-TO-END
+  emulator-verified vs a mock (recreate from scratchpad description in
+  TESTLOG if needed): connect-by-name → link saved → failure logged →
+  relaunch → upload received; throttle held on second relaunch. Hosting
+  bundle regenerated --brand SavoyStreams (has BOTH api=1 and api=log).
+  Weebs-addon report diagnosed as stale box state, not a bug (see READ
+  FIRST). Boxes discovered ALREADY on alpha.16 (owner deployed since
+  the morning) — only reconnect + index.php upload remain owner-side.
 - **Session 14 day 2 (cont. 3, 2026-07-06) — alpha.16: Phase 4 on-device
   error log (MASTER_PLAN §10 ticked, DECISIONS #34).** New
   `diagnostics/DiagnosticsLog` (plain file, newest-last, 400→300 trim,
@@ -467,15 +495,18 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
-**The app side is DONE and emulator-verified through alpha.16. Everything
-remaining is OWNER-SIDE** — the owner must (a) re-upload the regenerated
-index.php so the real site speaks `api=1`, (b) deploy **alpha.16** to both
-boxes, (c) reconnect each box once so ProfileSync learns the link, then run
-gate D, (d) confirm with the REMOTE that holding UP in Home no longer
-sticks (DECISIONS #33 — un-simulatable via adb), and (e) when the Naruto
-file next fails in the internal player, read Settings → Expert mode →
-App log — the codec detail now records itself (1b, DECISIONS #34). After
-that, continue Phase 4 (3).
+**The app side is DONE and emulator-verified through alpha.17. Everything
+remaining is OWNER-SIDE** — the owner must (a) upload the regenerated
+`hosting/index.php` (ONE file: enables the name-setup api AND daily log
+receiving), (b) deploy **alpha.17** to both boxes (they're on alpha.16 —
+owner deployed it 2026-07-06), (c) **reconnect each box once** (Settings →
+Connect this TV) — this is ALSO the fix for the owner's missing
+"[BAK]AIOStreams / aiostreamsfortheweebs" addon (see READ FIRST) and what
+lets each box upload its log daily, (d) run gate D, (e) confirm with the
+REMOTE that holding UP in Home no longer sticks (DECISIONS #33), and
+(f) read box logs at <setup-url>/logs/<person>.log (or App log on the TV)
+when anything misbehaves — incl. the Naruto codec question (1b). After
+that, continue Phase 4 (3): next unit = interface-language switcher.
 
 0a. ✅ **DONE (session 14) — session-13 one-step setup EMULATOR-VERIFIED,
    no bugs.** Full flow passed against a contract mock of the `api=1` site

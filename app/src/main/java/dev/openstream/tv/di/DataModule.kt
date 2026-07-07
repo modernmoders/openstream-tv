@@ -87,6 +87,12 @@ object DataModule {
         impl: dev.openstream.tv.data.DataStoreProfileSyncPrefs,
     ): dev.openstream.tv.data.ProfileSyncPrefs = impl
 
+    @Provides
+    @Singleton
+    fun diagnosticsUploadPrefs(
+        impl: dev.openstream.tv.data.DataStoreDiagnosticsUploadPrefs,
+    ): dev.openstream.tv.data.DiagnosticsUploadPrefs = impl
+
     /**
      * Scope for writes that must outlive a ViewModel (e.g. saving the final
      * playback position from onCleared()). SupervisorJob: one failed write

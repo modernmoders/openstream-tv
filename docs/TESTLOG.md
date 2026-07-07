@@ -4,6 +4,27 @@ Append-only. Newest entries at the top.
 
 ---
 
+## 2026-07-06 — Daily log upload + weebs-addon diagnosis (session 14 day 2, alpha.17)
+
+Owner asks: "aiostreamsfortheweebs addon missing" + "everyone's logs uploaded
+to the site daily". Same emulator; boxes untouched (read-only version check).
+
+| Check | Result |
+|---|---|
+| **Missing-addon diagnosis:** owner's hosted profile (live site, byte-compared) DOES carry the weebs instance as "[BAK]AIOStreams"; all 3 AIOStreams manifests answer HTTP 200 <0.5s; both boxes already run alpha.16. Conclusion: the box predates the addon's arrival in the profile and has no saved setup link (pre-alpha.10 install path) → ProfileSync idle. Fix = reconnect once (Settings → Connect this TV) | DIAGNOSED (no app bug) |
+| `testDebugUnitTest` 252/252 (9 new DiagnosticsUploadTest: slug extraction ×3, due-upload POST body + throttle advance, <24h throttle, no-link/empty-log/unconfigured skips, 500 → retry-next-launch) | PASS |
+| End-to-end on emulator vs contract mock (`setup.url=http://10.0.2.2:8095/`, emulator ONLY, restored after): pm clear → Connect "adam" → auto-install (link saved) → dead-fixture streams failure logged → relaunch → mock received `api=log` upload identified by profile stem, content = the sanitized failure line | PASS (mock log + screenshots) |
+| Second relaunch inside 24h → no second upload (throttle) | PASS (request count stayed 1) |
+| index.php regenerated with api=log (validates `who` against existing profile files, 128 KB cap, writes logs/<stem>.log; braces balanced — no php binary locally for a full lint) | DONE (owner uploads it) |
+| R8 release smoke: alpha.17 (versionCode 17, real setup.url restored + rebuilt) launches to Home with the full Cinemeta+Local-Test baseline | PASS (screenshot) |
+
+AVD note: the emulator app now holds a saved ProfileLink pointing at the
+(session-scoped) mock — harmless (sync/upload fail silently) and consistent
+with the pre-existing baseline; addons remain Cinemeta + Local Test.
+Continue Watching rows were reset by the pm clear.
+
+Deploy target is now **app-release.apk alpha.17** (supersedes alpha.16).
+
 ## 2026-07-06 — Phase 4: on-device error log (session 14 day 2, alpha.16)
 
 MASTER_PLAN §10 "never show raw errors — log them" (DECISIONS #34). Verified

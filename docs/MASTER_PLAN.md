@@ -418,6 +418,12 @@ Owner directives 2026-07-05 (session 12 — REQUIRED, not nice-to-have):
   DONE session 14 (alpha.16, DECISIONS #34): DiagnosticsLog + Settings →
   Expert mode → App log; catalog/stream/meta/player/profile-sync failures
   recorded with addon context, URLs sanitized out (tokens).
+- [x] **Daily log upload to the setup site (owner ask 2026-07-06:
+  "have everyone's logs sent to me or uploaded to the site once a day").**
+  DONE session 14 (alpha.17, DECISIONS #35): DiagnosticsUpload ships each
+  box's sanitized App log to index.php (api=log) once a day; stored as
+  logs/<profile-stem>.log next to the profiles. Needs the regenerated
+  index.php uploaded (the same one-file upload the name-setup flow waits on).
 - [ ] **Interface-language switcher + settings parity.** Settings should
   cover the basics other apps have (Stremio/Nuvio as reference), starting
   with an app-UI language switcher (distinct from the shipped

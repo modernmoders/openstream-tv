@@ -9,6 +9,11 @@ Output (default docs/reference/StremioSurfer/hosting/ — private, gitignored):
                   server-side in PHP, so profile filenames (the secret part)
                   are never listed publicly. The human page keeps the raw
                   link under a collapsible for TVs on pre-alpha.10 builds.
+                  Also accepts POST api=log (DiagnosticsUpload, alpha.17+):
+                  each box ships its sanitized App log daily; stored as
+                  logs/<profile-stem>.log next to the profiles, readable by
+                  the owner at <setup-url>/logs/<stem>.log (same
+                  unguessable-filename security model as the profiles).
     <profiles>    the generated *.json profiles, copied as-is
     .htaccess     directory listing off
 
@@ -38,6 +43,28 @@ function norm($s) { return trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z 
 
 $matches = []; $link = null; $error = null; $who = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // api=log: a TV uploads its (already URL-sanitized) App log once a day
+    // (DiagnosticsUpload). Stored as logs/<person>.log next to the profiles
+    // so the owner reads every box in one place. `who` must be the stem of
+    // an existing profile file — strangers can't write arbitrary files.
+    if (($_POST['api'] ?? '') === 'log') {
+        header('Content-Type: application/json');
+        $sender = $_POST['who'] ?? '';
+        $text = $_POST['log'] ?? '';
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $sender) || !file_exists(__DIR__ . "/$sender.json")) {
+            echo json_encode(['ok' => false, 'error' => 'unknown sender']);
+            exit;
+        }
+        if ($text === '' || strlen($text) > 131072) {
+            echo json_encode(['ok' => false, 'error' => 'bad log size']);
+            exit;
+        }
+        if (!is_dir(__DIR__ . '/logs')) mkdir(__DIR__ . '/logs', 0755);
+        $stamp = gmdate('Y-m-d H:i') . ' UTC';
+        file_put_contents(__DIR__ . "/logs/$sender.log", "# uploaded $stamp\n$text\n");
+        echo json_encode(['ok' => true]);
+        exit;
+    }
     if (!empty($_POST['full'])) {
         foreach ($PEOPLE as $p) if ($p['full'] === $_POST['full']) { $matches = [$p]; break; }
         if (!$matches) $error = 'No match — check the spelling, or ask whoever set this up.';
