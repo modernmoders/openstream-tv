@@ -2,7 +2,6 @@ package dev.openstream.tv.ui.streams
 
 import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
-import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.player.StreamAlternatives
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 
@@ -25,51 +24,32 @@ sealed interface AutoStartResult {
 
 fun firstPlayableWhenSettled(initializing: Boolean, groups: List<GroupState>): AutoStartResult {
     if (initializing) return AutoStartResult.Waiting
-    // Prefer an English-audio release (owner round 12). Walk the addons in
-    // order, waiting on any still-loading one (a higher-priority English pick
-    // may still arrive), and take the first that offers an English-friendly
-    // playable stream. Only when every addon has settled with no English
-    // option do we fall back to the first playable — the foreign-only title
-    // case, where nothing must be stranded.
+    // Play the first playable stream in the user's addon order — the one they
+    // "normally watch" (owner 2026-07-08: don't reorder the auto-pick, e.g. to
+    // prefer English — it swapped anime away from their usual release). Wait on
+    // any still-loading earlier addon so a slow #1 keeps its top spot (§4.1.5).
     for (group in groups) {
         when (group) {
             is GroupState.Loading -> return AutoStartResult.Waiting
             is GroupState.Failed -> continue
             is GroupState.Loaded -> {
-                val english = group.streams.firstOrNull {
-                    it.isPlayableInV1 && !StreamCascade.isNonEnglishAudio(it)
-                }
-                if (english != null) return AutoStartResult.Found(group.addon, english)
+                val stream = group.streams.firstOrNull { it.isPlayableInV1 }
+                if (stream != null) return AutoStartResult.Found(group.addon, stream)
             }
         }
-    }
-    // Everything settled, no English-friendly stream anywhere: foreign-only
-    // fallback — first playable in addon order (the original behavior).
-    for (group in groups) {
-        val stream = (group as? GroupState.Loaded)?.streams?.firstOrNull { it.isPlayableInV1 } ?: continue
-        return AutoStartResult.Found(group.addon, stream)
     }
     return AutoStartResult.None
 }
 
 /**
  * Flatten to the "Try another server" walk order: addon order, then stream
- * order (§4.1.7) — but English-audio streams first when the video has any
- * (owner round 12), so tapping "Try a different stream" keeps landing on
- * English before it ever reaches a foreign-audio release. Stable, so a
- * foreign-only video is left in untouched addon order.
+ * order (§4.1.7). Untouched — tapping "Try a different stream" walks the list
+ * exactly as the addons returned it.
  */
-fun orderedAlternatives(groups: List<GroupState>): List<StreamAlternatives.Alternative> {
-    val alternatives = groups.flatMap { group ->
+fun orderedAlternatives(groups: List<GroupState>): List<StreamAlternatives.Alternative> =
+    groups.flatMap { group ->
         (group as? GroupState.Loaded)?.streams
             ?.filter { it.isPlayableInV1 }
             ?.map { StreamAlternatives.Alternative(group.addon.manifestUrl, it) }
             .orEmpty()
     }
-    val hasEnglish = alternatives.any { !StreamCascade.isNonEnglishAudio(it.stream) }
-    return if (hasEnglish) {
-        alternatives.sortedBy { StreamCascade.isNonEnglishAudio(it.stream) }
-    } else {
-        alternatives
-    }
-}
