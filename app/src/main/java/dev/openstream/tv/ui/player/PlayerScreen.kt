@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -130,6 +131,10 @@ fun PlayerScreen(
 
     val outerFocus = remember { FocusRequester() }
     val scrubFocus = remember { FocusRequester() }
+    // DOWN from the scrub bar lands here — "Try a different stream" is the
+    // failure escape people reach for, so it owns the middle default (owner
+    // 2026-07-08: DOWN used to land on "Play in another app").
+    val tryStreamFocus = remember { FocusRequester() }
 
     var tracksMenu by remember(engine) { mutableStateOf(engine.exoPlayer.currentTracks.toTrackMenu()) }
     var showTracks by remember { mutableStateOf(false) }
@@ -235,39 +240,55 @@ fun PlayerScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                ScrubBar(
-                    positionMs = positionMs,
-                    durationMs = durationMs,
-                    playing = playing,
-                    onSeek = { delta ->
-                        val target = (engine.exoPlayer.currentPosition + delta)
-                            .coerceIn(0, engine.exoPlayer.duration.coerceAtLeast(0))
-                        engine.exoPlayer.seekTo(target)
-                        wake()
-                    },
-                    onTogglePlay = {
-                        if (engine.exoPlayer.isPlaying) engine.exoPlayer.pause() else engine.exoPlayer.play()
-                        wake()
-                    },
-                    focusRequester = scrubFocus,
-                )
+                // Wrapping the scrub bar redirects its DOWN to "Try a different
+                // stream" so that button owns the default landing spot.
+                Box(modifier = Modifier.focusProperties { down = tryStreamFocus }) {
+                    ScrubBar(
+                        positionMs = positionMs,
+                        durationMs = durationMs,
+                        playing = playing,
+                        onSeek = { delta ->
+                            val target = (engine.exoPlayer.currentPosition + delta)
+                                .coerceIn(0, engine.exoPlayer.duration.coerceAtLeast(0))
+                            engine.exoPlayer.seekTo(target)
+                            wake()
+                        },
+                        onTogglePlay = {
+                            if (engine.exoPlayer.isPlaying) engine.exoPlayer.pause() else engine.exoPlayer.play()
+                            wake()
+                        },
+                        focusRequester = scrubFocus,
+                    )
+                }
+                // Owner-specified order (2026-07-08), left→right:
+                //   [⏮ ⏭] one compact slot · Audio & subtitles · Try a different
+                //   stream (default focus) · Play in another app.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Episode jumps (owner round 12): shown only for a series
-                    // with a neighbour in that direction, so a movie or the
-                    // first/last episode never gets a dead button.
-                    if (state.previousEpisode != null) {
-                        SurfacePill("⏮ Previous episode", onClick = { viewModel.goToPreviousEpisode(); wake() })
+                    // Prev/Next episode jumps — icon-only, tucked next to each
+                    // other in a single slot at the far left. Shown only when a
+                    // neighbour exists, so movies / first / last never get a
+                    // dead button.
+                    if (state.previousEpisode != null || state.nextEpisode != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (state.previousEpisode != null) {
+                                SurfacePill("⏮", onClick = { viewModel.goToPreviousEpisode(); wake() })
+                            }
+                            if (state.nextEpisode != null) {
+                                SurfacePill("⏭", onClick = { viewModel.goToNextEpisode(); wake() })
+                            }
+                        }
                     }
                     SurfacePill("Audio & subtitles", onClick = { showTracks = true; wake() })
-                    if (viewModel.externalPlayers.isNotEmpty()) {
-                        SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
-                    }
                     // Always shown (owner report): walks to the next candidate
                     // if one remains, else opens the full stream list for this
-                    // video — never a dead/hidden button.
-                    SurfacePill("Try a different stream", onClick = { viewModel.tryAnotherStream(); wake() })
-                    if (state.nextEpisode != null) {
-                        SurfacePill("Next episode ⏭", onClick = { viewModel.goToNextEpisode(); wake() })
+                    // video — never a dead/hidden button. Holds the DOWN default.
+                    SurfacePill(
+                        "Try a different stream",
+                        onClick = { viewModel.tryAnotherStream(); wake() },
+                        modifier = Modifier.focusRequester(tryStreamFocus),
+                    )
+                    if (viewModel.externalPlayers.isNotEmpty()) {
+                        SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
                     }
                 }
             }

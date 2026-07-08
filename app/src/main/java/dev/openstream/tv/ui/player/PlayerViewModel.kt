@@ -140,8 +140,13 @@ class PlayerViewModel @Inject constructor(
                 // Remembered languages (DECISIONS #19) go on BEFORE play so the
                 // first track selection already honors them. Parameters stick
                 // to the player instance, so autoplay episode swaps keep them.
+                // Default the audio track to English when the household hasn't
+                // picked a language yet (owner 2026-07-08: a dual-audio anime
+                // opened in Italian because it was first in the file). This is
+                // a PREFERENCE, not a filter — a foreign-only title still plays,
+                // and a saved pick (DECISIONS #19) always wins over this default.
                 val languages = playbackPrefs.languages.first()
-                engine.exoPlayer.applyPreferredLanguages(languages.audio, languages.subtitle)
+                engine.exoPlayer.applyPreferredLanguages(languages.audio ?: "en", languages.subtitle)
                 engine.play(req.source)
                 launch { collectPlayerEvents(engine) }
                 launch { collectAutoplayCommands(engine) }
