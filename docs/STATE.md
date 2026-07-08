@@ -1,4 +1,27 @@
-# STATE — updated 2026-07-07 by session 19
+# STATE — updated 2026-07-07 by session 20
+
+## ⚠️ READ FIRST (session 20 — 2026-07-07 — logo v3 "Streams" rebrand)
+Owner: the v2 shadow-S "SStreams" logo is only "decent" → replaced. **Logo v3
+BUILT + both gates GREEN (assembleDebug + testDebugUnitTest), committed
+`4772832`, NOT versionCode-bumped, NOT deployed.** It reads **"Streams"**: one
+bold rounded periwinkle S (`#C6D4F2`) with a royal-blue (`#3B5CA6`) 3D
+drop-shadow flowing into white "treams" — a genuine rebrand SStreams →
+Streams. Non-obvious (DECISIONS #41): glyphs are now EXACT SF Rounded outlines
+(system variable font @ wght 820) extracted via fontTools into vector
+`pathData` — the old hand-authored bezier/TextPath pipeline (#38/#39) is gone.
+Verified before wiring by rasterizing the composed paths (counters render as
+holes). Files: `ic_launcher.xml` (S mark on navy tile), `tv_banner_streams.xml`
+(full lockup), `tv_banner.xml` (neutral = S mark only); deleted
+`tv_banner_sstreams.xml`; `build.gradle.kts` banner select is now
+`brand == "Streams"`; owner-private `local.properties` `setup.brand=Streams`
+(so in-app title + launcher label read "Streams"). Preview PNG for the owner
+at `~/Desktop/streams-logo-preview.png`. ⚠️ Not device/emulator-verified
+visually — the even-odd raster proof + a clean aapt2 compile stand in; eyeball
+the launcher tile + banner on the AVD or a box at deploy. **This bundles into
+the SAME next deploy as round-12 (English audio + episode nav, still at
+alpha.22 undeployed): bump versionCode → alpha.23, then `install -r` to BOTH
+boxes** (a bump is MANDATORY or Android blocks the reinstall — session-16
+lesson).
 
 ## ⚠️ READ FIRST (session 19 — 2026-07-07 — Rachael R1 prep + user cleanup)
 Owner batch. **All in the LIVE passport
@@ -805,8 +828,12 @@ N3. **Discover grid focus drift** (down 6, up 3 → column shifts right) —
 N4. **Resume-to-last-episode in Details** (ProgressRepository already has
    the data; pick initial season/episode + a "Continue" CTA).
 N5. **Player: hold-to-accelerate scrubbing + prev/next episode buttons.**
-N6. **Deploy alpha.22 to .231 when it's back online** (command in READ
-   FIRST above), then bump + deploy the next wave to BOTH.
+N6. **Deploy the next wave (→ alpha.23) to BOTH boxes.** Undeployed on
+   `main` since alpha.22: round-12 (English audio + episode nav, DECISIONS
+   #40) AND logo v3 "Streams" (DECISIONS #41). Bump versionCode to 23, build
+   release, `install -r` to .117 (pro) and .231 (non-pro, was offline —
+   ping first). Eyeball the new launcher tile + banner and the round-12
+   features on a real Cinemeta series.
 N7. **Profiles endgame** (standing): investigate the 3 live AIOStreams
    instances → curate catalogs → 4 templates → owner approval →
    per-person profiles as accounts arrive. Details in MASTER_PLAN §10
@@ -832,9 +859,9 @@ R2. ✅ **Discover UX fixes — ALL CLOSED.** (a) `9fda76a`; (b) closed by the
    card; owner chose "expand with artwork" over the border sketch);
    (c) `481f4a2` — filter bar visually verified session 17 (TESTLOG).
    Owner-eyeball still welcome on the real TVs.
-R3. **Rebrand → SStreams**: name ✅ (session 16, `a4b09b8`); logo/banner ✅
-   (session 17, alpha.21, DECISIONS #38 — dual-S icon + brand-switched TV
-   banner, launcher-verified). STILL TODO owner-side: upload the staged
+R3. **Rebrand → Streams** (was SStreams): name ✅; logo/banner ✅ — now
+   logo **v3 "Streams"** (session 20, DECISIONS #41, replaces the v2 shadow-S;
+   `setup.brand=Streams`). STILL TODO owner-side: upload the staged
    hosting bundle (~/Desktop/setup-upload-trim/ has the newest, trimmed
    one); LATER: the "savoy"-in-filename token migration (regen + re-paste
    each box — breaks saved box links if careless, coordinate with owner).
