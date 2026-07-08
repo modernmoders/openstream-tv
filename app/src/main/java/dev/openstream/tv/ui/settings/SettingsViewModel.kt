@@ -52,6 +52,11 @@ class SettingsViewModel @Inject constructor(
     val autoPlayFirstStream: StateFlow<Boolean> = playbackPrefs.autoPlayFirstStream
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Prefer software video decoding (owner 2026-07-08: fixes blocky/glitchy
+     *  picture on some shows). Default off — hardware is faster; opt in per box. */
+    val preferSoftwareDecoder: StateFlow<Boolean> = playbackPrefs.preferSoftwareDecoder
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
@@ -73,6 +78,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setAutoPlayFirstStream(enabled: Boolean) {
         viewModelScope.launch { playbackPrefs.setAutoPlayFirstStream(enabled) }
+    }
+
+    fun setPreferSoftwareDecoder(enabled: Boolean) {
+        viewModelScope.launch { playbackPrefs.setPreferSoftwareDecoder(enabled) }
     }
 
     fun setExpertMode(enabled: Boolean) {

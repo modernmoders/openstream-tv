@@ -9,7 +9,9 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import dev.openstream.tv.domain.PlayableSource
 import kotlinx.coroutines.channels.awaitClose
@@ -26,15 +28,40 @@ import kotlinx.coroutines.flow.callbackFlow
  *
  * Lifecycle: one engine per playback session, released in onCleared() of the
  * owning ViewModel. MediaSessionService integration is the next Phase 2 unit.
+ *
+ * @param preferSoftwareDecoder when true, software video decoders are tried
+ *   first (Settings toggle). The 32-bit onn boxes' vendor hardware decoders
+ *   emit macroblocked garbage on some encodes — anime especially (owner
+ *   screenshot 2026-07-08) — that MX Player, which software-decodes, renders
+ *   clean. See [DefaultRenderersFactory] setup below (MASTER_PLAN §10 R11 N1).
  */
-class ExoPlayerEngine(context: Context) : PlayerEngine {
+class ExoPlayerEngine(
+    context: Context,
+    preferSoftwareDecoder: Boolean = false,
+) : PlayerEngine {
 
     private val httpFactory = DefaultHttpDataSource.Factory()
         .setUserAgent("OpenStreamTV")
         .setAllowCrossProtocolRedirects(true)
 
+    private val renderersFactory = DefaultRenderersFactory(context)
+        // Drop to the next (usually software) decoder when the preferred one
+        // fails to initialize or throws mid-stream — the boxes' hw decoders do
+        // both on odd profiles. Cheap safety net; always on.
+        .setEnableDecoderFallback(true)
+        .apply {
+            // Fallback only catches decoders that ERROR. The macroblocking the
+            // owner sees is silent — the hw decoder "succeeds" and emits garbage
+            // frames — so nothing throws for fallback to catch. The only cure is
+            // to not use that decoder: PREFER_SOFTWARE tries the robust software
+            // decoders first (hardware still there as a last resort), matching
+            // how MX Player stays clean on the same box.
+            if (preferSoftwareDecoder) setMediaCodecSelector(MediaCodecSelector.PREFER_SOFTWARE)
+        }
+
     /** Exposed for PlayerView binding; UI must not manage its lifecycle. */
     val exoPlayer: ExoPlayer = ExoPlayer.Builder(context)
+        .setRenderersFactory(renderersFactory)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(DefaultDataSource.Factory(context, httpFactory))
         )

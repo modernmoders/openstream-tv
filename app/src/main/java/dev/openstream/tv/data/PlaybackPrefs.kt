@@ -42,12 +42,22 @@ interface PlaybackPrefs {
      * and a broken stream quietly advances to the next one. Default off.
      */
     val autoPlayFirstStream: Flow<Boolean>
+
+    /**
+     * Prefer software video decoders over the TV's hardware decoder (owner
+     * 2026-07-08, MASTER_PLAN §10 R11 N1). The 32-bit onn boxes' hardware
+     * decoders macroblock some encodes (anime) that software decodes clean —
+     * MX-Player parity. Default off: hardware is faster, so this is opt-in for
+     * the boxes that actually glitch. Read once when the engine is built.
+     */
+    val preferSoftwareDecoder: Flow<Boolean>
     suspend fun setAudioLanguage(languageTag: String)
 
     /** A real language tag, or [SUBTITLES_OFF]. */
     suspend fun setSubtitleLanguage(languageTag: String)
     suspend fun setPreferredPlayer(value: String)
     suspend fun setAutoPlayFirstStream(enabled: Boolean)
+    suspend fun setPreferSoftwareDecoder(enabled: Boolean)
 }
 
 private val Context.playbackPrefsStore by preferencesDataStore("playback_prefs")
@@ -86,10 +96,20 @@ class DataStorePlaybackPrefs @Inject constructor(
         context.playbackPrefsStore.edit { it[AUTO_PLAY_FIRST] = enabled }
     }
 
+    override val preferSoftwareDecoder: Flow<Boolean> =
+        // Default OFF: hardware decoding is faster; software is the opt-in cure
+        // for boxes whose hardware decoder macroblocks (owner 2026-07-08).
+        context.playbackPrefsStore.data.map { it[PREFER_SW_DECODER] ?: false }
+
+    override suspend fun setPreferSoftwareDecoder(enabled: Boolean) {
+        context.playbackPrefsStore.edit { it[PREFER_SW_DECODER] = enabled }
+    }
+
     private companion object {
         val AUDIO_LANG = stringPreferencesKey("audio_language")
         val SUBTITLE_LANG = stringPreferencesKey("subtitle_language")
         val PLAYER = stringPreferencesKey("preferred_player")
         val AUTO_PLAY_FIRST = booleanPreferencesKey("auto_play_first_stream")
+        val PREFER_SW_DECODER = booleanPreferencesKey("prefer_software_decoder")
     }
 }

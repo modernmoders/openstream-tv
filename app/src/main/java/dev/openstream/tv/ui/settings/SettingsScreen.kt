@@ -71,6 +71,7 @@ fun SettingsScreen(
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
+    val softwareDecoder by viewModel.preferSoftwareDecoder.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
@@ -143,6 +144,18 @@ fun SettingsScreen(
                     "Off — picking a movie or episode shows the list of streams"
                 },
                 onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
+            )
+            // OK toggles directly, same as autoplay above.
+            SettingEntry(
+                title = "Prefer software video decoder",
+                description = if (softwareDecoder) {
+                    "On — plays video in software. Fixes blocky or glitchy " +
+                        "picture on some shows (like anime). Turn off if video stutters"
+                } else {
+                    "Off — uses the TV's built-in video chip (fastest). Turn this " +
+                        "on if the picture looks blocky or scrambled on some shows"
+                },
+                onClick = { viewModel.setPreferSoftwareDecoder(!softwareDecoder) },
             )
             // OK toggles directly, same as autoplay above.
             SettingEntry(

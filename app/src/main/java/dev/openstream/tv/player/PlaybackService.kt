@@ -3,7 +3,10 @@ package dev.openstream.tv.player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
+import dev.openstream.tv.data.PlaybackPrefs
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 /**
  * Hosts the ExoPlayer inside a MediaSessionService (MASTER_PLAN §6.1) so
@@ -18,13 +21,18 @@ import javax.inject.Inject
 class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var playerHolder: PlayerHolder
+    @Inject lateinit var playbackPrefs: PlaybackPrefs
 
     private var engine: ExoPlayerEngine? = null
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
         super.onCreate()
-        val newEngine = ExoPlayerEngine(this)
+        // One tiny DataStore read at engine-build time (the service is created
+        // once per watch session, not per frame): pick up the "prefer software
+        // decoder" setting so a box that glitches can be switched to software.
+        val preferSoftware = runBlocking { playbackPrefs.preferSoftwareDecoder.first() }
+        val newEngine = ExoPlayerEngine(this, preferSoftware)
         engine = newEngine
         mediaSession = MediaSession.Builder(this, newEngine.exoPlayer).build()
         playerHolder.attach(newEngine)
