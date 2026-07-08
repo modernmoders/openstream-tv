@@ -1010,3 +1010,37 @@ only, no wordmark). Old `tv_banner_sstreams.xml` deleted. Build + unit gates
 green; versionCode NOT bumped (bundles into the next deploy with round-12).
 Generator script kept in the session scratchpad (not committed — depends on a
 macOS system font, not a repo asset).
+
+## 42. 2026-07-08 (session 20) — Macroblocking fix (software-decoder option) + English auto-play revert
+
+Owner screenshot: anime playback decodes into heavy colored macroblocks on the
+onn boxes; the SAME stream is clean in MX Player. This is N1 (MASTER_PLAN §10
+R11) — a flaky vendor hardware decoder emitting garbage frames. Two decisions:
+
+(a) **Decoder robustness.** ExoPlayer gets a `DefaultRenderersFactory` with
+`setEnableDecoderFallback(true)` (always on — drops to the next decoder when one
+ERRORS or fails init). But the owner's corruption is SILENT — the hw decoder
+"succeeds" and emits garbage, so nothing throws for fallback to catch. The only
+cure is to not use that decoder, so a Settings toggle **"Prefer software video
+decoder"** (`PlaybackPrefs.preferSoftwareDecoder`, default OFF) swaps in
+`MediaCodecSelector.PREFER_SOFTWARE` (software first, hardware still a
+last-resort fallback) — the MX-parity path. Read once when `PlaybackService`
+builds the engine (one tiny runBlocking DataStore read; the service is created
+per watch session, not per frame). **Default OFF on purpose:** hardware is
+faster and 4K HEVC/AV1 would stutter in software, so this is opt-in per box —
+the owner flips it on the boxes that actually glitch. Rejected defaulting ON
+(regresses the 4K box) and the media3 ffmpeg extension (NDK build cost; SW
+video too slow for 4K anyway). Escalation path if a codec is still bad:
+proactively surface "Play in another app". CAN ONLY be verified on the box.
+
+(b) **English auto-play revert (undoes #40a).** Owner: "make any changes that
+wouldn't make the first one to be english." The round-12 label-based English
+preference demoted Japanese-tagged anime — the release they normally watch — so
+auto-play waited on slower addons or jumped to a different stream. Removed the
+English tier from `StreamCascade.rank`, restored `firstPlayableWhenSettled` to
+first-playable-in-addon-order, and `orderedAlternatives` to pure addon order;
+deleted `isNonEnglishAudio` + the language-marker regexes and their tests. The
+auto-played "first stream" is once again the user's usual addon-order pick.
+
+Bundled into alpha.23 (versionCode 23) with the logo v3 rebrand + round-12
+episode nav. Build + unit gates green.
