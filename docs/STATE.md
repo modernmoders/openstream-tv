@@ -1,4 +1,33 @@
-# STATE — updated 2026-07-07 by session 18
+# STATE — updated 2026-07-07 by session 19
+
+## ⚠️ READ FIRST (session 19 — 2026-07-07 — Rachael R1 prep + user cleanup)
+Owner batch. **All in the LIVE passport
+(`~/Documents/Claude/StremioSurfer/users.json` via the :5000 server, which
+auto-writes `users.json.bak`) — NOT the repo:**
+1. **Removed Jamie + Myles Dad** (owner: "take him and jamie out, save for my
+   records"). 13→11 users. Full records saved to the passport dir
+   `removed-users-2026-07-07.json`. They had NO hosted profile files (skip-list
+   stubs) — nothing to un-upload; their names still sit in the local
+   `profiles.config.json` skip-list (harmless).
+2. **Rachael's keys completed:** Real-Debrid added; TMDB api+read already
+   matched what the owner sent; Torbox set to the **shared** key. Trakt app
+   "Claude" creds (Client ID/Secret, Google-auth note) saved to the passport
+   dir `trakt-app-claude.json` (app-level, not per-user).
+3. **Family-no-anime template SIGNED OFF** — `docs/TEMPLATE_FAMILY_NO_ANIME.md`
+   finalized + committed `418c03f` (no secrets, placeholders only). Decisions:
+   shared Torbox, Tamtaro dropped (a person who builds AIOStreams presets, not
+   an addon), Trakt deferred to v2.
+⛔ **APPLY IS BLOCKED, not done:** `push_aiostreams.py` needs a real AIOStreams
+config export; **every `templates/*.json` is 0 bytes** (session-16 loss). To
+finish Rachael: (a) export a family-clean "Movies & TV" config from a
+configured AIOStreams account → save as
+`~/Documents/Claude/StremioSurfer/templates/primary.json` → run
+`push_aiostreams.py --users <live> --template templates/primary.json
+--instance primary --user "Rachael"` → `make_profiles.py` → upload → type
+"rachael" on 192.168.1.231. OR (b) authorize a session to fetch+edit+PUT her
+live config via the instance API (not done here — no blind live surgery on a
+low usage budget). Everything else for her is ready. See TEMPLATE §7a.
+NOTE: owner at ~7% weekly usage this session (credits as fallback).
 
 ## ⚠️ READ FIRST (session 18 — 2026-07-07 — round-12: English audio + player episode nav)
 Owner round-12 batch (DECISIONS #40). Two app features BUILT + unit-tested
