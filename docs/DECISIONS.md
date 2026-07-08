@@ -1044,3 +1044,50 @@ auto-played "first stream" is once again the user's usual addon-order pick.
 
 Bundled into alpha.23 (versionCode 23) with the logo v3 rebrand + round-12
 episode nav. Build + unit gates green.
+
+## 43. 2026-07-08 (session 21) — Software decoder DEFAULT ON + episode watch marks (progress bar + ✓)
+
+Owner batch, three items. Two shipped (a, b); the third (intro/credits skip) was
+answered as a scoping question, not built.
+
+(a) **`preferSoftwareDecoder` default OFF → ON** (reverses #42a's default only;
+the toggle + engine wiring are unchanged). Owner confirmed the software path
+FIXES the anime macroblocking, so it becomes the out-of-the-box behavior across
+the boxes instead of an opt-in the owner has to find. The 4K trade-off from #42
+still stands — software HEVC/AV1 can stutter — so the pro box can turn it OFF in
+Settings if 4K suffers. One-line default flip in `DataStorePlaybackPrefs`; a box
+that already toggled it keeps its stored choice (DataStore only defaults an
+absent key).
+
+(b) **Per-episode watch marks in Details** (owner: "a progress bar and a
+checkmark for watched episodes"). Non-obvious call: a finished episode used to be
+**cleared** from the progress table on `PlayerEvent.Ended`, so the very episodes
+that most deserve a ✓ left no trace. Changed Ended to **store the episode at
+position == duration** instead of clearing (`PlayerViewModel.markWatched`); a
+durationless Ended still clears (can't wedge Continue Watching). This is safe
+because `isResumable`'s existing 95% upper bound already excludes a completed row
+from Continue Watching and from resume — the same `WATCHED_FRACTION` line now
+also powers `isWatched`, so a row shows a resume BAR (partial) XOR a ✓ (done),
+never both. Rejected a new `watched` column / new table (Room migration, more
+surface) — reusing the 95% line needs zero schema change. `ProgressRepository`
+gained `observeProgressByExternalId()` (hot map keyed by video id) +
+`isWatched()`; `DetailsViewModel` exposes it as a `WhileSubscribed` StateFlow so
+backing out of the player updates the marks live (Details survives on the back
+stack). `DetailsScreen` renders an accent resume bar on the thumbnail's bottom
+edge (thin line under the text when there's no thumbnail) and a green ✓ badge.
+
+(c) **Intro/credits skip — feasibility answered, NOT built (owner-decision
+gated, R7/round-11 backlog).** A universal auto-skip has no free timestamp
+source for general movies/TV (that data is proprietary/ML). For ANIME, the
+crowd-sourced AniSkip API gives real OP/ED windows keyed by MAL id + episode —
+a genuine "Skip Intro" button, but anime-only and its own mini-project
+(id-mapping IMDb→MAL, a network client, a position-driven overlay, a setting,
+tests). A manual "skip +N s" button is trivial and universal but isn't really an
+intro/credits detector. Recommended AniSkip-for-anime as the next dedicated
+piece; left the approach choice to the owner rather than half-build it under the
+polish/stability mandate.
+
+Bundled into alpha.25 (versionCode 25). assembleDebug + testDebugUnitTest green
+(272 tests, 0 failures); assembleRelease (R8) clean. NOT device-verified — the
+decoder default and the episode marks want owner eyes on a box (episode marks
+render fine on the AVD but need seeded watch history; deferred with the deploy).

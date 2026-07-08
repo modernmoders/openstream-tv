@@ -28,6 +28,19 @@ class ProgressRepository @Inject constructor(
     fun observeContinueWatching(): Flow<List<WatchProgress>> =
         dao.observeAll().map { entities -> continueWatching(entities.map { it.toDomain() }) }
 
+    /**
+     * Every stored progress row, keyed by [MediaRef.externalId] — for the
+     * Details episode list, which shows a progress bar for a partly-watched
+     * episode and a ✓ for a finished one (owner 2026-07-08). Episodes key on
+     * their video id (§8.4), which is exactly the externalId, so a lookup is a
+     * plain map get. Re-emits live, so returning from the player updates the
+     * bars/checks without a reload.
+     */
+    fun observeProgressByExternalId(): Flow<Map<String, WatchProgress>> =
+        dao.observeAll().map { entities ->
+            entities.associate { it.externalId to it.toDomain() }
+        }
+
     suspend fun get(ref: MediaRef): WatchProgress? =
         dao.get(ref.sourceKind, ref.externalId)?.toDomain()
 
@@ -82,6 +95,16 @@ class ProgressRepository @Inject constructor(
             p.positionMs >= minPositionMs &&
                 p.durationMs > 0 &&
                 p.positionMs < p.durationMs * WATCHED_FRACTION
+
+        /**
+         * Finished (or as good as): past [WATCHED_FRACTION]. A naturally-ended
+         * episode is stored at position == duration (PlayerViewModel), so this
+         * is the "show a ✓" test for the Details episode list. The inverse of
+         * the resumable upper bound — the same 95% line splits "keep watching"
+         * from "watched".
+         */
+        fun isWatched(p: WatchProgress): Boolean =
+            p.durationMs > 0 && p.positionMs >= p.durationMs * WATCHED_FRACTION
 
         fun continueWatching(all: List<WatchProgress>): List<WatchProgress> =
             all.filter { isResumable(it, MIN_CONTINUE_WATCHING_MS) }

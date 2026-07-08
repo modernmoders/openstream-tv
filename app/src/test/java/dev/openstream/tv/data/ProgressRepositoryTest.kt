@@ -70,6 +70,37 @@ class ProgressRepositoryTest {
         assertFalse(ProgressRepository.isResumable(progress(durationMs = 0)))
     }
 
+    // --- watched state (Details episode ✓, owner 2026-07-08) ---
+
+    @Test
+    fun `finished episode is watched`() {
+        // A naturally-ended episode is stored at position == duration.
+        assertTrue(
+            ProgressRepository.isWatched(
+                progress(positionMs = 1_200_000, durationMs = 1_200_000)
+            )
+        )
+    }
+
+    @Test
+    fun `mid-playback is not watched`() {
+        assertFalse(ProgressRepository.isWatched(progress(positionMs = 300_000)))
+    }
+
+    @Test
+    fun `watched and resumable are exclusive at the 95 percent line`() {
+        // The same WATCHED_FRACTION splits "keep watching" from "watched" — a
+        // row is never both, so a row shows a bar OR a ✓, never both.
+        val near = progress(positionMs = 1_150_000, durationMs = 1_200_000)
+        assertTrue(ProgressRepository.isWatched(near))
+        assertFalse(ProgressRepository.isResumable(near))
+    }
+
+    @Test
+    fun `unknown duration is not watched`() {
+        assertFalse(ProgressRepository.isWatched(progress(durationMs = 0)))
+    }
+
     @Test
     fun `continue watching is filtered and newest-first`() {
         val old = progress(id = "a", updatedAt = 1)

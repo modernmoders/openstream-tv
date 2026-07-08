@@ -9,24 +9,39 @@ import dev.openstream.tv.addon.MetaRepository
 import dev.openstream.tv.addon.Video
 import dev.openstream.tv.addon.absoluteEpisodeNumbers
 import dev.openstream.tv.data.EpisodeNumbering
+import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.domain.ContentType
+import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class DetailsViewModel @Inject constructor(
     private val metaRepository: MetaRepository,
     private val viewPrefs: ViewPrefs,
+    progressRepository: ProgressRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     val type: String = checkNotNull(savedStateHandle["type"])
     val id: String = checkNotNull(savedStateHandle["id"])
+
+    /**
+     * Per-episode watch progress, keyed by video id, for the ✓/progress-bar on
+     * each episode row. A hot flow off the DB so backing out of the player
+     * updates the marks live (this screen survives on the back stack). Keyed by
+     * externalId, which for an episode is its video id (§8.4).
+     */
+    val episodeProgress: StateFlow<Map<String, WatchProgress>> =
+        progressRepository.observeProgressByExternalId()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     data class UiState(
         val loading: Boolean = true,

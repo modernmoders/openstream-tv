@@ -171,8 +171,12 @@ class PlayerViewModel @Inject constructor(
                     autoplay.onPlaybackReady()
                 }
                 is PlayerEvent.Ended -> {
-                    // Finished = no longer resumable
-                    req.mediaRef?.let { progressRepository.clearAsync(it) }
+                    // Finished: record it as watched (position == duration) so
+                    // the Details episode list can show a ✓ and Continue
+                    // Watching still drops it (isResumable's 95% upper bound).
+                    // Persist BEFORE flipping `ended` — persistProgress no-ops
+                    // once ended, and it's the same key so it just overwrites.
+                    markWatched(engine, req)
                     _uiState.value = _uiState.value.copy(ended = true)
                     autoplay.onPlaybackEnded(
                         scope = viewModelScope,
@@ -346,6 +350,33 @@ class PlayerViewModel @Inject constructor(
 
     /** Back press. True = autoplay consumed it (stay on the player screen). */
     fun backPressed(): Boolean = autoplay.onBack(viewModelScope)
+
+    /**
+     * Stamp the finished episode/movie as watched (position == duration) so a
+     * ✓ survives in Details. If the duration never became known (rare — Ended
+     * without a prepared timeline) fall back to clearing, the old behavior, so
+     * a durationless row can't wedge Continue Watching. Main-thread only.
+     */
+    private fun markWatched(engine: ExoPlayerEngine, req: PlaybackRequest) {
+        val ref = req.mediaRef ?: return
+        val duration = engine.exoPlayer.duration
+        if (duration <= 0) {
+            progressRepository.clearAsync(ref)
+            return
+        }
+        progressRepository.saveAsync(
+            WatchProgress(
+                ref = ref,
+                metaId = req.metaId,
+                metaType = req.metaType,
+                title = req.source.title,
+                poster = req.poster,
+                positionMs = duration,
+                durationMs = duration,
+                updatedAt = System.currentTimeMillis(),
+            )
+        )
+    }
 
     /**
      * Snapshot the player position into the progress table. Main-thread only
