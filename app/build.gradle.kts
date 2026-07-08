@@ -46,14 +46,14 @@ android {
 
         // Launcher name follows the same owner-private brand as the in-app
         // title (setup.brand): the public repo stays neutral ("OpenStream TV"),
-        // the owner's local.properties makes both say "SStreams".
+        // the owner's local.properties makes both say "Streams".
         val brand = localProps.getProperty("setup.brand") ?: "OpenStream TV"
         manifestPlaceholders["appLabel"] = brand
         // The TV launcher shows the banner INSTEAD of the label, so the brand
-        // must live in the art itself: SStreams builds get the wordmark
-        // banner, everything else the neutral dual-S mark.
+        // must live in the art itself: Streams builds get the wordmark
+        // banner, everything else the neutral "S" mark.
         manifestPlaceholders["appBanner"] =
-            if (brand == "SStreams") "@drawable/tv_banner_sstreams"
+            if (brand == "Streams") "@drawable/tv_banner_streams"
             else "@drawable/tv_banner"
     }
 

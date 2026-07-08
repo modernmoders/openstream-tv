@@ -979,3 +979,34 @@ stream list through the EXISTING `onOpenStreams` nav path (which auto-plays if
 that setting is on) — so no new playback plumbing, and Back behaves like the
 autoplay manual fallback. Buttons render only when a neighbour exists (movies
 and the first/last episode never get a dead button).
+
+## 41. 2026-07-07 (session 20) — Logo v3: "Streams" wordmark, real font glyphs (rebrand from SStreams)
+
+Owner showed a cleaner target and said "change the current one": the v2
+shadow-S ("SStreams") is out. v3 reads **"Streams"** — ONE bold rounded S
+with a royal-blue 3D drop-shadow (a lifted-sticker look, NOT a second/teal
+letter) flowing into a white "treams". This is a genuine rebrand SStreams →
+Streams: `setup.brand` (owner-private local.properties) is now "Streams", so
+the in-app title AND launcher label read "Streams"; the appBanner placeholder
+condition in build.gradle.kts changed from `brand == "SStreams"` →
+`brand == "Streams"`.
+
+Pipeline change from #38/#39: instead of hand-authored bezier S-curves +
+Compose TextPath, the glyphs are now EXACT outlines extracted from the system
+font **SF Rounded** (`/System/Library/Fonts/SFNSRounded.ttf`, a variable font
+instanced at wght 820 / GRAD 400) via fontTools — each glyph's TrueType
+outline is quad→cubic converted, y-flipped and scaled into Android vector
+`pathData`. This guarantees the S and "treams" are the same typeface/weight
+and look professional. The composed paths were verified BEFORE wiring by
+rasterizing them (even-odd, matches nonZero here since glyph counters wind
+opposite the outline) — counters in e/a/s render as holes correctly.
+
+Palette dropped the teal entirely: periwinkle `#C6D4F2` main S over a
+royal-blue `#3B5CA6` shadow (offset ~down-right at the S scale), white
+`#F3F6FC` "treams", navy `#1B2A40` tile/banner background. Three drawables:
+`ic_launcher.xml` (S mark only, on a navy rounded tile), `tv_banner_streams.xml`
+(full lockup, owner brand), `tv_banner.xml` (neutral repo default = S mark
+only, no wordmark). Old `tv_banner_sstreams.xml` deleted. Build + unit gates
+green; versionCode NOT bumped (bundles into the next deploy with round-12).
+Generator script kept in the session scratchpad (not committed — depends on a
+macOS system font, not a repo asset).
