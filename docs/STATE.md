@@ -1,5 +1,35 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 21 cont. 3 — 2026-07-08 — alpha.28 BUILT: decoder OFF + Having-trouble panel + resume-to-episode; TC pushed live)
+Big owner batch. **alpha.28 (versionCode 28) BUILT — assembleDebug +
+testDebugUnitTest GREEN (283 tests) + assembleRelease (R8) clean. NOT deployed,
+NOT device-verified.** (DECISIONS #45.)
+App changes:
+1. **Software decoder default OFF again** (reverses the alpha.25 default). Owner:
+   software-ON's only downside was a brief self-healing start-up stutter, so
+   hardware is default and software is an on-demand in-player fix now.
+2. **"Having trouble?" player panel** — the 3 escapes (Try a different stream ·
+   Play in another app · **Fix blocky video**) grouped in a captioned accent ring
+   + a **Learn more** help dialog (owner's design). "Fix blocky video" = the
+   on-demand software-decoder switch: persists the setting then reloads the
+   current video via the stream list (a fresh engine applies the decoder — it
+   can't be flipped live).
+3. **Resume-to-last-episode** — opening a series with history lands on the episode
+   you stopped on (or the next one if it's finished): `DetailsViewModel.resumeTarget`
+   + `DetailsScreen` scroll-then-focus. Movie Play button now shows "Resume"/"Play
+   again" + a progress bar.
+   (episode ✓/progress bar + AniSkip already shipped in alpha.25/.26.)
+Config (LIVE, verified): **TC added to Adam's PRIMARY AIOStreams** (had to remove a
+deprecated `usa-tv` preset that was blocking every save). `excludedQualities` now
+`[CAM, TS, SCR, TC]`. **nightly** already had TC; **backup** (weebs) has a stale
+stored password — untouched (fix its password or re-create → new manifest URL).
+Did NOT disable his Live TV/Events catalogs (stayed surgical; offered as
+follow-up). Scratchpad scripts + `primary_backup.json` restore point exist this
+session only.
+⏳ **Owner to do:** deploy alpha.28 to both boxes; check resume-to-episode +
+the Having-trouble panel + "Fix blocky video". Decide priority for the two big
+NEXT builds (S3 Trakt scrobble, S4 profile builder — see NEXT ACTION).
+
 ## ⚠️ READ FIRST (session 21 cont. 2 — 2026-07-08 — alpha.27 DEPLOYED: fluffy logo fix)
 Owner: the Streams "S" looked hard-edged/faceted, not fluffy. **Root cause was
 a real bug in the logo generator** (scratchpad `gen_logo.py`): the glyph
@@ -973,10 +1003,31 @@ S1b. ⏳ **Owner's config fixes (his AIOStreams UI, or ask me to prep a gated
    push):** disable `Live TV` + `Live Sport Events` + `Other Sports` catalogs;
    add `TC` to excludedQualities (currently [CAM, TS, SCR]). Rachael's config is
    the clean model. INVESTIGATION done this session; no live write made.
-S2. ⏳ **Deploy alpha.26** to BOTH boxes (.117 pro + .196 non-pro, formerly .231):
+S2. ⏳ **Deploy alpha.28** to BOTH boxes (.117 pro + .196):
    `adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
-   (repeat for .196). Verify: clean anime decode by default, the ✓/resume bar on
-   episodes, and the Skip button on an anime OP/ED.
+   (repeat for .196). Verify: resume-to-last-episode (open a partly-watched
+   series → lands on that episode), the "Having trouble?" panel + "Fix blocky
+   video", the AniSkip button on an anime OP/ED.
+
+S3. ⏳ **Trakt scrobbling — SPECCED, BUILD NEXT (app).** Owner wants Stremio-style
+   scrobbling. Plan (DECISIONS #45): Trakt **device OAuth** (type a code at
+   trakt.tv/activate — "Claude" app creds already in the passport), token in
+   DataStore; `TraktScrobbler` maps the item to a Trakt id (IMDb tt… is native to
+   Trakt — no MAL-style mapping pain) and POSTs scrobble start/pause/stop off the
+   existing player events (stop at ended/≥80% = watched); Settings "Connect
+   Trakt". Its own build.
+S4. ⏳ **Rich multi-instance profile builder — SPECCED, BUILD NEXT (StremioSurfer
+   tooling, NOT the app).** Topology (owner, in order): **2 AIOMetadata**
+   (elfhosted, then nhyira "fortheweak" — new) + **3 AIOStreams** (fortheweak.cloud,
+   weebs/midnightignite, elfhosted). Everyone ends up with all 5, each configured
+   with recommended addons (Comet, MediaFusion, StremThru, …); create whatever's
+   missing per person. Real base URLs stay in the gitignored passport only. Extend
+   the passport tooling to provision missing instances with a recommended-addon
+   preset each.
+S5. ⏳ **Adam config follow-ups (his AIOStreams UI or a gated push):** disable
+   `Live TV` + `Live Sport Events` + `Other Sports` catalogs on primary; fix the
+   **backup** (weebs) instance password so it can be managed (or re-create it —
+   new manifest URL → re-add on the box). TC is DONE on primary + nightly.
 
 ### ⭐ OWNER BATCH 2026-07-08 — STILL TODO (owner reported live; some now done above)
 B1. **Back-out lands on the WRONG episode.** Click e.g. episode 15 → it plays →
