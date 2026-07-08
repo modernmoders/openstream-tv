@@ -1,5 +1,25 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 21 cont. 4 — 2026-07-08 — alpha.29: SW toggle shows ON/OFF; English-audio-first live; Rachael provisioning root-caused)
+Owner batch. **alpha.29 (versionCode 29) BUILT — assembleDebug + testDebugUnitTest
+GREEN (283) + assembleRelease (R8) clean. NOT deployed.** (DECISIONS #46.)
+1. **"Software video" toggle now shows ON/OFF** and flips both ways in the
+   player's "Having trouble?" panel (was a one-way "Fix blocky video" with no
+   state). PlayerViewModel `softwareDecoderOn` + `toggleSoftwareDecoder()`.
+2. **English audio first (LIVE on Adam's primary AIOStreams, verified).** The
+   `language` sort key was 7th in the sort; moved it to the FRONT of cached +
+   uncached so English streams rank first (preferredLanguages already
+   English-first). Owner to confirm on the box.
+3. **Rachael provisioning — ROOT-CAUSED, NOT applied.** Her thin "~3 addons"
+   instance is because `templates/primary.json` has **0 presets** (empty). The
+   real fix = build a proper recommended-addons template from Adam's live rich
+   config (Comet/MediaFusion/StremThru/Torrentio/Debridio), strip anime + strip
+   Adam's keys (leak-safe), then POST-create her backup+nightly AIOStreams.
+   **AIOMetadata has NO tooling** — her 2nd AIOMetadata needs new tooling. Did
+   NOT blind-apply (empty template = more thin instances; key-leak risk).
+⏳ **Owner to do:** deploy alpha.29; confirm English-dub-first on an anime + the
+Software-video ON/OFF toggle. Provisioning is the next focused build (S4).
+
 ## ⚠️ READ FIRST (session 21 cont. 3 — 2026-07-08 — alpha.28 BUILT: decoder OFF + Having-trouble panel + resume-to-episode; TC pushed live)
 Big owner batch. **alpha.28 (versionCode 28) BUILT — assembleDebug +
 testDebugUnitTest GREEN (283 tests) + assembleRelease (R8) clean. NOT deployed,
@@ -1003,11 +1023,11 @@ S1b. ⏳ **Owner's config fixes (his AIOStreams UI, or ask me to prep a gated
    push):** disable `Live TV` + `Live Sport Events` + `Other Sports` catalogs;
    add `TC` to excludedQualities (currently [CAM, TS, SCR]). Rachael's config is
    the clean model. INVESTIGATION done this session; no live write made.
-S2. ⏳ **Deploy alpha.28** to BOTH boxes (.117 pro + .196):
+S2. ⏳ **Deploy alpha.29** to BOTH boxes (.117 pro + .196):
    `adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
-   (repeat for .196). Verify: resume-to-last-episode (open a partly-watched
-   series → lands on that episode), the "Having trouble?" panel + "Fix blocky
-   video", the AniSkip button on an anime OP/ED.
+   (repeat for .196). Verify: resume-to-last-episode, the "Having trouble?" panel
+   + the **Software video: ON/OFF** toggle, English-dub-first on an anime (the
+   AIOStreams sort change is live), the AniSkip button on an anime OP/ED.
 
 S3. ⏳ **Trakt scrobbling — SPECCED, BUILD NEXT (app).** Owner wants Stremio-style
    scrobbling. Plan (DECISIONS #45): Trakt **device OAuth** (type a code at
@@ -1016,14 +1036,28 @@ S3. ⏳ **Trakt scrobbling — SPECCED, BUILD NEXT (app).** Owner wants Stremio-
    Trakt — no MAL-style mapping pain) and POSTs scrobble start/pause/stop off the
    existing player events (stop at ended/≥80% = watched); Settings "Connect
    Trakt". Its own build.
-S4. ⏳ **Rich multi-instance profile builder — SPECCED, BUILD NEXT (StremioSurfer
-   tooling, NOT the app).** Topology (owner, in order): **2 AIOMetadata**
-   (elfhosted, then nhyira "fortheweak" — new) + **3 AIOStreams** (fortheweak.cloud,
-   weebs/midnightignite, elfhosted). Everyone ends up with all 5, each configured
-   with recommended addons (Comet, MediaFusion, StremThru, …); create whatever's
-   missing per person. Real base URLs stay in the gitignored passport only. Extend
-   the passport tooling to provision missing instances with a recommended-addon
-   preset each.
+S4. ⏳ **Rich multi-instance profile builder — BUILD NEXT (StremioSurfer tooling).**
+   Topology (owner, in order): **2 AIOMetadata** (elfhosted, then nhyira
+   "fortheweak" — new) + **3 AIOStreams** (fortheweak.cloud, weebs/midnightignite,
+   elfhosted). Gap analysis (session 21): most people have 2 AIOStreams + 0
+   AIOMetadata; Rachael has 1+1; Adam 3+0. **KEY FINDING: `templates/primary.json`
+   has 0 presets — empty — which is why provisioned instances are thin (~3
+   addons).** Concrete build steps:
+   (1) Pull Adam's LIVE primary config (21 rich presets: Comet, MediaFusion,
+       StremThru, Torrentio, Debridio, OpenSubtitles…) → make it the recommended
+       AIOStreams template. Strip anime (seadex, neko-bt) for the family template;
+       strip ALL of Adam's personal keys (push_aiostreams substitutes per-user
+       keys + validates vs the owner to catch leaks — NEVER leak Adam's keys).
+   (2) `push_aiostreams.py --template <new> --instance backup|nightly --user
+       "Rachael"` (dry-run first) — POST-creates her missing AIOStreams, writes
+       uuid/manifest back to users.json. instances map + her keys are ready.
+   (3) **AIOMetadata: NO tooling exists** (no push_aiometadata; make_profiles
+       skips it). Build it (reverse-engineer the AIOMetadata configure API, same
+       GET/PUT-with-Basic shape as AIOStreams likely) to create her 2nd
+       AIOMetadata + beef the thin 1st.
+   (4) Regenerate her hosting profile (make_profiles + upload) so the box picks up
+       the new manifest URLs; box re-syncs → shows all addons (fixes "only 4
+       addons"). Then repeat per person.
 S5. ⏳ **Adam config follow-ups (his AIOStreams UI or a gated push):** disable
    `Live TV` + `Live Sport Events` + `Other Sports` catalogs on primary; fix the
    **backup** (weebs) instance password so it can be managed (or re-create it —
