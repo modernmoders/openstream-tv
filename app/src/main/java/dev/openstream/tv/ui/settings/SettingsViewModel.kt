@@ -53,9 +53,10 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Prefer software video decoding (owner 2026-07-08: fixes blocky/glitchy
-     *  picture on some shows). Default ON now — turn off only if 4K stutters. */
+     *  picture on some shows). Default OFF — the player's "Having trouble?"
+     *  panel flips it on for a glitchy stream without a Settings trip. */
     val preferSoftwareDecoder: StateFlow<Boolean> = playbackPrefs.preferSoftwareDecoder
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Anime intro/credits skip button (owner 2026-07-08, AniSkip). Default on;
      *  only ever appears on anime the community has timed. */

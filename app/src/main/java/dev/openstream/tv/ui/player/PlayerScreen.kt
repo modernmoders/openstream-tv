@@ -139,6 +139,7 @@ fun PlayerScreen(
     var tracksMenu by remember(engine) { mutableStateOf(engine.exoPlayer.currentTracks.toTrackMenu()) }
     var showTracks by remember { mutableStateOf(false) }
     var showPlayerPicker by remember { mutableStateOf(false) }
+    var showLearnMore by remember { mutableStateOf(false) }
     DisposableEffect(engine) {
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
@@ -271,10 +272,15 @@ fun PlayerScreen(
                         focusRequester = scrubFocus,
                     )
                 }
-                // Owner-specified order (2026-07-08), left→right:
-                //   [⏮ ⏭] one compact slot · Audio & subtitles · Try a different
-                //   stream (default focus) · Play in another app.
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Left→right: normal controls ([⏮ ⏭] · Audio & subtitles), then
+                // a bordered "Having trouble?" group with the three fix-it
+                // escapes + Learn more (owner 2026-07-08). Bottom-aligned so the
+                // grouped buttons sit level with the plain ones despite the
+                // group's caption.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
                     // Prev/Next episode jumps — icon-only, tucked next to each
                     // other in a single slot at the far left. Shown only when a
                     // neighbour exists, so movies / first / last never get a
@@ -290,16 +296,23 @@ fun PlayerScreen(
                         }
                     }
                     SurfacePill("Audio & subtitles", onClick = { showTracks = true; wake() })
-                    // Always shown (owner report): walks to the next candidate
-                    // if one remains, else opens the full stream list for this
-                    // video — never a dead/hidden button. Holds the DOWN default.
-                    SurfacePill(
-                        "Try a different stream",
-                        onClick = { viewModel.tryAnotherStream(); wake() },
-                        modifier = Modifier.focusRequester(tryStreamFocus),
-                    )
-                    if (viewModel.externalPlayers.isNotEmpty()) {
-                        SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
+                    TroubleGroup {
+                        // Always shown (owner report): walks to the next
+                        // candidate if one remains, else opens the full stream
+                        // list — never a dead button. Holds the DOWN default.
+                        SurfacePill(
+                            "Try a different stream",
+                            onClick = { viewModel.tryAnotherStream(); wake() },
+                            modifier = Modifier.focusRequester(tryStreamFocus),
+                        )
+                        if (viewModel.externalPlayers.isNotEmpty()) {
+                            SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
+                        }
+                        // Blocky/scrambled picture → software decoding. Persists
+                        // the setting and reloads this video (§ decoder is fixed
+                        // at engine build, so a fresh session applies it).
+                        SurfacePill("Fix blocky video", onClick = { viewModel.fixBlockyVideo() })
+                        SurfacePill("Learn more", onClick = { showLearnMore = true; wake() })
                     }
                 }
             }
@@ -352,6 +365,13 @@ fun PlayerScreen(
                 players = viewModel.externalPlayers,
                 onPick = { showPlayerPicker = false; playInAnotherApp(it) },
                 onDismiss = { showPlayerPicker = false; wake() },
+            )
+        }
+
+        if (showLearnMore) {
+            LearnMoreDialog(
+                hasExternalPlayers = viewModel.externalPlayers.isNotEmpty(),
+                onDismiss = { showLearnMore = false; wake() },
             )
         }
 
@@ -478,6 +498,62 @@ private fun SkipHint(label: String) {
                 .border(1.dp, Accent, RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 2.dp),
         )
+    }
+}
+
+/**
+ * The "Having trouble?" group (owner 2026-07-08): a captioned ring around the
+ * fix-it escapes so an older viewer sees them as one "something's wrong" cluster
+ * rather than four loose buttons.
+ */
+@Composable
+private fun TroubleGroup(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Having trouble?",
+            style = MaterialTheme.typography.labelMedium,
+            color = MutedText,
+            modifier = Modifier.padding(start = 10.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .border(1.5.dp, Accent.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
+                .padding(10.dp),
+            content = content,
+        )
+    }
+}
+
+/** Plain-language help for the "Having trouble?" buttons (owner 2026-07-08). */
+@Composable
+private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) {
+    val okFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { okFocus.requestFocus() } }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
+        ) {
+            Text("If something's not right", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            HelpLine("Try a different stream", "Loads this show from another source. Best first thing to try when a video won't play or keeps buffering.")
+            if (hasExternalPlayers) {
+                HelpLine("Play in another app", "Hands the video to VLC or MX Player. Try this when the picture plays but there's no sound, or the audio is the wrong language.")
+            }
+            HelpLine("Fix blocky video", "Switches to software video and reloads. Use it when the picture looks blocky or scrambled (common on some anime). It starts a touch slower.")
+            Button(onClick = onDismiss, modifier = Modifier.focusRequester(okFocus)) { Text("Got it") }
+        }
+    }
+}
+
+@Composable
+private fun HelpLine(title: String, body: String) {
+    Column(modifier = Modifier.fillMaxWidth(0.9f)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = Accent)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = Color.White)
     }
 }
 

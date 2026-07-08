@@ -1143,3 +1143,72 @@ AIOStreams UI (or a future gated push):
 
 alpha.26 (versionCode 26). Gates green: assembleDebug + testDebugUnitTest (283
 tests, 0 fail) + assembleRelease (R8) clean.
+
+## 45. 2026-07-08 (session 21) — Decoder default OFF + "Having trouble?" panel + resume-to-episode + TC push
+
+Owner batch. App changes (alpha.28) + a live config push + two big features specced
+for next.
+
+(a) **Software decoder default OFF again** (reverses #43a). Owner: the only issue
+with software-ON was a brief self-healing start-up stutter, so hardware is the
+default and software becomes a one-press in-player fix (below) instead of the
+out-of-the-box behavior. One-line default flip + the SettingsViewModel initial
+value.
+
+(b) **"Having trouble?" player panel.** The three fix-it escapes (Try a different
+stream · Play in another app · **Fix blocky video**) are now grouped in a
+captioned accent ring in the control bar, with a **Learn more** button opening a
+plain-language help dialog (owner's own design sketch). **Fix blocky video** is
+the on-demand software-decoder switch: the decoder is chosen when the engine is
+built and can't be flipped live, so it persists `preferSoftwareDecoder=true`
+(awaited, no race) then re-opens the current video's stream list — the fresh
+playback session builds a software-decoding engine. Reuses the tested
+open-stream-list path rather than a risky live engine rebuild (collectors are
+bound to the original engine; rebuilding mid-VM would need re-wiring them).
+
+(c) **Resume-to-last-episode.** Opening a series with watch history lands on the
+episode you stopped on: `DetailsViewModel.resumeTarget` finds the most recently
+watched episode of this series (max updatedAt), or — if that one's finished — the
+next episode (continue, not re-watch), sets `selectedSeason` to its season, and
+exposes `resumeVideoId`. `DetailsScreen` scrolls that row into existence THEN
+focuses it (a LazyColumn hasn't composed off-screen rows, so focus-first would
+throw). Computed once at open from a progress snapshot so browsing seasons later
+doesn't yank the selection. Also: movie Play button now reads "Resume"/"Play
+again" with a progress bar (video id == meta id).
+
+(d) **TC pushed to Adam's primary AIOStreams — LIVE, verified.** Surgical
+pull→edit→PUT via the instance API (scratchpad script, backed up first). Adding TC
+was blocked by a **deprecated `usa-tv` preset** (AIOStreams rejects any save that
+still references it — `USER_INVALID_CONFIG`), so that disabled preset was removed
+too. Result verified: `excludedQualities = [CAM, TS, SCR, TC]`, no usa-tv. Of his
+3 instances: **primary (fortheweak.cloud) fixed; nightly (elfhosted) already had
+TC; backup (weebs/midnightignite) has a stale stored password (`Invalid UUID or
+password`) — untouched, needs its password fixed or a re-create (new manifest URL
+→ re-add on box).** Did NOT disable his Live TV/Events/Other Sports catalogs
+(separate change, stayed surgical to the TC ask) — offered as a follow-up.
+
+(e) **Trakt scrobbling — SPECCED, not built (owner asked "can we build that").**
+Plan: Trakt **device OAuth** (the family types a short code at trakt.tv/activate —
+no per-box browser/redirect; the "Claude" Trakt app creds already exist in the
+passport, DECISIONS session-19), token in DataStore; a `TraktScrobbler` that maps
+the playing item to a Trakt id (IMDb tt… is native to Trakt — easy, unlike
+AniSkip's MAL problem) and POSTs scrobble **start** (on play), **pause** (on
+pause/background), **stop** (on ended / ≥80% — Trakt marks watched), driven off
+the same player events/position we already have. A Settings "Connect Trakt"
+screen. This is app-native scrobbling (Stremio does it in-app too). Its own build;
+see MASTER_PLAN §10.
+
+(f) **Rich multi-instance profile builder — SPECCED, not built (StremioSurfer
+tooling, not the app).** Owner fixed the instance topology: **2 AIOMetadata**
+(1. aiometadata.elfhosted.com, 2. aiometadatafortheweak.nhyira.dev — new) and **3
+AIOStreams** (1. aiostreams.fortheweak.cloud, 2. aiostreamsfortheweebs.midnightignite.me,
+3. aiostreams.elfhosted.com), in that order. Rule: everyone should end up with all
+5 instances configured with the recommended addons (Comet, MediaFusion, StremThru,
+etc.); create whatever they're missing (have 2 AIOStreams → create the 3rd + both
+AIOMetadata). Real base URLs live only in the gitignored passport/users.json, never
+here. Build target: extend the passport tooling to provision missing instances per
+person with a recommended-addon preset per instance. See MASTER_PLAN §10.
+
+alpha.28 (versionCode 28). Gates green: assembleDebug + testDebugUnitTest (283
+tests, 0 fail) + assembleRelease (R8) clean. App bits NOT device-verified (resume
+focus/scroll + the panel want owner eyes on a box).

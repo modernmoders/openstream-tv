@@ -8,6 +8,7 @@ import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.addon.MetaRepository
 import dev.openstream.tv.addon.Video
 import dev.openstream.tv.addon.absoluteEpisodeNumbers
+import dev.openstream.tv.autoplay.NextEpisode
 import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.data.ViewPrefs
@@ -55,6 +56,13 @@ class DetailsViewModel @Inject constructor(
         val numbering: EpisodeNumbering = EpisodeNumbering.SEASONAL,
         /** video id -> absolute episode number, for ABSOLUTE numbering. */
         val absoluteNumbers: Map<String, Int> = emptyMap(),
+        /**
+         * Episode to jump to on entry when the viewer has history for this
+         * series (owner 2026-07-08: "open Naruto → land on the episode I
+         * stopped on"). [selectedSeason] is already set to its season; the
+         * screen focuses + scrolls to it. Null = no history, start at the top.
+         */
+        val resumeVideoId: String? = null,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -66,6 +74,10 @@ class DetailsViewModel @Inject constructor(
             // Details VM is created on every navigation, so re-entry picks up
             // any change made in Settings meanwhile.
             val numbering = viewPrefs.episodeNumbering.first()
+            // Snapshot of watch history (not the live flow): the resume target
+            // is decided once, at open, so browsing seasons later never yanks
+            // the selection around.
+            val progress = progressRepository.observeProgressByExternalId().first()
             metaRepository.resolveMeta(type, id).fold(
                 onSuccess = { meta ->
                     val seasons = meta.videos
@@ -73,15 +85,18 @@ class DetailsViewModel @Inject constructor(
                         .distinct()
                         // Season 0 = specials: shown after the real seasons.
                         .sortedWith(compareBy({ it == 0 }, { it }))
-                    val first = seasons.firstOrNull()
+                    val resume = resumeTarget(meta, progress)
+                    // Open on the resume episode's season when there is one.
+                    val season = resume?.season ?: seasons.firstOrNull()
                     _uiState.value = UiState(
                         loading = false,
                         meta = meta,
                         seasons = seasons,
-                        selectedSeason = first,
-                        episodesOfSeason = episodesFor(meta, first),
+                        selectedSeason = season,
+                        episodesOfSeason = episodesFor(meta, season),
                         numbering = numbering,
                         absoluteNumbers = absoluteEpisodeNumbers(meta.videos),
+                        resumeVideoId = resume?.id,
                     )
                 },
                 onFailure = { e ->
@@ -97,6 +112,22 @@ class DetailsViewModel @Inject constructor(
             selectedSeason = season,
             episodesOfSeason = episodesFor(meta, season),
         )
+    }
+
+    /**
+     * The episode to land on given watch history: the most recently watched
+     * episode of THIS series, or — if that one's finished — the next episode
+     * (so "continue" lands on what's actually up next, not a re-watch). Null
+     * when nothing here has been watched yet.
+     */
+    private fun resumeTarget(meta: MetaItem, progress: Map<String, WatchProgress>): Video? {
+        val lastWatched = meta.videos
+            .filter { progress.containsKey(it.id) }
+            .maxByOrNull { progress.getValue(it.id).updatedAt }
+            ?: return null
+        val done = ProgressRepository.isWatched(progress.getValue(lastWatched.id))
+        return if (done) NextEpisode.nextAfter(meta.videos, lastWatched.id) ?: lastWatched
+        else lastWatched
     }
 
     private fun episodesFor(meta: MetaItem, season: Int?): List<Video> =

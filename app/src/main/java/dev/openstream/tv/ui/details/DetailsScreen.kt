@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -77,12 +78,10 @@ fun DetailsScreen(
 
     // The Back button is the first focusable on this screen, so anchor entry
     // focus on the primary action — play/seasons/episodes (BackButton KDoc).
-    // runCatching: with a slow addon the anchor target may not be composed
-    // yet; falling back to default focus beats crashing.
+    // DetailsContent owns the focus request: for a resume it must scroll the
+    // target episode into existence BEFORE focusing it (LazyColumn only
+    // composes visible rows), which the outer scope can't sequence.
     val primaryFocus = remember { FocusRequester() }
-    LaunchedEffect(state.meta != null) {
-        if (state.meta != null) runCatching { primaryFocus.requestFocus() }
-    }
 
     Box(
         modifier = Modifier
@@ -125,6 +124,7 @@ fun DetailsScreen(
                 numbering = state.numbering,
                 absoluteNumbers = state.absoluteNumbers,
                 episodeProgress = episodeProgress,
+                resumeVideoId = state.resumeVideoId,
                 onSelectSeason = viewModel::selectSeason,
                 onPlayMovie = {
                     // Movies: video id == meta id (spec)
@@ -158,12 +158,27 @@ private fun DetailsContent(
     numbering: EpisodeNumbering,
     absoluteNumbers: Map<String, Int>,
     episodeProgress: Map<String, WatchProgress>,
+    resumeVideoId: String?,
     onSelectSeason: (Int) -> Unit,
     onPlayMovie: () -> Unit,
     onPlayEpisode: (Video) -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    // Entry focus. For a resume, scroll the target episode into existence first
+    // (a LazyColumn hasn't composed off-screen rows, so its FocusRequester would
+    // otherwise throw) then focus it; otherwise focus the default anchor. Runs
+    // once — season changes recompose but must not re-yank focus.
+    LaunchedEffect(Unit) {
+        val epIdx = resumeVideoId?.let { id -> episodes.indexOfFirst { it.id == id } } ?: -1
+        if (epIdx >= 0) {
+            val headerItems = 1 + if (seasons.isNotEmpty()) 1 else 0 // header (+ sticky seasons)
+            listState.scrollToItem(headerItems + epIdx)
+        }
+        runCatching { primaryFocus.requestFocus() }
+    }
     Box(Modifier.fillMaxSize()) {
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         // contentPadding (not outer padding): the clip boundary stays at the
         // screen edge, so a focused item's 1.1× scale grows into the overscan
@@ -219,11 +234,25 @@ private fun DetailsContent(
             // when the meta actually carries one (owner round 10 easy-mode
             // Info screen — most addons send no trailers at all).
             item(key = "play") {
+                // Movie watch state (video id == meta id): "Resume" + a bar for
+                // a partly-watched film, "Play again" for a finished one.
+                val movieWatch = episodeProgress[meta.id]
+                val movieWatched = movieWatch != null && ProgressRepository.isWatched(movieWatch)
+                val movieResumable = movieWatch != null && !movieWatched && movieWatch.fractionWatched > 0f
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = onPlayMovie,
                         modifier = Modifier.focusRequester(primaryFocus),
-                    ) { Text("▶  Play") }
+                    ) {
+                        Text(
+                            when {
+                                movieResumable -> "▶  Resume"
+                                movieWatched -> "▶  Play again"
+                                else -> "▶  Play"
+                            }
+                        )
+                    }
                     val trailer = meta.trailers.firstOrNull()
                     if (trailer != null) {
                         val context = LocalContext.current
@@ -237,6 +266,13 @@ private fun DetailsContent(
                             }
                         }) { Text("Watch trailer") }
                     }
+                }
+                if (movieResumable) {
+                    ProgressBar(
+                        fraction = movieWatch!!.fractionWatched,
+                        modifier = Modifier.fillMaxWidth(0.35f),
+                    )
+                }
                 }
             }
             // TODO(owner round 10, OUT OF SCOPE for this pass): a "More like
@@ -272,7 +308,9 @@ private fun DetailsContent(
                                     label = if (season == 0) "Specials" else "Season $season",
                                     onClick = { onSelectSeason(season) },
                                     selected = season == selectedSeason,
-                                    modifier = if (season == seasons.first()) {
+                                    // With a resume target the episode row owns
+                                    // entry focus, not the season chip.
+                                    modifier = if (season == seasons.first() && resumeVideoId == null) {
                                         Modifier.focusRequester(primaryFocus)
                                     } else Modifier,
                                 )
@@ -298,8 +336,12 @@ private fun DetailsContent(
                     progressFraction = watch?.takeUnless { ProgressRepository.isWatched(it) }
                         ?.fractionWatched ?: 0f,
                     onClick = { onPlayEpisode(video) },
-                    // Season-less series (e.g. channels): anchor the first episode.
-                    modifier = if (seasons.isEmpty() && index == 0) {
+                    // Entry focus lands here when this is the resume episode, or
+                    // (no history) on the first episode of a season-less series.
+                    modifier = if (
+                        video.id == resumeVideoId ||
+                        (resumeVideoId == null && seasons.isEmpty() && index == 0)
+                    ) {
                         Modifier.focusRequester(primaryFocus)
                     } else Modifier,
                 )

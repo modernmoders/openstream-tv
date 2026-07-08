@@ -493,6 +493,20 @@ class PlayerViewModel @Inject constructor(
         _openStreams.tryEmit(OpenStreams(req.metaType, videoId, req.source.title, req.metaId, req.poster))
     }
 
+    /**
+     * "Having trouble?" → the picture is blocky/scrambled: turn on software
+     * decoding and reload this video. The decoder is chosen when the engine is
+     * built, so we can't flip it live — persist the setting (awaited so the
+     * next engine reads the new value, not a race) then re-open this video's
+     * stream list; the fresh playback session builds a software-decoding engine.
+     */
+    fun fixBlockyVideo() {
+        viewModelScope.launch {
+            playbackPrefs.setPreferSoftwareDecoder(true)
+            openCurrentStreamList()
+        }
+    }
+
     fun retry() {
         val req = request ?: return
         val engine = engine.value ?: return

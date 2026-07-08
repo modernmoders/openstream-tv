@@ -47,10 +47,10 @@ interface PlaybackPrefs {
      * Prefer software video decoders over the TV's hardware decoder (owner
      * 2026-07-08, MASTER_PLAN §10 R11 N1). The 32-bit onn boxes' hardware
      * decoders macroblock some encodes (anime) that software decodes clean —
-     * MX-Player parity. **Default ON** (owner 2026-07-08: the toggle fixed the
-     * glitching, so make it the out-of-the-box behavior). The trade-off is 4K
-     * HEVC/AV1 can stutter in software — the pro box can turn this OFF in
-     * Settings if that bites. Read once when the engine is built.
+     * MX-Player parity. **Default OFF** (owner 2026-07-08 revised: software
+     * decoding adds a brief start-of-playback stutter, so hardware stays the
+     * default and software is a one-press fix in the player's "Having trouble?"
+     * panel — and still in Settings). Read once when the engine is built.
      */
     val preferSoftwareDecoder: Flow<Boolean>
 
@@ -108,10 +108,10 @@ class DataStorePlaybackPrefs @Inject constructor(
     }
 
     override val preferSoftwareDecoder: Flow<Boolean> =
-        // Default ON (owner 2026-07-08): the software path fixed the anime
-        // macroblocking, so it's the safe default across the boxes. A box that
-        // stutters on 4K (the pro box) can turn it OFF in Settings.
-        context.playbackPrefsStore.data.map { it[PREFER_SW_DECODER] ?: true }
+        // Default OFF (owner 2026-07-08 revised): hardware avoids the software
+        // start-up stutter; the player's "Having trouble?" panel flips this on
+        // for a glitchy stream on demand.
+        context.playbackPrefsStore.data.map { it[PREFER_SW_DECODER] ?: false }
 
     override suspend fun setPreferSoftwareDecoder(enabled: Boolean) {
         context.playbackPrefsStore.edit { it[PREFER_SW_DECODER] = enabled }
