@@ -10,11 +10,20 @@ supports it); the S is 86 curves / 9 lines, genuinely smooth. All 3 drawables
 (`ic_launcher`, `tv_banner`, `tv_banner_streams`) regenerated. **alpha.27
 (versionCode 27) BUILT + DEPLOYED to .117 + .196** (both confirmed alpha.27) —
 this also carried the previously-undeployed alpha.26 (AniSkip) out to the
-boxes. .231 still offline. Committed + pushed. Desktop preview refreshed
-(`~/Desktop/streams-logo-preview.png`). ⚠️ Owner to eyeball the S on the TVs.
-NOTE for next session: if the logo ever needs regenerating, the fix is that
-`gen_logo.py` must emit Q/C curves, NOT lines — re-verify with the L-vs-Q
-command count (should be curve-heavy).
+boxes. Committed + pushed. Desktop preview refreshed
+(`~/Desktop/streams-logo-preview.png`).
+**BOX ROSTER (owner 2026-07-08): there are only TWO boxes — `.117` (pro) and
+`.196`. The old `.231` (non-pro) is NOW `.196` (new DHCP lease); there is no
+separate offline box.** Update older STATE mentions of `.231` accordingly.
+⚠️ **TV-BANNER CACHE GOTCHA (owner hit this):** the Google TV launcher
+(`com.google.android.apps.tv.launcherx`) caches the app banner tile to disk and
+does NOT refresh it on `install -r` — the owner kept seeing the OLD faceted S.
+FIX = **reboot the box** after any logo/banner change (`adb -s <box> reboot`);
+force-stop/`pm clear` of the launcher is unreliable. Did both boxes this
+session. NOTE for next session: if the logo is regenerated, `gen_logo.py` must
+emit Q/C curves NOT lines (verify the committed drawable is curve-heavy:
+`grep -o Q tv_banner_streams.xml | wc -l` should dwarf the L count), AND reboot
+the boxes so the new banner actually shows.
 
 ## ⚠️ READ FIRST (session 21 cont. — 2026-07-08 — alpha.26 BUILT: AniSkip anime skip + config audit)
 Owner replied: **use AniSkip for anime** (not the manual button); plus config
