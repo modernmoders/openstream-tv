@@ -151,29 +151,45 @@ Movies, Series. **No Anime type. No Live TV.**
 4. ✅ **Trakt: ship v1 WITHOUT** watched-hiding / personal lists. Can be added
    later once Rachael does her one-time Google sign-in.
 
-## 7a. ⛔ Apply blocker (why it isn't pushed yet)
+## 7a. Apply status — UNBLOCKED (session 19, 2026-07-07)
 
-`push_aiostreams.py` applies a config by taking a **real template exported
-from a configured AIOStreams account** ("Export Template" button → plain JSON)
-and substituting each user's keys. **Every `templates/*.json` on this Mac is
-0 bytes** (empty — the long-standing session-16 loss). Without one non-empty
-family-clean export, the automated push has nothing to send.
+The 0-byte `templates/*.json` no longer blocks us. The live AIOStreams config
+is retrievable via the instance API (`GET {base}/api/v1/user`, HTTP Basic
+`uuid:password`, using `stremio_api.SSL_CONTEXT` for the CA bundle). Session 19
+pulled both configs to the **private** passport dir (secrets — never the repo):
+- `templates/pulled-myles-primary.json` (73 KB, rich family reference)
+- `templates/pulled-rachael-primary.json` (8 KB, her current — also the backup)
 
-**The one unblock** (either path):
-- **(a)** In the AIOStreams UI of an account configured to §2/§3, click
-  **Export Template** → save the JSON as
-  `~/Documents/Claude/StremioSurfer/templates/primary.json`. Then a future
-  session runs: `python3 push_aiostreams.py --users <live users.json>
-  --template templates/primary.json --instance primary --user "Rachael"`
-  → writes her new manifest URL back → `make_profiles.py` → upload → type
-  "rachael" on 192.168.1.231.
-- **(b)** OR authorize a session to fetch Rachael's *current* live AIOStreams
-  config via the instance API, edit it to §2/§3 in place, and PUT it back.
-  Not done here — live-instance surgery shouldn't run blind on a low usage
-  budget; it risks her working instance.
+**Config lives at `data.userData`.** AIOStreams write path = push_aiostreams.py
+(`PUT {base}/api/v1/user`, body `{uuid, password, config:<userData>}`), which
+knows the exact envelope + does key-substitution. Use `--dry-run` first.
+
+### Exact changes to bring Rachael → family-no-anime (schema-grounded)
+Low-risk filter/sort (cannot break playback, only reorder/filter results):
+- `preferredResolutions` → `["1080p","720p","1440p","2160p","576p","480p",
+  "360p","240p","144p","Unknown"]` (she's currently 2160p-first; box is 32-bit).
+- `enableSeadex` → `false` (anime scraper off).
+- `requiredLanguages` → `["English"]`; `preferredLanguages` →
+  `["English","Original","Unknown"]` (matches Myles + the app's round-12 logic).
+
+Catalog-row cleanup (needs the recovered config's `catalogModifications` +
+`mergedCatalogs` detail — a full-budget pass):
+- Keep AIOMetadata as catalog owner; in AIOStreams expose Streaming-Services
+  rows only; strip Crunchyroll / Anime Search; confirm no adult catalogs are
+  enabled (keyword "adult"/"anime" appears in her JSON but likely as
+  option/service *names*, not enabled catalogs — verify before trusting).
+
+### Finish sequence
+1. Build `templates/primary.json` from `pulled-myles-primary.json` with the
+   above changes (strip anime presets `seadex`,`neko-bt`; apply filters), OR
+   edit Rachael's own pulled config directly.
+2. `push_aiostreams.py --owner "Myles Manuel" --template templates/primary.json
+   --instance primary --user "Rachael" --dry-run` → review → drop `--dry-run`.
+3. New manifest URL is written back to users.json → `make_profiles.py` →
+   upload → type "rachael" on 192.168.1.231.
 
 Everything else is ready: all her keys are on file (RD, TMDB, shared Torbox),
-her instances exist, and this spec is signed off.
+instances exist, spec signed off. Remaining = the live PUT (one careful pass).
 
 ---
 

@@ -17,17 +17,22 @@ auto-writes `users.json.bak`) — NOT the repo:**
    finalized + committed `418c03f` (no secrets, placeholders only). Decisions:
    shared Torbox, Tamtaro dropped (a person who builds AIOStreams presets, not
    an addon), Trakt deferred to v2.
-⛔ **APPLY IS BLOCKED, not done:** `push_aiostreams.py` needs a real AIOStreams
-config export; **every `templates/*.json` is 0 bytes** (session-16 loss). To
-finish Rachael: (a) export a family-clean "Movies & TV" config from a
-configured AIOStreams account → save as
-`~/Documents/Claude/StremioSurfer/templates/primary.json` → run
-`push_aiostreams.py --users <live> --template templates/primary.json
---instance primary --user "Rachael"` → `make_profiles.py` → upload → type
-"rachael" on 192.168.1.231. OR (b) authorize a session to fetch+edit+PUT her
-live config via the instance API (not done here — no blind live surgery on a
-low usage budget). Everything else for her is ready. See TEMPLATE §7a.
-NOTE: owner at ~7% weekly usage this session (credits as fallback).
+✅ **SESSION-16 LOSS SOLVED (session 19):** the 0-byte `templates/*.json` no
+longer blocks us — live AIOStreams configs are pullable via the instance API
+(`GET {base}/api/v1/user`, HTTP Basic `uuid:password`, `stremio_api.SSL_CONTEXT`).
+Pulled both to the PRIVATE passport dir (secrets, not repo):
+`templates/pulled-myles-primary.json` (73 KB reference) +
+`templates/pulled-rachael-primary.json` (8 KB, her current = backup). Config
+lives at `data.userData`. Her current config is NOT family-tuned (2160p-first;
+should be 1080p; her presets already carry no anime scrapers).
+⏳ **REMAINING = one live PUT** to Rachael's instance via `push_aiostreams.py`
+(`PUT {base}/api/v1/user`, body `{uuid,password,config:<userData>}`; `--dry-run`
+first). Exact schema-grounded field changes + finish sequence in TEMPLATE §7a.
+Deferred the write itself: owner at ~6% weekly usage — do it in a full-budget
+pass so the PUT can be verified, not gambled. Nothing else for her is pending.
+AIOList: her `addons` holds only short labels, NOT a real manifest URL — she
+just signed into her Trakt on Chrome, so the aiolists URL still needs
+generating + pasting. Editor for users = http://127.0.0.1:5000/ (passport.html).
 
 ## ⚠️ READ FIRST (session 18 — 2026-07-07 — round-12: English audio + player episode nav)
 Owner round-12 batch (DECISIONS #40). Two app features BUILT + unit-tested
