@@ -30,6 +30,10 @@ docs/reference/MastaP/
 # Loose secrets drops (e.g. an exported users.json) sometimes land directly
 # in docs/reference/ — never commit any of them.
 docs/reference/*.json
+# Exported AIOStreams/AIOMetadata configs land in per-person subfolders and
+# embed real service tokens (RD keys, MediaFusion links). NEVER commit.
+docs/reference/Adam/
+docs/reference/myles/
 .DS_Store
 
 # Owner's AIOStreams/AIOMetadata config templates — will hold real service
