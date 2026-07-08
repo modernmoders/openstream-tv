@@ -1,4 +1,36 @@
-# STATE — updated 2026-07-08 by session 20
+# STATE — updated 2026-07-08 by session 21
+
+## ⚠️ READ FIRST (session 21 — 2026-07-08 — alpha.25 BUILT: SW decoder default ON + episode watch marks)
+Owner batch of three. **BOX ROSTER CORRECTION (owner): the old `.231` non-pro
+box is now `.196`** — same box, new DHCP lease. So there are TWO boxes:
+`192.168.1.117` (pro) and `192.168.1.196` (non-pro, formerly .231). Ignore the
+older STATE lines that treat .196 as a separate "onn 4K Plus" and .231 as
+offline — it's one box that moved. Both already ran alpha.24.
+
+**alpha.25 (versionCode 25) BUILT — assembleDebug + testDebugUnitTest GREEN (272
+tests, 0 fail) + assembleRelease (R8) clean. NOT yet deployed, NOT device-
+verified.** Shipped (DECISIONS #43):
+1. **Software decoder is now DEFAULT ON** (was opt-in). Owner confirmed the
+   toggle fixes the anime macroblocking, so it's the out-of-the-box behavior. A
+   box that stutters on 4K (the pro box) can turn it OFF in Settings → "Prefer
+   software video decoder". One-line default flip in `DataStorePlaybackPrefs`;
+   a box that already toggled it keeps its own choice.
+2. **Episode watch marks in Details** — a green ✓ badge on finished episodes and
+   an accent resume bar (thumbnail bottom edge, or a thin line under the text
+   when there's no thumbnail) showing how far you got. Non-obvious: a finished
+   episode used to be DELETED from the progress table on end, leaving no ✓ — now
+   it's stored at position==duration instead, and the existing 95% line splits
+   "resume bar" from "✓" (no Room migration). Updates live when you back out of
+   the player.
+3. **Intro/credits skipper — ANSWERED, not built.** No free universal timestamp
+   source for general movies/TV. For ANIME, the AniSkip API gives real OP/ED
+   windows (a true "Skip Intro" button) but is anime-only + its own mini-project
+   (MAL-id mapping, network client, position overlay, setting, tests). Left the
+   approach choice to the owner (AniSkip-anime vs a manual skip button vs both)
+   rather than half-build it. See NEXT ACTION S1.
+⏳ **Owner to do:** deploy alpha.25 to BOTH boxes (`install -r` the release APK),
+then eyeball — clean anime decode by default (no Settings trip), and the ✓/bar on
+a series you've partly watched. Decide the intro-skip approach.
 
 ## ⚠️ READ FIRST (session 20 cont. 2 — 2026-07-08 — alpha.24 DEPLOYED + owner batch)
 Owner confirmed the **software-decoder toggle FIXES the macroblocking** (Naruto
@@ -864,7 +896,25 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## NEXT ACTION (start here)
 
-### ⭐ OWNER BATCH 2026-07-08 — STILL TODO (do these first; owner reported live, mid-session budget ran out)
+### ⭐ OWNER BATCH 2026-07-08 (session 21) — DONE + one owner decision open
+S0. ✅ **Software decoder DEFAULT ON** (was B4/N1) — shipped alpha.25.
+S0b. ✅ **Episode watch marks** (progress bar + ✓ on finished episodes) — shipped
+   alpha.25. DetailsScreen episode rows; `ProgressRepository.isWatched` +
+   `observeProgressByExternalId`; Ended now stores completed instead of clearing.
+S1. ⏳ **Intro/credits skip — OWNER DECISION NEEDED (do NOT build until picked).**
+   Answered in chat: universal auto-skip has no free data for general TV/movies;
+   AniSkip gives real OP/ED windows for ANIME only. Options: (a) AniSkip auto
+   "Skip Intro"/"Skip Credits" for anime — its own build: map the series to a
+   MAL id (IMDb→Kitsu/MAL), a small AniSkip client, a position-driven overlay
+   button in `PlayerScreen`, a Settings toggle, tests; (b) a universal manual
+   "skip +N s" button on the player bar — trivial but not a real detector;
+   (c) both. Recommended (a) as the next dedicated piece. Deferred pending the
+   owner's pick.
+S2. ⏳ **Deploy alpha.25** to BOTH boxes (.117 pro + .196 non-pro, formerly .231):
+   `adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+   (repeat for .196). Verify clean anime decode by default + the ✓/resume bar.
+
+### ⭐ OWNER BATCH 2026-07-08 — STILL TODO (owner reported live; some now done above)
 B1. **Back-out lands on the WRONG episode.** Click e.g. episode 15 → it plays →
    BACK mid-stream → the episode list highlights ~episode 12, not 15. Focus
    restoration bug in `DetailsScreen` episode list on return from the player.
@@ -891,10 +941,10 @@ B3. **"New" catalog to the BOTTOM of the Discover filters** (it's mostly
    app-side (`DiscoverScreen` chip order) or addon-driven (AIOMetadata/
    AIOStreams catalog order). If addon-driven, it's a profile-config task
    (owner's endgame), NOT app code — note that back to the owner.
-B4. Consider making **"Prefer software video decoder" default ON** — owner
-   confirmed it fixes the glitching. Risk: 4K HEVC/AV1 stutter on the pro box.
-   Middle path: default ON only for the non-4K box, or scope PREFER_SOFTWARE to
-   AVC/H.264 (safe to SW-decode) and keep HEVC/AV1 on hardware. Ask owner.
+B4. ✅ **DONE (session 21, S0) — "Prefer software video decoder" now DEFAULT ON**
+   (alpha.25). Owner said make it default. The 4K-stutter risk is handled by
+   leaving the Settings toggle so the pro box can turn it OFF if 4K suffers —
+   simpler than per-box or per-codec scoping, and reversible.
 
 **Active backlog = owner feedback ROUND 11 (MASTER_PLAN §10 "Owner
 feedback round 11") — owner's stated focus: polish, beauty, efficiency,
