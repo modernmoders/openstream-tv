@@ -72,6 +72,7 @@ fun SettingsScreen(
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
     val softwareDecoder by viewModel.preferSoftwareDecoder.collectAsStateWithLifecycle()
+    val skipIntros by viewModel.skipIntrosEnabled.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
@@ -156,6 +157,17 @@ fun SettingsScreen(
                         "on if the picture looks blocky or scrambled on some shows"
                 },
                 onClick = { viewModel.setPreferSoftwareDecoder(!softwareDecoder) },
+            )
+            // OK toggles directly, same as autoplay above.
+            SettingEntry(
+                title = "Skip anime intros & credits",
+                description = if (skipIntros) {
+                    "On — a “Skip Intro” button pops up during an anime's opening " +
+                        "or ending; press OK to jump past it. Only shows on anime"
+                } else {
+                    "Off — play anime openings and endings in full"
+                },
+                onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
             )
             // OK toggles directly, same as autoplay above.
             SettingEntry(

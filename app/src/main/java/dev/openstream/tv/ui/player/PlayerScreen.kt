@@ -206,6 +206,17 @@ fun PlayerScreen(
                 if (state.ended || state.error != null || autoplay != null) {
                     return@onPreviewKeyEvent false
                 }
+                // Anime intro/credits: while the Skip button is up, OK jumps
+                // past the window (takes priority over waking/pausing) — a
+                // one-press skip whether or not the control bar is showing.
+                if (state.skipSegment != null &&
+                    (code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
+                        code == AndroidKeyEvent.KEYCODE_ENTER ||
+                        code == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER)
+                ) {
+                    viewModel.skipCurrentSegment()
+                    return@onPreviewKeyEvent true
+                }
                 if (!overlayVisible) {
                     // Controls asleep: any key but Back wakes them and is
                     // swallowed, so the same press doesn't also seek/pause.
@@ -291,6 +302,20 @@ fun PlayerScreen(
                         SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
                     }
                 }
+            }
+        }
+
+        // Anime intro/credits skip: floats bottom-right during the window,
+        // above the control bar, shown even when the bar is asleep. Not
+        // focusable — OK is intercepted globally (above) so there's no TV focus
+        // to juggle. Hidden while a panel is up.
+        if (state.skipSegment != null && state.error == null && !state.ended && autoplay == null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 48.dp, bottom = 140.dp),
+            ) {
+                SkipHint(state.skipSegment!!.type.label)
             }
         }
 
@@ -426,6 +451,33 @@ private fun ScrubBar(
             )
         }
         Text(durationMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = MutedText)
+    }
+}
+
+/**
+ * The "Skip Intro"/"Skip Credits" hint (AniSkip). A styled pill, not a
+ * focusable — OK is intercepted globally to fire the skip, so no focus tug on
+ * the video. The [OK] chip tells the viewer which button does it.
+ */
+@Composable
+private fun SkipHint(label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .background(Color(0xF0181822), RoundedCornerShape(28.dp))
+            .border(2.dp, Accent, RoundedCornerShape(28.dp))
+            .padding(horizontal = 22.dp, vertical = 12.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.titleMedium, color = Color.White)
+        Text(
+            "OK",
+            style = MaterialTheme.typography.labelLarge,
+            color = Accent,
+            modifier = Modifier
+                .border(1.dp, Accent, RoundedCornerShape(6.dp))
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
 

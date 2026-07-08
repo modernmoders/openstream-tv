@@ -10,11 +10,13 @@ class FakePlaybackPrefs : PlaybackPrefs {
     val playerState = MutableStateFlow(PLAYER_INTERNAL)
     val autoPlayState = MutableStateFlow(false)
     val softwareDecoderState = MutableStateFlow(false)
+    val skipIntrosState = MutableStateFlow(true)
 
     override val languages: Flow<LanguagePrefs> = languagesState
     override val preferredPlayer: Flow<String> = playerState
     override val autoPlayFirstStream: Flow<Boolean> = autoPlayState
     override val preferSoftwareDecoder: Flow<Boolean> = softwareDecoderState
+    override val skipIntrosEnabled: Flow<Boolean> = skipIntrosState
 
     override suspend fun setAudioLanguage(languageTag: String) {
         languagesState.update { it.copy(audio = languageTag) }
@@ -34,5 +36,9 @@ class FakePlaybackPrefs : PlaybackPrefs {
 
     override suspend fun setPreferSoftwareDecoder(enabled: Boolean) {
         softwareDecoderState.value = enabled
+    }
+
+    override suspend fun setSkipIntrosEnabled(enabled: Boolean) {
+        skipIntrosState.value = enabled
     }
 }

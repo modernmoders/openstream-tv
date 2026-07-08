@@ -1091,3 +1091,55 @@ Bundled into alpha.25 (versionCode 25). assembleDebug + testDebugUnitTest green
 (272 tests, 0 failures); assembleRelease (R8) clean. NOT device-verified — the
 decoder default and the episode marks want owner eyes on a box (episode marks
 render fine on the AVD but need seeded watch history; deferred with the deploy).
+
+## 44. 2026-07-08 (session 21) — AniSkip anime intro/credits skip + config audit findings
+
+Owner picked AniSkip-for-anime (declined the manual button). Also asked why his
+profile still shows TV/Events and to audit the templates for CAM/TS/TC.
+
+**AniSkip (built, alpha.26).** A one-press "Skip Intro"/"Skip Credits" button that
+appears during an anime episode's OP/ED. Design decisions:
+- **Data source IS the anime filter.** Windows come from api.aniskip.com keyed by
+  (MAL id, episode). Non-anime and untimed anime return nothing, so there's no
+  "is this anime?" heuristic to misfire — rejected genre-sniffing (Cinemeta tags
+  anime as "Animation" alongside Pixar). Also means it needs no per-template
+  wiring; it self-limits.
+- **Id resolution is the hard part** (`AnimeMalIdResolver`). mal:/myanimelist:
+  ids are used directly; kitsu: is mapped via Kitsu's public `mappings` endpoint;
+  anilist: is stubbed (v1); **IMDb tt… returns null** — there's no confident 1:1
+  IMDb→MAL, and skipping the wrong window is worse than no button. Every
+  resolution is logged via DiagnosticsSink ("skip" tag) so a box's App log
+  reveals what id format the family's anime actually carries — the only way to
+  verify id-mapping without their (secret) streams on hand.
+- **Never breaks playback.** Every network path (AniSkip fetch, Kitsu map) returns
+  empty on any error; the feature can only ADD a button, never fault.
+- **No TV focus tug.** The button is a non-focusable hint; OK is intercepted in
+  the player's global `onPreviewKeyEvent` (priority over wake/pause) during the
+  window and seeks to the segment end. Position is polled every 500ms in the VM
+  (cheap no-op until segments load); the active window is a pure function
+  (`activeSegmentAt`, start-inclusive/end-exclusive) so it's unit-tested.
+- Setting `PlaybackPrefs.skipIntrosEnabled` (default ON), Settings toggle "Skip
+  anime intros & credits". New package `player/skip/*`, DI in `SkipModule`.
+- **NOT device-verified** and unverifiable here (AVD can't play their streams).
+  Ships behind the honest caveat: if their anime is IMDb-sourced the button won't
+  appear and the box log will say so → add a mapping next. 11 new unit tests.
+
+**Config audit (owner's live AIOStreams — investigation only, no push).** Read the
+gitignored exports in docs/reference/. Findings, for the owner to act on in the
+AIOStreams UI (or a future gated push):
+- **"TV and Events" on Adam's profile** = his AIOStreams config has `Live TV`
+  (type=tv), `Live Sport Events` (type=events) and `Other Sports` (type=movie,
+  the football-under-Movies from #38) catalogs ENABLED. They serve empty/garbage
+  metas (MediaFusion). Fix = disable those three in AIOStreams. This is config,
+  not app (the app faithfully renders enabled catalogs — #38 rejected app-side
+  curation).
+- **CAM/TS/TC:** Adam's `excludedQualities` = [CAM, TS, SCR] — **missing TC**
+  (telecine). Rachael's (the session-19 family-no-anime template) = [CAM, SCR,
+  TS, TC] — complete. Recommend adding TC to Adam's. No "in theaters/upcoming"
+  catalog is enabled, so the cinema-junk risk is purely the TC quality gap.
+- **Rachael confirmed clean:** Cinemeta + AIOMetadata + AIOStreams (wrapping
+  Torrentio/Comet/MediaFusion) + AIOLists; all four cam qualities excluded; no
+  live catalogs — she's the model the owner's profile should match.
+
+alpha.26 (versionCode 26). Gates green: assembleDebug + testDebugUnitTest (283
+tests, 0 fail) + assembleRelease (R8) clean.

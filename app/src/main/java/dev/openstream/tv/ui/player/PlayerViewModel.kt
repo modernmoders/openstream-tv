@@ -33,6 +33,9 @@ import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
 import dev.openstream.tv.player.rememberedLanguage
+import dev.openstream.tv.player.skip.SkipSegment
+import dev.openstream.tv.player.skip.SkipTimesRepository
+import dev.openstream.tv.player.skip.activeSegmentAt
 import dev.openstream.tv.ui.sound.UiSounds
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -45,6 +48,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val PROGRESS_SAVE_INTERVAL_MS = 10_000L
+
+/** How often to check whether playback has entered/left an AniSkip window.
+ *  Windows are tens of seconds long, so sub-second precision isn't needed. */
+private const val SKIP_POLL_INTERVAL_MS = 500L
 
 /** Consecutive broken streams auto-skipped before giving up with the panel. */
 private const val MAX_ERROR_SKIPS = 3
@@ -60,6 +67,7 @@ class PlayerViewModel @Inject constructor(
     private val playbackPrefs: PlaybackPrefs,
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
+    private val skipTimes: SkipTimesRepository,
     playerHolder: PlayerHolder,
     private val uiSounds: UiSounds,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
@@ -91,6 +99,9 @@ class PlayerViewModel @Inject constructor(
         val previousEpisode: EpisodeTarget? = null,
         /** The episode the ⏭ button jumps to; null = at the last episode (or a movie). */
         val nextEpisode: EpisodeTarget? = null,
+        /** Active anime intro/credits window — the "Skip Intro/Credits" button;
+         *  null when not inside one (AniSkip, owner 2026-07-08). */
+        val skipSegment: SkipSegment? = null,
     )
 
     /** A neighbouring episode the player's prev/next buttons can open. */
@@ -123,6 +134,11 @@ class PlayerViewModel @Inject constructor(
      *  for movies or until the meta resolves. */
     private var episodeVideos: List<Video> = emptyList()
 
+    /** AniSkip windows for the current episode; empty for non-anime or when the
+     *  feature is off. Polled against playback position to raise the button. */
+    private var skipSegments: List<SkipSegment> = emptyList()
+    private var skipEnabled = false
+
     init {
         // No UI ticks over playing video (owner round 10 "subtle" — a held
         // seek would rattle constantly). Lifecycle-matched to this ViewModel.
@@ -136,6 +152,7 @@ class PlayerViewModel @Inject constructor(
             resolveEpisodeNav(req)
             viewModelScope.launch {
                 autoAdvanceOnError = playbackPrefs.autoPlayFirstStream.first()
+                skipEnabled = playbackPrefs.skipIntrosEnabled.first()
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
                 // Remembered languages (DECISIONS #19) go on BEFORE play so the
                 // first track selection already honors them. Parameters stick
@@ -155,6 +172,14 @@ class PlayerViewModel @Inject constructor(
                     while (true) {
                         delay(PROGRESS_SAVE_INTERVAL_MS)
                         persistProgress(engine)
+                    }
+                }
+                launch {
+                    // Raise/lower the Skip button as playback crosses an
+                    // AniSkip window. Cheap no-op until segments are loaded.
+                    while (true) {
+                        delay(SKIP_POLL_INTERVAL_MS)
+                        updateSkipSegment(engine)
                     }
                 }
             }
@@ -251,6 +276,7 @@ class PlayerViewModel @Inject constructor(
         )
         engine.play(source)
         updateEpisodeNav() // autoplay advanced an episode — refresh ⏮/⏭ targets
+        loadSkipSegments() // …and its intro/credits windows
     }
 
     /**
@@ -266,7 +292,52 @@ class PlayerViewModel @Inject constructor(
             val meta = autoplayGateway.resolveMeta(req.metaType, req.metaId) ?: return@launch
             episodeVideos = meta.videos
             updateEpisodeNav()
+            loadSkipSegments()
         }
+    }
+
+    /**
+     * Fetch the AniSkip intro/credits windows for the current episode. Series
+     * only, feature-gated. The episode number comes from the resolved Video
+     * (reliable) and falls back to the trailing id number. Any miss just leaves
+     * no segments — no button, never an error.
+     */
+    private fun loadSkipSegments() {
+        val req = request ?: return
+        skipSegments = emptyList()
+        _uiState.value = _uiState.value.copy(skipSegment = null)
+        if (!skipEnabled || req.metaType != "series") return
+        val videoId = req.mediaRef?.externalId ?: return
+        val episode = episodeVideos.firstOrNull { it.id == videoId }?.episode
+            ?: episodeNumberFromVideoId(videoId) ?: return
+        viewModelScope.launch {
+            val duration = engine.value?.exoPlayer?.duration?.takeIf { it > 0 } ?: 0L
+            skipSegments = skipTimes.segmentsFor(req.metaId, episode, duration)
+        }
+    }
+
+    /** Episode number from an id like "tt123:1:6" or "kitsu:99:6" (needs ≥3
+     *  parts so a bare "kitsu:99" is never mistaken for episode 99). */
+    private fun episodeNumberFromVideoId(id: String): Int? {
+        val parts = id.split(':')
+        return if (parts.size >= 3) parts.last().toIntOrNull() else null
+    }
+
+    /** Main-thread position poll → the active skip window (or null). */
+    private fun updateSkipSegment(engine: ExoPlayerEngine) {
+        if (skipSegments.isEmpty()) return
+        if (_uiState.value.ended) return
+        val active = activeSegmentAt(engine.exoPlayer.currentPosition, skipSegments)
+        if (active != _uiState.value.skipSegment) {
+            _uiState.value = _uiState.value.copy(skipSegment = active)
+        }
+    }
+
+    /** OK on the Skip button: jump past the intro/credits and drop the button. */
+    fun skipCurrentSegment() {
+        val segment = _uiState.value.skipSegment ?: return
+        engine.value?.exoPlayer?.seekTo(segment.endMs)
+        _uiState.value = _uiState.value.copy(skipSegment = null)
     }
 
     private fun updateEpisodeNav() {

@@ -53,6 +53,14 @@ interface PlaybackPrefs {
      * Settings if that bites. Read once when the engine is built.
      */
     val preferSoftwareDecoder: Flow<Boolean>
+
+    /**
+     * Show a one-press "Skip Intro"/"Skip Credits" button during an anime
+     * episode's opening/ending (owner 2026-07-08). Windows come from the
+     * community AniSkip database, so this only ever appears on timed anime —
+     * nothing to detect, nothing to misfire. Default ON.
+     */
+    val skipIntrosEnabled: Flow<Boolean>
     suspend fun setAudioLanguage(languageTag: String)
 
     /** A real language tag, or [SUBTITLES_OFF]. */
@@ -60,6 +68,7 @@ interface PlaybackPrefs {
     suspend fun setPreferredPlayer(value: String)
     suspend fun setAutoPlayFirstStream(enabled: Boolean)
     suspend fun setPreferSoftwareDecoder(enabled: Boolean)
+    suspend fun setSkipIntrosEnabled(enabled: Boolean)
 }
 
 private val Context.playbackPrefsStore by preferencesDataStore("playback_prefs")
@@ -108,11 +117,21 @@ class DataStorePlaybackPrefs @Inject constructor(
         context.playbackPrefsStore.edit { it[PREFER_SW_DECODER] = enabled }
     }
 
+    override val skipIntrosEnabled: Flow<Boolean> =
+        // Default ON: the button only shows on timed anime, so it's inert
+        // everywhere else — nothing to opt into.
+        context.playbackPrefsStore.data.map { it[SKIP_INTROS] ?: true }
+
+    override suspend fun setSkipIntrosEnabled(enabled: Boolean) {
+        context.playbackPrefsStore.edit { it[SKIP_INTROS] = enabled }
+    }
+
     private companion object {
         val AUDIO_LANG = stringPreferencesKey("audio_language")
         val SUBTITLE_LANG = stringPreferencesKey("subtitle_language")
         val PLAYER = stringPreferencesKey("preferred_player")
         val AUTO_PLAY_FIRST = booleanPreferencesKey("auto_play_first_stream")
         val PREFER_SW_DECODER = booleanPreferencesKey("prefer_software_decoder")
+        val SKIP_INTROS = booleanPreferencesKey("skip_intros_enabled")
     }
 }

@@ -53,9 +53,14 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Prefer software video decoding (owner 2026-07-08: fixes blocky/glitchy
-     *  picture on some shows). Default off — hardware is faster; opt in per box. */
+     *  picture on some shows). Default ON now — turn off only if 4K stutters. */
     val preferSoftwareDecoder: StateFlow<Boolean> = playbackPrefs.preferSoftwareDecoder
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    /** Anime intro/credits skip button (owner 2026-07-08, AniSkip). Default on;
+     *  only ever appears on anime the community has timed. */
+    val skipIntrosEnabled: StateFlow<Boolean> = playbackPrefs.skipIntrosEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds
@@ -82,6 +87,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setPreferSoftwareDecoder(enabled: Boolean) {
         viewModelScope.launch { playbackPrefs.setPreferSoftwareDecoder(enabled) }
+    }
+
+    fun setSkipIntrosEnabled(enabled: Boolean) {
+        viewModelScope.launch { playbackPrefs.setSkipIntrosEnabled(enabled) }
     }
 
     fun setExpertMode(enabled: Boolean) {
