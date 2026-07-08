@@ -151,7 +151,20 @@ Movies, Series. **No Anime type. No Live TV.**
 4. ✅ **Trakt: ship v1 WITHOUT** watched-hiding / personal lists. Can be added
    later once Rachael does her one-time Google sign-in.
 
-## 7a. Apply status — UNBLOCKED (session 19, 2026-07-07)
+## 7a. ✅ APPLIED + VERIFIED (session 19, 2026-07-07)
+
+**Rachael's primary AIOStreams instance is live with this template.** Built
+`templates/primary.json` from Adam's `main-…-template.json` (removed anime
+presets seadex/neko-bt, debridio presets, MediaFusion [leak-prevention], and
+the deprecated usa-tv preset; forced per-user keys to placeholder; enableSeadex
+=false). Simulated the exact payload + leak-scanned it (no owner secrets), then
+`push_aiostreams.py … --user Rachael --strict`. Pulled it back and confirmed:
+12 scrapers, no anime, 1080p-first, English, streaming-catalogs on, her RD.
+Manifest URL unchanged (PUT update) → her box needs no re-add. All 11 users
+intact; users.json.bak written. Remaining = regen her profile if you want the
+AIOList row added, then upload + point her box at it.
+
+### (historical) how it was unblocked
 
 The 0-byte `templates/*.json` no longer blocks us. The live AIOStreams config
 is retrievable via the instance API (`GET {base}/api/v1/user`, HTTP Basic

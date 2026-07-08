@@ -17,6 +17,20 @@ auto-writes `users.json.bak`) — NOT the repo:**
    finalized + committed `418c03f` (no secrets, placeholders only). Decisions:
    shared Torbox, Tamtaro dropped (a person who builds AIOStreams presets, not
    an addon), Trakt deferred to v2.
+✅✅ **RACHAEL FAMILY-NO-ANIME CONFIG PUSHED + VERIFIED LIVE (session 19).**
+Real exports found in `docs/reference/{Adam,myles}/*-template.json` (owner
+created them today). Built `~/Documents/Claude/StremioSurfer/templates/primary.json`
+from Adam's main template (stripped anime seadex/neko-bt + debridio + MediaFusion
+[leak] + deprecated usa-tv presets; per-user keys→placeholder; enableSeadex=false),
+leak-scanned the exact payload, then `push_aiostreams.py --user Rachael --strict`
+→ Done. Pulled back: 12 scrapers, no anime, 1080p-first, English, RD=her key,
+manifest URL unchanged (box needs no re-add). All 11 users intact; .bak written.
+Restored the slot password the tool drops on update. Trakt creds + AIOList URL
+are in her record (notes + addons.aiolists_manifest). REMAINING owner-side:
+refresh the passport UI (don't Save a stale form or it overwrites the push);
+optionally regen her profile (make_profiles) to add the AIOList row + upload;
+point her box at it. Also the earlier fact:
+
 ✅ **SESSION-16 LOSS SOLVED (session 19):** the 0-byte `templates/*.json` no
 longer blocks us — live AIOStreams configs are pullable via the instance API
 (`GET {base}/api/v1/user`, HTTP Basic `uuid:password`, `stremio_api.SSL_CONTEXT`).
