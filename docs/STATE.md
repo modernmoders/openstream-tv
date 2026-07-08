@@ -1,5 +1,21 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 21 cont. 2 — 2026-07-08 — alpha.27 DEPLOYED: fluffy logo fix)
+Owner: the Streams "S" looked hard-edged/faceted, not fluffy. **Root cause was
+a real bug in the logo generator** (scratchpad `gen_logo.py`): the glyph
+extractor's quad→cubic step silently fell through to a LINE approximation, so
+every shipped drawable was a ~123-line polygon (7 curves). **FIXED** — the
+generator now emits real `Q` (quadratic) pathData (Android VectorDrawable
+supports it); the S is 86 curves / 9 lines, genuinely smooth. All 3 drawables
+(`ic_launcher`, `tv_banner`, `tv_banner_streams`) regenerated. **alpha.27
+(versionCode 27) BUILT + DEPLOYED to .117 + .196** (both confirmed alpha.27) —
+this also carried the previously-undeployed alpha.26 (AniSkip) out to the
+boxes. .231 still offline. Committed + pushed. Desktop preview refreshed
+(`~/Desktop/streams-logo-preview.png`). ⚠️ Owner to eyeball the S on the TVs.
+NOTE for next session: if the logo ever needs regenerating, the fix is that
+`gen_logo.py` must emit Q/C curves, NOT lines — re-verify with the L-vs-Q
+command count (should be curve-heavy).
+
 ## ⚠️ READ FIRST (session 21 cont. — 2026-07-08 — alpha.26 BUILT: AniSkip anime skip + config audit)
 Owner replied: **use AniSkip for anime** (not the manual button); plus config
 questions (TV/Events, CAM/TS/TC, Rachael); plus "can SW decoder be anime-only?".
