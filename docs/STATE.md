@@ -12,8 +12,9 @@ captured in NEXT ACTION:
   the scraper list from the owner's screenshot (Knaben, Zilean, AnimeTosho,
   Torrent Galaxy, Easynews, SeaDex, NekoBT, EZTV, Bitmagnet, Jackett, Prowlarr,
   NZBHydra2, Newznab, Torznab, Library — as many as feasible), OpenSubtitles V3+
-  (Pro), and add any NON-anime addon Adam has that Rachael lacks. ⚠️ anime-scraper
-  vs family-no-anime tension flagged for clarification. Details in S4.
+  (Pro), and add any NON-anime addon Adam has that Rachael lacks. ✅ RESOLVED:
+  REMOVE anime scrapers (SeaDex, NekoBT, AnimeTosho) — Rachael stays no-anime.
+  Details in S4.
 Nothing else changed. Below (cont. 4) is the last real build (alpha.29).
 
 ## ⚠️ READ FIRST (session 21 cont. 4 — 2026-07-08 — alpha.29: SW toggle shows ON/OFF; English-audio-first live; Rachael provisioning root-caused)
@@ -1086,10 +1087,11 @@ S4. ⏳ **Rich multi-instance profile builder — BUILD NEXT (StremioSurfer tool
      Torznab, Library** (list was scrollable — may be more). Add the ones that
      need no extra infra; the indexer-proxies (Jackett/Prowlarr/NZBHydra2/Newznab/
      Torznab) + Easynews need the family's own indexer URLs/keys — add only if
-     available, else note as skipped. ⚠️ SeaDex/NekoBT/AnimeTosho are ANIME
-     scrapers — this CONFLICTS with Rachael = "family-no-anime". Owner said add
-     them anyway; CLARIFY next session whether Rachael is still no-anime or if
-     anime scrapers are now wanted (maybe scrapers yes, anime CATALOGS no).
+     available, else note as skipped. ✅ **RESOLVED (owner 2026-07-08): REMOVE the
+     anime scrapers — SeaDex, NekoBT, AnimeTosho — from Rachael's list. She stays
+     family-no-anime.** So her scraper set = Knaben, Zilean, Torrent Galaxy,
+     Easynews, EZTV, Bitmagnet, (Jackett/Prowlarr/NZBHydra2/Newznab/Torznab if
+     indexer keys exist), Library + the non-anime ones from Adam's config below.
    - Subtitles: **OpenSubtitles V3+ (Pro)** (owner: "OpenSubtitles pro v3" — type
      `opensubtitles-v3-plus`, which Adam's config already uses).
    - Also **diff Adam's live AIOStreams presets vs Rachael's and add any NON-anime
