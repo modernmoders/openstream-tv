@@ -1,4 +1,35 @@
-# STATE — updated 2026-07-07 by session 20
+# STATE — updated 2026-07-08 by session 20
+
+## ⚠️ READ FIRST (session 20 cont. — 2026-07-08 — alpha.23 DEPLOYED: macroblocking fix + English revert)
+Owner reported the real "anime bugs out": a screenshot of heavy colored
+**macroblocking** during Naruto playback (NOT the English-audio logic — that
+was a mis-diagnosis). This is **N1** — the boxes' hw decoder emits garbage
+frames; MX Player (software) is clean. **alpha.23 (versionCode 23) BUILT +
+gates GREEN + DEPLOYED** to both ONLINE boxes via `install -r`:
+`192.168.1.117` (pro) and `192.168.1.196` ("onn 4K Plus" — a box not in prior
+STATE; may be the non-pro on a new DHCP lease or a 3rd box). Both confirmed
+0.3.0-alpha.23, smoke-launched (MainActivity resumed, no crash). **`.231`
+(non-pro) was OFFLINE (no ping)** — deploy alpha.23 when back:
+`adb connect 192.168.1.231:5555 && adb -s 192.168.1.231:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`.
+Shipped (DECISIONS #42):
+1. **Macroblocking fix.** ExoPlayer now uses `DefaultRenderersFactory` with
+   `setEnableDecoderFallback(true)` (always) + a Settings toggle **"Prefer
+   software video decoder"** (`PlaybackPrefs.preferSoftwareDecoder`, default
+   OFF) that swaps in `MediaCodecSelector.PREFER_SOFTWARE`. Default OFF because
+   4K would stutter in software — it's opt-in per box. ⚠️ **The owner must flip
+   the toggle ON on the glitchy box (Settings → "Prefer software video
+   decoder") and replay the anime — decoder-fallback alone won't fix SILENT
+   corruption.** This is the pending verification; MX-parity is the bar. If SW
+   still glitches a codec, escalate to proactively surfacing "Play in another
+   app".
+2. **English auto-play revert (undoes #40a).** Owner: "make any changes that
+   wouldn't make the first one to be english." Removed the label-based English
+   preference from `rank`/`firstPlayableWhenSettled`/`orderedAlternatives` +
+   deleted `isNonEnglishAudio`. Auto-play's "first stream" is the addon-order
+   pick again.
+3. Also live on these boxes now: **logo v3 "Streams"** + round-12 episode nav.
+NEXT verification is owner-eyes on the real TVs (toggle + logo). Both boxes
+also got the new launcher tile/banner.
 
 ## ⚠️ READ FIRST (session 20 — 2026-07-07 — logo v3 "Streams" rebrand)
 Owner: the v2 shadow-S "SStreams" logo is only "decent" → replaced. **Logo v3
@@ -815,11 +846,14 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 feedback round 11") — owner's stated focus: polish, beauty, efficiency,
 stability. Suggested execution order for the next session:**
 
-N1. **Video macroblocking artifacts (owner's most painful item).** Same
-   streams play clean in MX Player on the same box. Start with the box's
-   App log + `adb logcat | grep -iE "codec|decoder|MediaCodec"` while
-   reproducing; try `setEnableDecoderFallback(true)` first (one-liner in
-   the ExoPlayer engine setup); full suspect list in MASTER_PLAN §10 R11.
+N1. ⏳ **Video macroblocking — FIX SHIPPED (alpha.23, DECISIONS #42), owner
+   verification pending.** Decoder fallback (always) + "Prefer software video
+   decoder" Settings toggle (default OFF). Owner must turn the toggle ON on the
+   glitchy box and replay the anime (silent corruption needs the software
+   path — fallback alone won't do it). If SW still glitches: check the box App
+   log for the codec, consider proactively surfacing "Play in another app"
+   for known-bad codecs. If SW is clean but slow on 4K: leave default OFF (it
+   is), that's the intended trade-off.
 N2. **Poster art reload on scroll-back + held-d-pad scroll perf** (one
    efficiency pass: app-wide Coil ImageLoader with bigger memory cache +
    stable keys; profile grid travel on the box).
@@ -828,12 +862,10 @@ N3. **Discover grid focus drift** (down 6, up 3 → column shifts right) —
 N4. **Resume-to-last-episode in Details** (ProgressRepository already has
    the data; pick initial season/episode + a "Continue" CTA).
 N5. **Player: hold-to-accelerate scrubbing + prev/next episode buttons.**
-N6. **Deploy the next wave (→ alpha.23) to BOTH boxes.** Undeployed on
-   `main` since alpha.22: round-12 (English audio + episode nav, DECISIONS
-   #40) AND logo v3 "Streams" (DECISIONS #41). Bump versionCode to 23, build
-   release, `install -r` to .117 (pro) and .231 (non-pro, was offline —
-   ping first). Eyeball the new launcher tile + banner and the round-12
-   features on a real Cinemeta series.
+N6. ✅ **alpha.23 DEPLOYED** to the two online boxes (.117 pro, .196 "4K Plus")
+   — see READ FIRST. Carries the macroblocking fix, English revert, logo v3,
+   and round-12 episode nav. ⏳ REMAINING: `install -r` to **.231** (non-pro)
+   when it pings again (command in READ FIRST).
 N7. **Profiles endgame** (standing): investigate the 3 live AIOStreams
    instances → curate catalogs → 4 templates → owner approval →
    per-person profiles as accounts arrive. Details in MASTER_PLAN §10
