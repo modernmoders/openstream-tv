@@ -1,5 +1,26 @@
 # STATE — updated 2026-07-08 by session 20
 
+## ⚠️ READ FIRST (session 20 cont. 2 — 2026-07-08 — alpha.24 DEPLOYED + owner batch)
+Owner confirmed the **software-decoder toggle FIXES the macroblocking** (Naruto
+clean). Then a big feedback batch — some SHIPPED in **alpha.24 (versionCode 24,
+deployed to .117 + .196, .231 still offline)**, some ANSWERED, some left as
+detailed NEXT-ACTION notes below (ran low on budget). SHIPPED alpha.24:
+1. **Default audio = English** (`PlayerViewModel` `languages.audio ?: "en"`).
+   Owner hit a dual-audio anime that opened in Italian (first track in the
+   file). Preference not filter; a saved language pick still wins; foreign-only
+   still plays. Applies to ALL content (English-speaking household).
+2. **Player control bar reorder + DOWN focus.** New order L→R: `[⏮ ⏭]`
+   icon-only in one compact slot · Audio & subtitles · **Try a different
+   stream** (now the DOWN default via `focusProperties{down=...}`) · Play in
+   another app. Previously DOWN landed on "Play in another app" (owner bug).
+ANSWERED (no code): decoder toggle works → could make it default ON later if
+the family wants (kept OFF so 4K doesn't stutter). Curated auto-updating lists
+question → see the owner reply / R1: Popular/Trending catalogs from
+AIOMetadata/AIOStreams auto-update off TMDB already; Trakt-list curation needs
+the AIOList manifest finished (still pending, R1/R3).
+⏳ **NOT device-verified**: the audio-default and the new bar layout/focus —
+owner to eyeball on the boxes (both on alpha.24). Deploy .231 when it pings.
+
 ## ⚠️ READ FIRST (session 20 cont. — 2026-07-08 — alpha.23 DEPLOYED: macroblocking fix + English revert)
 Owner reported the real "anime bugs out": a screenshot of heavy colored
 **macroblocking** during Naruto playback (NOT the English-audio logic — that
@@ -842,6 +863,39 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
+
+### ⭐ OWNER BATCH 2026-07-08 — STILL TODO (do these first; owner reported live, mid-session budget ran out)
+B1. **Back-out lands on the WRONG episode.** Click e.g. episode 15 → it plays →
+   BACK mid-stream → the episode list highlights ~episode 12, not 15. Focus
+   restoration bug in `DetailsScreen` episode list on return from the player.
+   Fix: remember the opened episode's stable id/index and `requestFocus` it
+   (or scroll+focus) when Details resumes. Overlaps N4 (resume-to-last-episode)
+   — do them together: land on the last-watched season chip + episode. Verify
+   on a real Cinemeta series (emulator focus is testable here, no remote-repeat
+   needed).
+B2. **Home/Discover hold-UP scroll is broken again + on Discover too.** From
+   deep in the grid, holding UP is "shifty/weird", stops halfway through the
+   TOP hero video, "skips the hero's ~2 spaces" in the background, and jumps
+   focus to the top bar (Discover/Search/Settings or the filter chips) then
+   STOPS scrolling until you press up/down again. This is the DECISIONS #33
+   hold-UP stick recurring, now also on Discover. HARD: adb CANNOT simulate
+   real key-repeat (proven, #33) — needs the owner's remote for final confirm.
+   Approach: (a) Discover likely never got the #33 fix (header/hero as list
+   item 0 + focus-rest); apply it. (b) The "hero eats 2 spaces / stops at the
+   top bar" smells like the top bar is OUTSIDE the scroll container and grabs
+   focus before the list reaches true top — mirror the Home structural fix
+   (everything inside one LazyColumn, header = item 0). Look at
+   `HomeScreen.kt` (working-ish) vs `DiscoverScreen.kt`.
+B3. **"New" catalog to the BOTTOM of the Discover filters** (it's mostly
+   in-theater/unstreamable stuff). Check whether the filter/catalog order is
+   app-side (`DiscoverScreen` chip order) or addon-driven (AIOMetadata/
+   AIOStreams catalog order). If addon-driven, it's a profile-config task
+   (owner's endgame), NOT app code — note that back to the owner.
+B4. Consider making **"Prefer software video decoder" default ON** — owner
+   confirmed it fixes the glitching. Risk: 4K HEVC/AV1 stutter on the pro box.
+   Middle path: default ON only for the non-4K box, or scope PREFER_SOFTWARE to
+   AVC/H.264 (safe to SW-decode) and keep HEVC/AV1 on hardware. Ask owner.
+
 **Active backlog = owner feedback ROUND 11 (MASTER_PLAN §10 "Owner
 feedback round 11") — owner's stated focus: polish, beauty, efficiency,
 stability. Suggested execution order for the next session:**
