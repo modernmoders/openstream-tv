@@ -1,5 +1,21 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 21 cont. 5 — 2026-07-08 — USAGE-LIMIT CHECKPOINT: new asks LOGGED, not built)
+Owner hit **11% weekly usage** and said "only log this, the next session handles
+it." So this is a pure logging checkpoint — nothing built this turn. NEW requests
+captured in NEXT ACTION:
+- **S6 (app): first-name greeting** — "Hello Rachael, getting your things ready…"
+  on load + "Hello Rachael" somewhere visible, so you can tell whose account it
+  is. Name already comes from the setup flow.
+- **S4 (profile builder): full recommended-addon spec** — Tam-Taro's template +
+  Vidhin's regex (from https://docs.aiostreams.viren070.me/configuration/setup/),
+  the scraper list from the owner's screenshot (Knaben, Zilean, AnimeTosho,
+  Torrent Galaxy, Easynews, SeaDex, NekoBT, EZTV, Bitmagnet, Jackett, Prowlarr,
+  NZBHydra2, Newznab, Torznab, Library — as many as feasible), OpenSubtitles V3+
+  (Pro), and add any NON-anime addon Adam has that Rachael lacks. ⚠️ anime-scraper
+  vs family-no-anime tension flagged for clarification. Details in S4.
+Nothing else changed. Below (cont. 4) is the last real build (alpha.29).
+
 ## ⚠️ READ FIRST (session 21 cont. 4 — 2026-07-08 — alpha.29: SW toggle shows ON/OFF; English-audio-first live; Rachael provisioning root-caused)
 Owner batch. **alpha.29 (versionCode 29) BUILT — assembleDebug + testDebugUnitTest
 GREEN (283) + assembleRelease (R8) clean. NOT deployed.** (DECISIONS #46.)
@@ -1058,10 +1074,41 @@ S4. ⏳ **Rich multi-instance profile builder — BUILD NEXT (StremioSurfer tool
    (4) Regenerate her hosting profile (make_profiles + upload) so the box picks up
        the new manifest URLs; box re-syncs → shows all addons (fixes "only 4
        addons"). Then repeat per person.
+   **RECOMMENDED-ADDON SPEC (owner 2026-07-08, from https://docs.aiostreams.viren070.me/configuration/setup/):**
+   - Use **Tam-Taro's template** (Stream Expression Language filtering + sorting)
+     + **Vidhin's Regex Patterns** (Trash Guides release-group rankings) — this is
+     the "configuration in the 2nd pic / Template Credits". NOTE: this REVERSES
+     the session-19 "Tamtaro dropped" call (memory addon-endgame) — owner now
+     wants Tam-Taro's config. tam.taro on Discord; ko-fi.com/tamtaro, ko-fi.com/vidhin.
+   - Add **as many scrapers as possible** from the owner's screenshot (1st pic),
+     visible list: **Knaben, Zilean, AnimeTosho, Torrent Galaxy, Easynews Search,
+     SeaDex, NekoBT, EZTV, Bitmagnet, Jackett, Prowlarr, NZBHydra2, Newznab,
+     Torznab, Library** (list was scrollable — may be more). Add the ones that
+     need no extra infra; the indexer-proxies (Jackett/Prowlarr/NZBHydra2/Newznab/
+     Torznab) + Easynews need the family's own indexer URLs/keys — add only if
+     available, else note as skipped. ⚠️ SeaDex/NekoBT/AnimeTosho are ANIME
+     scrapers — this CONFLICTS with Rachael = "family-no-anime". Owner said add
+     them anyway; CLARIFY next session whether Rachael is still no-anime or if
+     anime scrapers are now wanted (maybe scrapers yes, anime CATALOGS no).
+   - Subtitles: **OpenSubtitles V3+ (Pro)** (owner: "OpenSubtitles pro v3" — type
+     `opensubtitles-v3-plus`, which Adam's config already uses).
+   - Also **diff Adam's live AIOStreams presets vs Rachael's and add any NON-anime
+     addon Adam has that she lacks** (owner request). Adam's 21 presets incl Comet,
+     MediaFusion, Torrentio, Sootio, Meteor, Knaben, STorz(torznab), TorrentsDB,
+     Debridio+Watchtower, OpenSubtitles(V3+), Streaming Catalogs, Library — plus
+     the anime ones (SeaDex/nekoBT) to leave out for a no-anime profile.
 S5. ⏳ **Adam config follow-ups (his AIOStreams UI or a gated push):** disable
    `Live TV` + `Live Sport Events` + `Other Sports` catalogs on primary; fix the
    **backup** (weebs) instance password so it can be managed (or re-create it —
    new manifest URL → re-add on the box). TC is DONE on primary + nightly.
+S6. ⏳ **App: show whose account it is (owner 2026-07-08, NEW).** Display the
+   person's FIRST NAME: a warm loading line like "Hello Rachael, getting your
+   things ready…" while the account/profile loads, and "Hello Rachael" somewhere
+   visible in the UI (e.g. Home header / Settings). Owner: "just need a way to
+   see whose account it is, thought it'd look nice." The name is already known —
+   the setup name flow (ConnectViewModel/SetupNameLookup) captures the typed
+   name; persist the first name (SetupConfig/ViewPrefs) and surface it. Small,
+   pleasant app task. Ship with the next app build.
 
 ### ⭐ OWNER BATCH 2026-07-08 — STILL TODO (owner reported live; some now done above)
 B1. **Back-out lands on the WRONG episode.** Click e.g. episode 15 → it plays →
