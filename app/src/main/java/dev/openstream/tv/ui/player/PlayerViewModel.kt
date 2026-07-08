@@ -102,6 +102,9 @@ class PlayerViewModel @Inject constructor(
         /** Active anime intro/credits window — the "Skip Intro/Credits" button;
          *  null when not inside one (AniSkip, owner 2026-07-08). */
         val skipSegment: SkipSegment? = null,
+        /** Whether the CURRENT playback is using software decoding — the
+         *  "Having trouble?" toggle reflects this ON/OFF (owner 2026-07-08). */
+        val softwareDecoderOn: Boolean = false,
     )
 
     /** A neighbouring episode the player's prev/next buttons can open. */
@@ -153,6 +156,11 @@ class PlayerViewModel @Inject constructor(
             viewModelScope.launch {
                 autoAdvanceOnError = playbackPrefs.autoPlayFirstStream.first()
                 skipEnabled = playbackPrefs.skipIntrosEnabled.first()
+                // Reflect the decoder this session was built with, so the
+                // "Having trouble?" toggle shows the right ON/OFF.
+                _uiState.value = _uiState.value.copy(
+                    softwareDecoderOn = playbackPrefs.preferSoftwareDecoder.first(),
+                )
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
                 // Remembered languages (DECISIONS #19) go on BEFORE play so the
                 // first track selection already honors them. Parameters stick
@@ -494,15 +502,16 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * "Having trouble?" → the picture is blocky/scrambled: turn on software
-     * decoding and reload this video. The decoder is chosen when the engine is
-     * built, so we can't flip it live — persist the setting (awaited so the
-     * next engine reads the new value, not a race) then re-open this video's
-     * stream list; the fresh playback session builds a software-decoding engine.
+     * "Having trouble?" software-decoder toggle. The decoder is chosen when the
+     * engine is built, so we can't flip it live — persist the flipped setting
+     * (awaited so the next engine reads it, not a race) then re-open this
+     * video's stream list; the fresh playback session builds an engine with the
+     * new decoder and its toggle shows the new ON/OFF state.
      */
-    fun fixBlockyVideo() {
+    fun toggleSoftwareDecoder() {
         viewModelScope.launch {
-            playbackPrefs.setPreferSoftwareDecoder(true)
+            val current = playbackPrefs.preferSoftwareDecoder.first()
+            playbackPrefs.setPreferSoftwareDecoder(!current)
             openCurrentStreamList()
         }
     }

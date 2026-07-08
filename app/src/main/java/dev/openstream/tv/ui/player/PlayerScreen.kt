@@ -308,10 +308,15 @@ fun PlayerScreen(
                         if (viewModel.externalPlayers.isNotEmpty()) {
                             SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
                         }
-                        // Blocky/scrambled picture → software decoding. Persists
-                        // the setting and reloads this video (§ decoder is fixed
-                        // at engine build, so a fresh session applies it).
-                        SurfacePill("Fix blocky video", onClick = { viewModel.fixBlockyVideo() })
+                        // Software-decoder toggle for a blocky/scrambled picture.
+                        // Shows its ON/OFF state (owner 2026-07-08) and flips it,
+                        // reloading this video to apply (decoder is fixed at
+                        // engine build). `selected` tints it when ON.
+                        SurfacePill(
+                            "Software video: " + if (state.softwareDecoderOn) "ON" else "OFF",
+                            onClick = { viewModel.toggleSoftwareDecoder() },
+                            selected = state.softwareDecoderOn,
+                        )
                         SurfacePill("Learn more", onClick = { showLearnMore = true; wake() })
                     }
                 }
@@ -543,7 +548,7 @@ private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) 
             if (hasExternalPlayers) {
                 HelpLine("Play in another app", "Hands the video to VLC or MX Player. Try this when the picture plays but there's no sound, or the audio is the wrong language.")
             }
-            HelpLine("Fix blocky video", "Switches to software video and reloads. Use it when the picture looks blocky or scrambled (common on some anime). It starts a touch slower.")
+            HelpLine("Software video (ON/OFF)", "Turn ON when the picture looks blocky or scrambled (common on some anime); it reloads the video in software mode. Turn OFF to go back to the faster hardware video. It starts a touch slower when ON.")
             Button(onClick = onDismiss, modifier = Modifier.focusRequester(okFocus)) { Text("Got it") }
         }
     }

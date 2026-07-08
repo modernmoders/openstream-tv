@@ -1212,3 +1212,43 @@ person with a recommended-addon preset per instance. See MASTER_PLAN §10.
 alpha.28 (versionCode 28). Gates green: assembleDebug + testDebugUnitTest (283
 tests, 0 fail) + assembleRelease (R8) clean. App bits NOT device-verified (resume
 focus/scroll + the panel want owner eyes on a box).
+
+## 46. 2026-07-08 (session 21) — SW-decoder toggle shows ON/OFF + English-audio-first sort + Rachael provisioning root-caused
+
+(a) **"Software video" is now a stateful toggle** (alpha.29). Owner: the "Fix
+blocky video" button didn't show state. It now reads "Software video: ON/OFF",
+tints when ON (`SurfacePill selected`), and flips both ways. PlayerViewModel reads
+`preferSoftwareDecoder` at session start into `UiState.softwareDecoderOn`;
+`toggleSoftwareDecoder()` flips the persisted value and reloads via the stream
+list (decoder is fixed at engine build). Learn-more copy updated to match.
+
+(b) **English audio first on Adam's primary AIOStreams (LIVE, verified).** Root
+cause of "not playing English dub first": the `language` sort key existed but sat
+**7th** in `sortCriteria.cached`/`.uncached` (after seadex→resolution→quality→…),
+so a high-res Japanese/untagged stream always outranked an English one. Fix: moved
+`language` to the **front** of both arrays (surgical pull→edit→PUT, backed up).
+`preferredLanguages` was already `[English, Original, Unknown]`, so English now
+sorts first, then quality within English. Verified `cached[0]=language`. Owner to
+confirm on the box; if still off, revisit `requiredLanguages=[English]` (untagged
+anime appears to pass it).
+
+(c) **Rachael multi-instance provisioning — ROOT-CAUSED, not yet applied.** Owner:
+her account shows only ~4 addons and a created instance had "~3 addons". **Cause
+found:** `templates/primary.json` (the family-no-anime template) has **0 presets**
+— it's empty, so any provisioning from it makes a thin instance. The tooling is
+otherwise ready (users.json `instances` map has all 3 AIOStreams base URLs; her
+keys — RD/TMDB/Torbox/mdblist/rpdb/tvdb — are set; she has AIOStreams primary +
+1 AIOMetadata, needs +2 streams +1 meta). **Correct fix (the real build):** build
+a proper recommended-addons template from Adam's LIVE rich config (21 presets incl
+Comet, MediaFusion, StremThru, Torrentio, Debridio), strip anime (seadex/neko-bt)
+for family + strip ALL of Adam's keys (leak-safety — push_aiostreams substitutes
+per-user keys and validates against the owner to catch leaks), then POST-create her
+backup+nightly AIOStreams from it. **AIOMetadata has NO provisioning tooling** (no
+push_aiometadata; make_profiles doesn't touch it) — creating her 2nd AIOMetadata
+(+beefing the thin 1st) needs new tooling / the AIOMetadata API reverse-engineered.
+Did NOT blind-apply: provisioning from the empty template is exactly what produced
+the thin instance, and leaking Adam's keys into her instances is a real risk to do
+carefully, not rushed.
+
+alpha.29 (versionCode 29). Gates green: assembleDebug + testDebugUnitTest (283
+tests, 0 fail) + assembleRelease (R8) clean. (b) is live; (c) is diagnosis + plan.
