@@ -1,5 +1,41 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 21 cont. — 2026-07-08 — alpha.26 BUILT: AniSkip anime skip + config audit)
+Owner replied: **use AniSkip for anime** (not the manual button); plus config
+questions (TV/Events, CAM/TS/TC, Rachael); plus "can SW decoder be anime-only?".
+
+**alpha.26 (versionCode 26) BUILT — assembleDebug + testDebugUnitTest GREEN (283
+tests, 0 fail) + assembleRelease (R8) clean. NOT deployed, NOT device-verified**
+(the AVD can't play their real streams, so AniSkip is unverifiable here — the box
+is the test rig). Adds on top of alpha.25 (DECISIONS #44):
+- **AniSkip intro/credits skip** — a one-press "Skip Intro"/"Skip Credits" button
+  during anime OP/ED. New `player/skip/*` (AniSkip client + Kitsu→MAL resolver +
+  SkipTimesRepository), wired into PlayerViewModel (500ms position poll → active
+  window) and PlayerScreen (non-focusable hint; OK intercepted globally seeks
+  past it). Setting "Skip anime intros & credits" (default ON). Self-limits to
+  anime because the data source is MAL-keyed — no genre guessing. **IMDb-only
+  anime won't resolve to a MAL id → no button**; every resolution is logged
+  ("skip" tag) so adam's box App log will reveal the id format their anime uses.
+- (already in alpha.25: SW decoder default ON + episode watch marks.)
+
+**Config audit (INVESTIGATION ONLY — no live push; owner-gated).** Read the
+gitignored exports in docs/reference/:
+1. **Why TV/Events is on Adam's profile:** his AIOStreams config has `Live TV`,
+   `Live Sport Events`, `Other Sports` catalogs ENABLED (empty MediaFusion junk).
+   Fix = disable those 3 in the AIOStreams UI. Config, not app.
+2. **CAM/TS/TC:** Adam's `excludedQualities` = [CAM, TS, SCR] — **missing TC**.
+   Rachael's = [CAM, SCR, TS, TC] (complete). Add TC to Adam's. No in-theaters
+   catalog enabled, so TC is the only cinema-junk gap.
+3. **Rachael confirmed clean** (Cinemeta + AIOMetadata + AIOStreams + AIOLists;
+   all 4 cam qualities excluded; no live catalogs) — she's the model.
+**SW-decoder-only-for-anime:** answered NO in chat (unreliable to detect "anime"
+per-stream; his symptom is just a brief self-healing startup stutter, the normal
+SW warmup). Recommended leaving it ON globally; offered a buffer tweak if the
+startup blip annoys him. Not built.
+⏳ **Owner to do:** deploy alpha.26 to both boxes; play an anime episode and watch
+for the Skip button (+ read adam's box log if it doesn't appear); disable the 3
+live catalogs + add TC in his AIOStreams UI (or ask me to prep a gated push).
+
 ## ⚠️ READ FIRST (session 21 — 2026-07-08 — alpha.25 BUILT: SW decoder default ON + episode watch marks)
 Owner batch of three. **BOX ROSTER CORRECTION (owner): the old `.231` non-pro
 box is now `.196`** — same box, new DHCP lease. So there are TWO boxes:
@@ -901,18 +937,21 @@ S0. ✅ **Software decoder DEFAULT ON** (was B4/N1) — shipped alpha.25.
 S0b. ✅ **Episode watch marks** (progress bar + ✓ on finished episodes) — shipped
    alpha.25. DetailsScreen episode rows; `ProgressRepository.isWatched` +
    `observeProgressByExternalId`; Ended now stores completed instead of clearing.
-S1. ⏳ **Intro/credits skip — OWNER DECISION NEEDED (do NOT build until picked).**
-   Answered in chat: universal auto-skip has no free data for general TV/movies;
-   AniSkip gives real OP/ED windows for ANIME only. Options: (a) AniSkip auto
-   "Skip Intro"/"Skip Credits" for anime — its own build: map the series to a
-   MAL id (IMDb→Kitsu/MAL), a small AniSkip client, a position-driven overlay
-   button in `PlayerScreen`, a Settings toggle, tests; (b) a universal manual
-   "skip +N s" button on the player bar — trivial but not a real detector;
-   (c) both. Recommended (a) as the next dedicated piece. Deferred pending the
-   owner's pick.
-S2. ⏳ **Deploy alpha.25** to BOTH boxes (.117 pro + .196 non-pro, formerly .231):
+S1. ✅ **AniSkip anime intro/credits skip — BUILT (alpha.26, DECISIONS #44).**
+   Owner picked AniSkip (declined the manual button). `player/skip/*` +
+   PlayerViewModel/Screen wiring + Settings toggle. Self-limits to anime (MAL-
+   keyed data). ⏳ Verify on a box with a real anime episode; if no button
+   appears, read adam's box App log ("skip" tag) — it says whether the anime id
+   resolved to a MAL id. If their anime is IMDb-sourced, add an IMDb→MAL mapping
+   (anilist: resolver is also stubbed — finish if needed).
+S1b. ⏳ **Owner's config fixes (his AIOStreams UI, or ask me to prep a gated
+   push):** disable `Live TV` + `Live Sport Events` + `Other Sports` catalogs;
+   add `TC` to excludedQualities (currently [CAM, TS, SCR]). Rachael's config is
+   the clean model. INVESTIGATION done this session; no live write made.
+S2. ⏳ **Deploy alpha.26** to BOTH boxes (.117 pro + .196 non-pro, formerly .231):
    `adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
-   (repeat for .196). Verify clean anime decode by default + the ✓/resume bar.
+   (repeat for .196). Verify: clean anime decode by default, the ✓/resume bar on
+   episodes, and the Skip button on an anime OP/ED.
 
 ### ⭐ OWNER BATCH 2026-07-08 — STILL TODO (owner reported live; some now done above)
 B1. **Back-out lands on the WRONG episode.** Click e.g. episode 15 → it plays →
