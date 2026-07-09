@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -459,14 +460,15 @@ private fun EpisodeRow(
     }
 }
 
-/** A resume bar: dim track, accent fill up to [fraction] (0..1). */
+/** A resume bar: dim track, accent fill up to [fraction] (0..1).
+ *  6dp over a near-solid track so it reads across the room (owner 2026-07-09). */
 @Composable
 private fun ProgressBar(fraction: Float, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .height(4.dp)
-            .background(Color.Black.copy(alpha = 0.45f)),
+            .height(6.dp)
+            .background(Color.Black.copy(alpha = 0.6f)),
     ) {
         Box(
             Modifier
@@ -477,16 +479,18 @@ private fun ProgressBar(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** Small green ✓ chip = "you've watched this". */
+/** Green ✓ chip = "you've watched this". Enlarged + ringed for glance-ability
+ *  on a TV (owner 2026-07-09: "could barely see it"). */
 @Composable
 private fun WatchedBadge(modifier: Modifier = Modifier) {
     Box(
         modifier
-            .size(22.dp)
-            .background(WatchedGreen, CircleShape),
+            .size(28.dp)
+            .background(WatchedGreen, CircleShape)
+            .border(2.dp, Color.White.copy(alpha = 0.85f), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Text("✓", style = MaterialTheme.typography.labelMedium, color = Color.White)
+        Text("✓", style = MaterialTheme.typography.titleMedium, color = Color.White)
     }
 }
 

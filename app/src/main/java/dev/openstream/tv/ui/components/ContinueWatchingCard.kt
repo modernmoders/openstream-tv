@@ -29,6 +29,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import kotlinx.coroutines.delay
 
@@ -99,19 +100,21 @@ fun ContinueWatchingCard(progress: WatchProgress, onClick: () -> Unit, modifier:
                 )
             }
             // Watched-fraction bar over a full-width track — always visible,
-            // drawn last so its thin strip sits above the title scrim.
+            // drawn last so its strip sits above the title scrim. Taller (7dp)
+            // and the bright Accent over a near-opaque track so it reads at a
+            // glance on a TV across the room (owner 2026-07-09: "barely see it").
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .background(Color(0x80000000)),
+                    .height(7.dp)
+                    .background(Color(0xCC000000)),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(progress.fractionWatched)
-                        .height(4.dp)
-                        .background(MaterialTheme.colorScheme.primary),
+                        .height(7.dp)
+                        .background(Accent),
                 )
             }
         }

@@ -109,6 +109,12 @@ class ProgressRepository @Inject constructor(
         fun continueWatching(all: List<WatchProgress>): List<WatchProgress> =
             all.filter { isResumable(it, MIN_CONTINUE_WATCHING_MS) }
                 .sortedByDescending { it.updatedAt }
+                // One tile per show, not per episode (owner 2026-07-09): every
+                // episode of a series shares the same [metaId] (its details
+                // target), so keeping the first after the recency sort leaves
+                // only the latest-watched episode of each series. Movies keep
+                // their own unique metaId, so they're unaffected.
+                .distinctBy { it.metaType to it.metaId }
                 .take(MAX_CONTINUE_WATCHING)
     }
 }

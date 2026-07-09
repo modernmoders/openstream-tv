@@ -1,17 +1,16 @@
 package dev.openstream.tv.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,23 +30,31 @@ import dev.openstream.tv.ui.theme.MutedText
  *
  * Deliberately cheap for the 32-bit onn boxes: the ring spins by writing
  * [graphicsLayer] rotationZ inside its lambda (layer phase only, no per-frame
- * recomposition — same discipline as [LoadingMessage], DECISIONS #22). If a box
- * ever suppresses infinite animations it degrades to a static ring + text,
- * which still reads correctly as "working on it" — never the "broken/static"
- * look the old ghost-comet loader had.
+ * recomposition — same discipline as [LoadingMessage], DECISIONS #22).
+ *
+ * The angle is driven off the frame clock ([withFrameNanos]) rather than a
+ * [rememberInfiniteTransition]: infinite transitions are gated by the system
+ * animator duration scale, which is commonly 0 on TV boxes (reduced/off
+ * animations) — that froze the ring into a still image (owner 2026-07-09).
+ * The frame clock runs regardless of that scale, so this actually spins.
  */
 @Composable
 fun LoadingAnimation(
     modifier: Modifier = Modifier,
     text: String = "Getting your show ready…",
 ) {
-    val angle by rememberInfiniteTransition(label = "spinner")
-        .animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(tween(1_100, easing = LinearEasing), RepeatMode.Restart),
-            label = "angle",
-        )
+    var angle by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        var startNanos = 0L
+        while (true) {
+            withFrameNanos { now ->
+                if (startNanos == 0L) startNanos = now
+                // 1.1s per full turn; only the graphicsLayer lambda reads
+                // `angle`, so this is a layer-phase write (no recomposition).
+                angle = ((now - startNanos) / 1_000_000f / 1_100f * 360f) % 360f
+            }
+        }
+    }
     val track = Color.White.copy(alpha = 0.14f)
     Column(
         modifier = modifier,

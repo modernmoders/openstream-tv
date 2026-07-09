@@ -23,9 +23,10 @@ class ProgressRepositoryTest {
         positionMs: Long = 300_000,
         durationMs: Long = 1_200_000,
         updatedAt: Long = 1_000,
+        metaId: String = "tt1",
     ) = WatchProgress(
         ref = MediaRef.addon(id),
-        metaId = "tt1",
+        metaId = metaId,
         metaType = "series",
         title = "E1",
         poster = null,
@@ -103,13 +104,30 @@ class ProgressRepositoryTest {
 
     @Test
     fun `continue watching is filtered and newest-first`() {
-        val old = progress(id = "a", updatedAt = 1)
-        val newer = progress(id = "b", updatedAt = 2)
-        val tooEarly = progress(id = "c", positionMs = 1_000, updatedAt = 3)
+        // Distinct shows (metaId) so both survive the per-show collapse below.
+        val old = progress(id = "a", updatedAt = 1, metaId = "showA")
+        val newer = progress(id = "b", updatedAt = 2, metaId = "showB")
+        val tooEarly = progress(id = "c", positionMs = 1_000, updatedAt = 3, metaId = "showC")
 
         val row = ProgressRepository.continueWatching(listOf(old, tooEarly, newer))
 
         assertEquals(listOf("b", "a"), row.map { it.ref.externalId })
+    }
+
+    @Test
+    fun `continue watching keeps only the latest episode per show`() {
+        // Owner 2026-07-09: watching 3 episodes of one series must leave ONE
+        // Continue Watching tile (the latest), not three. Episodes of a series
+        // share metaId (their details target); movies keep their own.
+        val ep1 = progress(id = "s:1:1", updatedAt = 10, metaId = "series")
+        val ep2 = progress(id = "s:1:2", updatedAt = 20, metaId = "series")
+        val ep3 = progress(id = "s:1:3", updatedAt = 30, metaId = "series")
+        val movie = progress(id = "mov", updatedAt = 25, metaId = "movie")
+
+        val row = ProgressRepository.continueWatching(listOf(ep1, ep3, movie, ep2))
+
+        // one series tile (its newest episode) + the movie, newest-first
+        assertEquals(listOf("s:1:3", "mov"), row.map { it.ref.externalId })
     }
 
     // --- persistence roundtrip via the DAO contract ---

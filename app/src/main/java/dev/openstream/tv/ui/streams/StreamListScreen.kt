@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -53,6 +58,7 @@ import dev.openstream.tv.ui.components.SurfaceRow
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
 
@@ -221,6 +227,18 @@ fun StreamListScreen(
             )
         }
 
+        // Leading stream numbers so a viewer can tell when auto-retry has looped
+        // back to a stream already tried; they fade out ~5s after the list shows
+        // so they don't clutter the row text (owner 2026-07-09).
+        var showNumbers by remember { mutableStateOf(true) }
+        LaunchedEffect(Unit) { delay(5_000); showNumbers = false }
+        val numberAlpha by animateFloatAsState(
+            targetValue = if (showNumbers) 1f else 0f,
+            animationSpec = tween(700),
+            label = "stream-numbers",
+        )
+        var streamNumber = 0
+
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             // Scroll-axis headroom so the first/last stream row's focus
@@ -252,9 +270,12 @@ fun StreamListScreen(
                             // Index in key: addons may return near-identical rows
                             group.streams.forEachIndexed { index, stream ->
                                 val key = "s-${group.addon.manifestUrl}-$index"
+                                val number = ++streamNumber   // global 1..N across all addons
                                 item(key = key) {
                                     StreamRow(
                                         stream = stream,
+                                        number = number,
+                                        numberAlpha = { numberAlpha },
                                         modifier = if (key == firstPlayableKey) {
                                             Modifier.focusRequester(firstStreamFocus)
                                         } else Modifier,
@@ -441,6 +462,8 @@ private fun StreamRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    number: Int = 0,
+    numberAlpha: () -> Float = { 0f },
 ) {
     if (stream.isPlayableInV1) {
         SurfaceRow(
@@ -448,6 +471,19 @@ private fun StreamRow(
             onLongClick = onLongClick,
             modifier = modifier,
         ) {
+            if (number > 0) {
+                // Fades out via a draw-phase alpha read (no recomposition); keeps
+                // a small fixed gutter so the row text never reflows as it fades.
+                Text(
+                    text = "$number",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Accent,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .width(28.dp)
+                        .graphicsLayer { alpha = numberAlpha() },
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     text = stream.name ?: "Stream",

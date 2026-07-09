@@ -1,5 +1,32 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 22 cont. — 2026-07-09 — alpha.31 BUILT: Round 13 first wave (4 items) + Gemini/passport)
+**alpha.31 (versionCode 31) BUILT — assembleDebug + testDebugUnitTest GREEN. NOT deployed.**
+First wave of owner app-bug Round 13 (below), the contained/testable ones:
+- **R13-3 Continue Watching dedupe** — `ProgressRepository.continueWatching` now
+  `.distinctBy { metaType to metaId }` after the recency sort → ONE tile per show
+  (latest episode), movies unaffected. +2 unit tests (15 green in that file).
+- **R13-8 Loading spinner actually animates** — `LoadingAnimation` now drives its
+  angle off `withFrameNanos` (frame clock) instead of `rememberInfiniteTransition`,
+  which was frozen by the TV box's animator duration scale (reduced/off animations).
+- **R13-2 Progress bar + ✓ bolder** — CW bar 4→7dp + Accent over near-opaque track;
+  Details resume bar 4→6dp; watched ✓ badge 22→28dp + white ring, bigger glyph.
+- **R13-7 Fading stream numbers** — global 1..N badge on each stream row (spot when
+  auto-retry loops), fades out ~5s after the list shows (draw-phase alpha, no recompose).
+Config side (also this session): Gemini key added to Rachael's passport (users.json)
++ a **Gemini API spot** in passport.html; owner pasted Gemini into both live
+AIOMetadata configure pages + saved — **URLs unchanged**, so her deployed box profile
+is still valid. (AIOMetadata edits in place, no password: GET `/api/config?id={uuid}`
+reads it, values are redacted in that read.) make_profiles 5-instance + passport 2
+AIOMetadata cards were the prior sub-session.
+⏳ **STILL OPEN in Round 13 (need a build + a box, not emulator):** R13-1 focus drift,
+R13-4 Home-returns-to-top-on-Back (restore focus to origin tile), R13-5 season-selector
+jumps 1→3→5→7, R13-6 "Next episode" missing on some items. **PLUS the big one:**
+codec-aware/hardware-informed autoselect ranking (query MediaCodecList → prefer streams
+the box can hardware-decode, so the software player + help buttons are rarely needed —
+owner's repeated wish); a Stremio-style scroll indicator; de-emphasize the help buttons.
+⏳ Deploy target now **alpha.31**.
+
 ## ⚠️ READ FIRST (session 22 — 2026-07-09 — Rachael 5-instance addon stack LIVE + owner app-bug ROUND 13 logged)
 Config/provisioning session (NO app build). All LIVE + verified:
 - **Rachael's full 5-instance stack is live** ([[aiometadata-aiostreams-5-instance-architecture]]):
