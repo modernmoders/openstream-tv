@@ -1,5 +1,27 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 21 cont. 6 — 2026-07-08 — alpha.30: in-player resume prompt over a looping loading animation)
+Owner batch (3 asks about resume + loading). **alpha.30 (versionCode 30) BUILT —
+assembleDebug + testDebugUnitTest GREEN (283) + assembleRelease (R8) clean. NOT
+deployed, NOT device-verified.** (DECISIONS #47.)
+1. **Resume "no matter what stream/link" — already true, confirmed no code.**
+   Progress is keyed by `MediaRef` (video id / meta id), never the stream URL
+   (§8.4), so reopening from any stream resumes at the same spot.
+2. **New `LoadingAnimation`** (spinning accent arc via `graphicsLayer` rotation —
+   layer-phase only, safe on the onn boxes; degrades to a static ring) replaces
+   the black buffer screen in the player.
+3. **Resume question moved INTO the internal player, over the loader.** During the
+   load/test phase (buffering + debrid "resolving" clips) the spinner shows; if
+   there's saved progress a **"Resume from X / Start from the beginning"** prompt
+   sits over it and **playback is held paused** (owner's pick — no surprise audio;
+   stream still buffers so bad links fail fast). Resume holds focus (one OK to go).
+   The old pre-launch `ResumeDialog` is kept ONLY for external players (VLC/MX).
+⏳ **Owner to do:** deploy alpha.30 to both boxes (S2); eyeball on a real box —
+open a partly-watched show, confirm the spinner + the resume prompt over it, that
+Resume returns to the same spot and Start-over goes to 0, and that a fresh (never-
+watched) item just shows the spinner then plays. (Compose overlays draw above the
+video surface, so a screencap during loading should capture them even on the box.)
+
 ## ⚠️ READ FIRST (session 21 cont. 5 — 2026-07-08 — USAGE-LIMIT CHECKPOINT: new asks LOGGED, not built)
 Owner hit **11% weekly usage** and said "only log this, the next session handles
 it." So this is a pure logging checkpoint — nothing built this turn. NEW requests
@@ -1040,11 +1062,13 @@ S1b. ⏳ **Owner's config fixes (his AIOStreams UI, or ask me to prep a gated
    push):** disable `Live TV` + `Live Sport Events` + `Other Sports` catalogs;
    add `TC` to excludedQualities (currently [CAM, TS, SCR]). Rachael's config is
    the clean model. INVESTIGATION done this session; no live write made.
-S2. ⏳ **Deploy alpha.29** to BOTH boxes (.117 pro + .196):
+S2. ⏳ **Deploy alpha.30** to BOTH boxes (.117 pro + .196) — bundles .28/.29/.30:
    `adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
-   (repeat for .196). Verify: resume-to-last-episode, the "Having trouble?" panel
-   + the **Software video: ON/OFF** toggle, English-dub-first on an anime (the
-   AIOStreams sort change is live), the AniSkip button on an anime OP/ED.
+   (repeat for .196). Verify: **the new loading spinner + in-player "Resume /
+   Start from the beginning" prompt** (open a partly-watched show), resume-to-last-
+   episode, the "Having trouble?" panel + the **Software video: ON/OFF** toggle,
+   English-dub-first on an anime (the AIOStreams sort change is live), the AniSkip
+   button on an anime OP/ED.
 
 S3. ⏳ **Trakt scrobbling — SPECCED, BUILD NEXT (app).** Owner wants Stremio-style
    scrobbling. Plan (DECISIONS #45): Trakt **device OAuth** (type a code at
