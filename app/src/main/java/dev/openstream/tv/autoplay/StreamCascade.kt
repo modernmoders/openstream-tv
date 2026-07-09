@@ -65,6 +65,57 @@ object StreamCascade {
         )
     }
 
+    /**
+     * Merge every addon's streams into ONE ranked, de-duplicated list for the
+     * stream picker (owner 2026-07-09: interweave the sources instead of showing
+     * separate AIOStreams-1 / -2 / -3 blocks). The three AIOStreams instances
+     * wrap overlapping scrapers, so the same release comes back from all of
+     * them; we keep a single best copy per release (the cached copy from the
+     * earliest addon) and order the result cached-first, then by resolution,
+     * then the addon/server order the sources intended. Pure — table-tested.
+     */
+    fun mergeForDisplay(groups: List<AddonStreams>): List<Candidate> {
+        val playable = groups.flatMap { group ->
+            group.streams.mapIndexedNotNull { i, stream ->
+                if (stream.isPlayableInV1) Candidate(group.addonUrl, group.addonIndex, i, stream) else null
+            }
+        }
+        // De-dupe across addons: pre-order so the copy kept (first per key) is
+        // the cached one from the earliest addon.
+        val deduped = playable
+            .sortedWith(
+                compareByDescending<Candidate> { hasCacheMarker(it.stream) }
+                    .thenBy { it.addonIndex }
+                    .thenBy { it.serverIndex }
+            )
+            .distinctBy { dedupKey(it.stream) }
+        // Final display order: cached first, then higher resolution, then the
+        // addon/server order.
+        return deduped.sortedWith(
+            compareByDescending<Candidate> { hasCacheMarker(it.stream) }
+                .thenByDescending { resolutionRank(it.stream) }
+                .thenBy { it.addonIndex }
+                .thenBy { it.serverIndex }
+        )
+    }
+
+    /** Same release across sources → same key. Torrent infoHash is authoritative;
+     *  otherwise the exact release filename, else the whole label. */
+    fun dedupKey(stream: Stream): String =
+        stream.infoHash?.lowercase()
+            ?: stream.behaviorHints.filename?.takeIf { it.isNotBlank() }?.lowercase()
+            ?: labelText(stream).lowercase()
+
+    /** 4k > 1440p > 1080p > 720p > 480p > unknown, for display ranking. */
+    fun resolutionRank(stream: Stream): Int = when (resolutionOf(stream)) {
+        "4k" -> 5
+        "1440p" -> 4
+        "1080p" -> 3
+        "720p" -> 2
+        "480p" -> 1
+        else -> 0
+    }
+
     // --- feature extraction (heuristics over free-text stream labels) ---
 
     private val RESOLUTION = Regex("""\b(2160p|1440p|1080p|720p|480p|4k)\b""", RegexOption.IGNORE_CASE)

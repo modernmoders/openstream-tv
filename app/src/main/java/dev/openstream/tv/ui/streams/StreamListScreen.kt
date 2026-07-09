@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import dev.openstream.tv.autoplay.StreamCascade
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -161,13 +163,22 @@ fun StreamListScreen(
     // the row may not be composed yet if the user scrolled away — fall back
     // to default focus rather than crash.
     val firstStreamFocus = remember { FocusRequester() }
-    val firstPlayableKey = state.groups.firstNotNullOfOrNull { group ->
-        (group as? GroupState.Loaded)?.streams
-            ?.indexOfFirst { it.isPlayableInV1 }?.takeIf { it >= 0 }
-            ?.let { "s-${group.addon.manifestUrl}-$it" }
+    // Interweave every addon's streams into one ranked, de-duplicated list
+    // (owner 2026-07-09) instead of per-addon blocks. The dedupe collapses the
+    // same release returned by all three AIOStreams instances.
+    val loadedGroups = state.groups.filterIsInstance<GroupState.Loaded>()
+    val mergedStreams = remember(state.groups) {
+        StreamCascade.mergeForDisplay(
+            loadedGroups.mapIndexed { i, g ->
+                StreamCascade.AddonStreams(g.addon.manifestUrl, i, g.streams)
+            }
+        )
     }
-    LaunchedEffect(firstPlayableKey != null) {
-        if (firstPlayableKey != null) runCatching { firstStreamFocus.requestFocus() }
+    val addonByUrl = remember(state.groups) {
+        loadedGroups.associate { it.addon.manifestUrl to it.addon }
+    }
+    LaunchedEffect(mergedStreams.isNotEmpty()) {
+        if (mergedStreams.isNotEmpty()) runCatching { firstStreamFocus.requestFocus() }
     }
 
     Box(
@@ -237,76 +248,69 @@ fun StreamListScreen(
             animationSpec = tween(700),
             label = "stream-numbers",
         )
-        var streamNumber = 0
-
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             // Scroll-axis headroom so the first/last stream row's focus
             // scale isn't clipped (§5.3).
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
-            state.groups.forEach { group ->
-                item(key = "header-${group.addon.manifestUrl}") {
-                    Text(
-                        text = group.addon.manifest.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        modifier = Modifier.padding(top = 10.dp),
+            // Some sources still answering — tell the viewer more may arrive.
+            if (state.groups.any { it is GroupState.Loading }) {
+                item(key = "loading-note") {
+                    LoadingMessage(text = "Finding more streams…", horizontalPadding = 0.dp)
+                }
+            }
+            // ONE interwoven, ranked, de-duplicated list across every addon.
+            itemsIndexed(
+                mergedStreams,
+                key = { _, c -> "m-${c.addonUrl}-${c.serverIndex}" },
+            ) { index, candidate ->
+                val addon = addonByUrl[candidate.addonUrl]
+                if (addon != null) {
+                    val stream = candidate.stream
+                    StreamRow(
+                        stream = stream,
+                        number = index + 1,
+                        numberAlpha = { numberAlpha },
+                        modifier = if (index == 0) Modifier.focusRequester(firstStreamFocus) else Modifier,
+                        onClick = {
+                            // §6.2 "Always use" setting decides what OK means;
+                            // uninstalled/unknown falls back to internal.
+                            when (val decision = resolvePreferredPlayer(
+                                state.playerPref, state.externalPlayers,
+                            )) {
+                                PlayerDecision.Internal -> onPlayerDecided(
+                                    PendingPlay(addon, stream, external = null)
+                                )
+                                PlayerDecision.Ask -> {
+                                    pendingPlay = PendingPlay(addon, stream, external = null)
+                                    choosingPlayer = true
+                                }
+                                is PlayerDecision.External -> onPlayerDecided(
+                                    PendingPlay(addon, stream, decision.choice)
+                                )
+                            }
+                        },
+                        onLongClick = {
+                            if (state.externalPlayers.isNotEmpty()) {
+                                pendingPlay = PendingPlay(addon, stream, external = null)
+                                choosingPlayer = true
+                            }
+                        },
                     )
                 }
-                when (group) {
-                    is GroupState.Loading -> item(key = "loading-${group.addon.manifestUrl}") {
-                        LoadingMessage(horizontalPadding = 0.dp)
-                    }
-                    is GroupState.Failed -> item(key = "failed-${group.addon.manifestUrl}") {
-                        RowMessage("⚠ ${group.message}", horizontalPadding = 0.dp)
-                    }
-                    is GroupState.Loaded ->
-                        if (group.streams.isEmpty()) {
-                            item(key = "empty-${group.addon.manifestUrl}") {
-                                RowMessage("No streams", horizontalPadding = 0.dp)
-                            }
-                        } else {
-                            // Index in key: addons may return near-identical rows
-                            group.streams.forEachIndexed { index, stream ->
-                                val key = "s-${group.addon.manifestUrl}-$index"
-                                val number = ++streamNumber   // global 1..N across all addons
-                                item(key = key) {
-                                    StreamRow(
-                                        stream = stream,
-                                        number = number,
-                                        numberAlpha = { numberAlpha },
-                                        modifier = if (key == firstPlayableKey) {
-                                            Modifier.focusRequester(firstStreamFocus)
-                                        } else Modifier,
-                                        onClick = {
-                                            // §6.2 "Always use" setting decides what OK means;
-                                            // uninstalled/unknown falls back to internal.
-                                            when (val decision = resolvePreferredPlayer(
-                                                state.playerPref, state.externalPlayers,
-                                            )) {
-                                                PlayerDecision.Internal -> onPlayerDecided(
-                                                    PendingPlay(group.addon, stream, external = null)
-                                                )
-                                                PlayerDecision.Ask -> {
-                                                    pendingPlay = PendingPlay(group.addon, stream, external = null)
-                                                    choosingPlayer = true
-                                                }
-                                                is PlayerDecision.External -> onPlayerDecided(
-                                                    PendingPlay(group.addon, stream, decision.choice)
-                                                )
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (state.externalPlayers.isNotEmpty()) {
-                                                pendingPlay = PendingPlay(group.addon, stream, external = null)
-                                                choosingPlayer = true
-                                            }
-                                        },
-                                    )
-                                }
-                            }
-                        }
+            }
+            // Nothing playable and nothing left loading.
+            if (mergedStreams.isEmpty() && state.groups.none { it is GroupState.Loading }) {
+                item(key = "none") {
+                    RowMessage("No playable streams for this item", horizontalPadding = 0.dp)
+                }
+            }
+            // Failed sources, compact, at the bottom (never blocks the list).
+            val failedCount = state.groups.count { it is GroupState.Failed }
+            if (failedCount > 0) {
+                item(key = "failed-note") {
+                    RowMessage("⚠ $failedCount source(s) unavailable", horizontalPadding = 0.dp)
                 }
             }
         }

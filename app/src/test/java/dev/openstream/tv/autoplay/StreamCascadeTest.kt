@@ -186,4 +186,53 @@ class StreamCascadeTest {
         assertEquals(0.0, StreamCascade.tokenSimilarity(emptySet(), setOf("web")), 0.0)
         assertEquals(0.0, StreamCascade.tokenSimilarity(setOf("bluray"), setOf("web")), 0.0)
     }
+
+    // --- mergeForDisplay: interweave + dedupe + rank (owner 2026-07-09) ---
+
+    @Test
+    fun `mergeForDisplay collapses the same release returned by multiple addons`() {
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio1.example", 0, listOf(
+                    stream(name = "AIO1", filename = "Show.S01E01.1080p.WEB.GROUP.mkv"),
+                )),
+                AddonStreams("https://aio2.example", 1, listOf(
+                    stream(name = "AIO2", filename = "Show.S01E01.1080p.WEB.GROUP.mkv"),
+                )),
+            ),
+        )
+        assertEquals(1, merged.size)
+        // the copy kept is from the earliest addon
+        assertEquals("https://aio1.example", merged.first().addonUrl)
+    }
+
+    @Test
+    fun `mergeForDisplay ranks cached before uncached regardless of resolution`() {
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "4K uncached", filename = "a.2160p.mkv"),
+                    stream(name = "720p cached", filename = "b.720p.mkv", description = "cached"),
+                )),
+            ),
+        )
+        assertEquals("720p cached", merged.first().stream.name)
+    }
+
+    @Test
+    fun `mergeForDisplay orders by resolution within the cached tier`() {
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "cached 720p", filename = "a.720p.mkv", description = "cached"),
+                    stream(name = "cached 4k", filename = "b.2160p.mkv", description = "cached"),
+                    stream(name = "cached 1080p", filename = "c.1080p.mkv", description = "cached"),
+                )),
+            ),
+        )
+        assertEquals(
+            listOf("cached 4k", "cached 1080p", "cached 720p"),
+            merged.map { it.stream.name },
+        )
+    }
 }

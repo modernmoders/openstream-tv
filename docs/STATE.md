@@ -1,5 +1,21 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 22 cont. 2 — 2026-07-09 — alpha.32 BUILT: interwoven stream list)
+**alpha.32 (versionCode 32) BUILT — assembleDebug + testDebugUnitTest GREEN. NOT deployed.**
+On top of alpha.31: **the stream list is now ONE interwoven, ranked, de-duplicated list**
+instead of per-addon blocks (owner 2026-07-09 "interweave the sources"). New pure
+`StreamCascade.mergeForDisplay(groups)` (+3 tests, 16 total in that file): flattens every
+addon's playable streams, de-dupes across sources (same release from all 3 AIOStreams →
+one row, keyed on infoHash → filename → label, keeping the cached copy from the earliest
+addon), then orders **cached-first → resolution (4k>1080p>720p) → addon/server order**.
+`StreamListScreen` now renders that flat list (headers gone), first row takes entry focus,
+"Finding more streams…" while sources load, failed sources collapse to a bottom note. This
+supersedes the old "visible list keeps addon order (§4.1.7)" decision. **Next: make the
+ranking codec-aware** (query `MediaCodecList` → prefer hardware-decodable streams so the
+software player is rarely needed — the flagship item) — `mergeForDisplay` is the seam for it.
+⏳ Deploy target now **alpha.32**. Still open: R13-1 focus drift, R13-4 Home-back-to-tile,
+R13-5 season selector, R13-6 next-episode, codec-aware ranking, scroll indicator, help buttons.
+
 ## ⚠️ READ FIRST (session 22 cont. — 2026-07-09 — alpha.31 BUILT: Round 13 first wave (4 items) + Gemini/passport)
 **alpha.31 (versionCode 31) BUILT — assembleDebug + testDebugUnitTest GREEN. NOT deployed.**
 First wave of owner app-bug Round 13 (below), the contained/testable ones:
