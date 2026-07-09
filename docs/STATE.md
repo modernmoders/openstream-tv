@@ -1,5 +1,41 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 22 — 2026-07-09 — Rachael 5-instance addon stack LIVE + owner app-bug ROUND 13 logged)
+Config/provisioning session (NO app build). All LIVE + verified:
+- **Rachael's full 5-instance stack is live** ([[aiometadata-aiostreams-5-instance-architecture]]):
+  2 AIOMetadata (Discover=meta+Trakt-scrobbler ~50 cats; Streaming=by-service+networks
+  ~50) she imported + gave URLs; 3 AIOStreams (fortheweak/fortheweebs/elfhosted) I
+  built+pushed — **meta OFF** on all (AIOMetadata owns meta), catalogs only on primary
+  (RD library + Debridio; TorBox library REMOVED = shared history), **Debridio wired**
+  (watchtower streams), **excludeUncached=true + language-first sort** (Futurama fix).
+- **Box profile DEPLOYED** to `savoy.click/setup/rachael-wv_EExTgN6I.json` (7 addons) via
+  scp to Dreamhost — see [[setup-site-hosting-deploy]]. Setup URL is `savoy.click/setup/`
+  (NOT /subs/). Box loads on relaunch / type "rachael".
+- **`tools/make_profiles.py` UPDATED** to emit the 5-instance layout (2 AIOMetadata via
+  `aiometadata.discover/streaming`, all 3 AIOStreams). Uncommitted. ⚠️ profiles.config.json
+  needs Rachael→`rachael-wv_EExTgN6I.json` seeded before a family-wide regen or she gets a
+  new filename (404s her box).
+- **passport.html**: AIOMetadata now has TWO cards (Discovery + Streaming, uuid/pw/manifest).
+- Answered: Trakt Recommendations IS first in her Discover Home; the row is empty because a
+  fresh Trakt account has no watch/rating history to generate recs — it fills after scrobbling.
+
+**OWNER APP-BUG ROUND 13 (2026-07-09) — NOT yet built, needs an app build+emulator pass:**
+1. **Focus drift on vertical scroll** — down 9 / up 6 / down 6 leaves rows horizontally
+   shifted, as if focus entered a row and moved right. (Related to the round-11 §10 item.)
+2. **Progress bar + "watched" ✓ hard to see** — increase contrast/size (alpha.25 feature).
+3. **Continue Watching shows one row PER EPISODE** — watched 3 eps → 3 tiles of same show.
+   Collapse to ONE entry per series (latest position).
+4. **Home scroll position lost on Back** — 30 rows down → open item → Back → returns to TOP
+   instead of the title you were on. Restore focus/scroll to the originating tile.
+5. **Season selector jumps** — highlight Season 1, down then up → lands on Season 3, repeat →
+   5, 7… (settles mid-list). Up/back must return to the SAME season.
+6. **"Next episode" missing on some streams** — the prev/next-episode control doesn't appear
+   for every item that has another episode. Make it appear whenever a neighbour exists.
+7. **Number/label streams in the stream list** — so the user can tell they're looping back
+   through the same streams while trying them.
+8. **Loading animation is a still image** — the alpha.30 loading spinner isn't animating.
+Config Q answered (stream sorting) — Rachael now cached-only; if still thin, revisit filters.
+
 ## ⚠️ READ FIRST (session 21 cont. 6 — 2026-07-08 — alpha.30: in-player resume prompt over a looping loading animation)
 Owner batch (3 asks about resume + loading). **alpha.30 (versionCode 30) BUILT —
 assembleDebug + testDebugUnitTest GREEN (283) + assembleRelease (R8) clean. NOT

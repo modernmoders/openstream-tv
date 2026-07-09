@@ -56,25 +56,35 @@ def profile_for(user, instance, pulled=None, exclude_addon_keys=None):
     exclude_addon_keys = DEFAULT_EXCLUDED_ADDON_KEYS if exclude_addon_keys is None else exclude_addon_keys
     addons = [{"name": "Cinemeta", "url": CINEMETA}]
 
-    aiometadata = (user.get("aiometadata") or {}).get("manifest_url")
-    if is_manifest_url(aiometadata):
-        addons.append({"name": "AIOMetadata", "url": aiometadata})
+    # --- AIOMetadata: the 5-instance layout uses TWO metadata instances
+    # (aiometadata.discover + aiometadata.streaming). Emit both, Discovery
+    # first (it's the meta authority + Trakt scrobbler). Fall back to the older
+    # single flat `aiometadata.manifest_url` for users not yet migrated. ---
+    aiometa = user.get("aiometadata") or {}
+    added_meta = False
+    for slot, label in (("discover", "AIOMetadata (Discovery)"),
+                        ("streaming", "AIOMetadata (Streaming)")):
+        url = (aiometa.get(slot) or {}).get("manifest_url")
+        if is_manifest_url(url):
+            addons.append({"name": label, "url": url})
+            added_meta = True
+    if not added_meta and is_manifest_url(aiometa.get("manifest_url")):
+        addons.append({"name": "AIOMetadata", "url": aiometa["manifest_url"]})
 
     account = (pulled or {}).get(user.get("email") or "")
     if account and account.get("addons"):
         addons.extend(account["addons"])  # live collection, account order
     else:
+        # Emit EVERY AIOStreams instance that has a URL (primary + backup +
+        # nightly = 3 stream sources for redundancy), preferred order first.
+        # `--instance` no longer selects one; it just leads the ordering.
         aiostreams = user.get("aiostreams") or {}
-        chosen = aiostreams.get(instance) or {}
-        url = chosen.get("manifest_url")
-        if not is_manifest_url(url):  # fall back to any instance that has one
-            for fallback, data in aiostreams.items():
-                candidate = (data or {}).get("manifest_url")
-                if is_manifest_url(candidate):
-                    url, instance = candidate, fallback
-                    break
-        if is_manifest_url(url):
-            addons.append({"name": f"AIOStreams ({instance})", "url": url})
+        order = [instance] + [k for k in ("primary", "backup", "nightly") if k != instance]
+        order += [k for k in aiostreams if k not in order]
+        for inst in order:
+            url = (aiostreams.get(inst) or {}).get("manifest_url")
+            if is_manifest_url(url):
+                addons.append({"name": f"AIOStreams ({inst})", "url": url})
 
     for key, value in sorted((user.get("addons") or {}).items()):
         if key in exclude_addon_keys:
