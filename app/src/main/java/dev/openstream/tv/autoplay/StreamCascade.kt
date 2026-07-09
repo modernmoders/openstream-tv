@@ -74,7 +74,10 @@ object StreamCascade {
      * earliest addon) and order the result cached-first, then by resolution,
      * then the addon/server order the sources intended. Pure — table-tested.
      */
-    fun mergeForDisplay(groups: List<AddonStreams>): List<Candidate> {
+    fun mergeForDisplay(
+        groups: List<AddonStreams>,
+        hardwareCodecs: Set<VideoCodec> = emptySet(),
+    ): List<Candidate> {
         val playable = groups.flatMap { group ->
             group.streams.mapIndexedNotNull { i, stream ->
                 if (stream.isPlayableInV1) Candidate(group.addonUrl, group.addonIndex, i, stream) else null
@@ -89,14 +92,47 @@ object StreamCascade {
                     .thenBy { it.serverIndex }
             )
             .distinctBy { dedupKey(it.stream) }
-        // Final display order: cached first, then higher resolution, then the
-        // addon/server order.
+        // Final order: cached first, then streams the box can HARDWARE-decode
+        // (an unplayable 4K HEVC-10bit that would macroblock / force the
+        // software player must not out-rank a clean 1080p H.264 — owner
+        // 2026-07-09), then higher resolution, then the source order.
         return deduped.sortedWith(
             compareByDescending<Candidate> { hasCacheMarker(it.stream) }
+                .thenByDescending { canHardwareDecode(it.stream, hardwareCodecs) }
                 .thenByDescending { resolutionRank(it.stream) }
                 .thenBy { it.addonIndex }
                 .thenBy { it.serverIndex }
         )
+    }
+
+    /** Video codecs we can tell apart from a release label. */
+    enum class VideoCodec { H264, HEVC, HEVC_10BIT, AV1, VP9 }
+
+    private val TEN_BIT = Regex("""10.?bit|hdr|dolby.?vision|\bdv\b|main.?10""", RegexOption.IGNORE_CASE)
+
+    /** Best-effort codec from the release label; null when it can't be told. */
+    fun videoCodecOf(stream: Stream): VideoCodec? {
+        val t = labelText(stream)
+        val tenBit = TEN_BIT.containsMatchIn(t)
+        return when {
+            Regex("""\bav0?1\b""", RegexOption.IGNORE_CASE).containsMatchIn(t) -> VideoCodec.AV1
+            Regex("""hevc|h\.?265|x\.?265""", RegexOption.IGNORE_CASE).containsMatchIn(t) ->
+                if (tenBit) VideoCodec.HEVC_10BIT else VideoCodec.HEVC
+            Regex("""avc|h\.?264|x\.?264""", RegexOption.IGNORE_CASE).containsMatchIn(t) -> VideoCodec.H264
+            Regex("""\bvp9\b""", RegexOption.IGNORE_CASE).containsMatchIn(t) -> VideoCodec.VP9
+            else -> null
+        }
+    }
+
+    /**
+     * Can this box hardware-decode the stream? Unknown codec, or unknown box
+     * capabilities ([hardwareCodecs] empty), returns true — we never demote a
+     * stream we can't reason about, only ones we KNOW the box can't decode.
+     */
+    fun canHardwareDecode(stream: Stream, hardwareCodecs: Set<VideoCodec>): Boolean {
+        if (hardwareCodecs.isEmpty()) return true
+        val codec = videoCodecOf(stream) ?: return true
+        return codec in hardwareCodecs
     }
 
     /** Same release across sources → same key. Torrent infoHash is authoritative;

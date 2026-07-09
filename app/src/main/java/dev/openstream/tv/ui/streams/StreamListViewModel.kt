@@ -20,6 +20,7 @@ import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.player.CurrentPlayback
+import dev.openstream.tv.player.DecoderCapabilities
 import dev.openstream.tv.player.ExternalOutcome
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.player.PlaybackRequest
@@ -56,6 +57,7 @@ class StreamListViewModel @Inject constructor(
     private val externalLauncher: ExternalPlayerPort,
     private val autoplay: AutoplayController,
     private val alternatives: StreamAlternatives,
+    decoderCapabilities: DecoderCapabilities,
     playbackPrefs: PlaybackPrefs,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -63,6 +65,10 @@ class StreamListViewModel @Inject constructor(
     val type: String = checkNotNull(savedStateHandle["type"])
     val videoId: String = checkNotNull(savedStateHandle["videoId"])
     val title: String = savedStateHandle["title"] ?: ""
+
+    /** Codecs this box can hardware-decode — biases the picker/auto-play toward
+     *  streams that play cleanly instead of forcing the software decoder. */
+    val hardwareCodecs: Set<StreamCascade.VideoCodec> = decoderCapabilities.hardwareVideoCodecs
 
     /** Meta id for progress rows; movies arrive without one — video id IS the meta id. */
     private val metaId: String = savedStateHandle.get<String>("metaId")?.ifBlank { null } ?: videoId
@@ -285,7 +291,7 @@ class StreamListViewModel @Inject constructor(
         viewModelScope.launch {
             // Keep the shared "Try another server" list in step with the
             // fan-out — the player may need it while groups are still loading.
-            _uiState.collect { alternatives.list = orderedAlternatives(it.groups) }
+            _uiState.collect { alternatives.list = orderedAlternatives(it.groups, hardwareCodecs) }
         }
         viewModelScope.launch {
             // Auto-play first stream (owner request 2026-07-06): wait until
@@ -298,7 +304,7 @@ class StreamListViewModel @Inject constructor(
             // and auto-start must resume where the person left off.
             val resume = progressRepository.observeResumePosition(mediaRef).first()
             val result = _uiState
-                .map { firstPlayableWhenSettled(it.initializing, it.groups) }
+                .map { bestPlayableWhenSettled(it.initializing, it.groups, hardwareCodecs) }
                 .first { it !is AutoStartResult.Waiting }
             val found = result as? AutoStartResult.Found
             if (found == null || playbackStarted) {

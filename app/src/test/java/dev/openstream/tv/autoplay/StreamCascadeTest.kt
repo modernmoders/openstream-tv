@@ -4,6 +4,7 @@ import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.addon.StreamBehaviorHints
 import dev.openstream.tv.autoplay.StreamCascade.AddonStreams
 import dev.openstream.tv.autoplay.StreamCascade.CurrentStream
+import dev.openstream.tv.autoplay.StreamCascade.VideoCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -234,5 +235,46 @@ class StreamCascadeTest {
             listOf("cached 4k", "cached 1080p", "cached 720p"),
             merged.map { it.stream.name },
         )
+    }
+
+    // --- codec awareness (owner 2026-07-09: prefer streams the box can decode) ---
+
+    @Test
+    fun `videoCodecOf reads codec and bit-depth from the label`() {
+        assertEquals(VideoCodec.H264, StreamCascade.videoCodecOf(stream(filename = "Show.1080p.x264-GRP.mkv")))
+        assertEquals(VideoCodec.HEVC, StreamCascade.videoCodecOf(stream(filename = "Show.1080p.x265-GRP.mkv")))
+        assertEquals(VideoCodec.HEVC_10BIT, StreamCascade.videoCodecOf(stream(name = "Show HEVC 10bit HDR")))
+        assertEquals(VideoCodec.AV1, StreamCascade.videoCodecOf(stream(filename = "Show.AV1.mkv")))
+        assertEquals(null, StreamCascade.videoCodecOf(stream(name = "Show 1080p")))
+    }
+
+    @Test
+    fun `mergeForDisplay floats hardware-decodable above what the box cannot decode`() {
+        // Box does H.264 + HEVC-8bit but NOT HEVC-10bit: a clean 1080p H.264 must
+        // beat a 4K HEVC-10bit that would macroblock / force the software player.
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "4K HEVC 10bit", filename = "a.2160p.x265.10bit.mkv"),
+                    stream(name = "1080p H264", filename = "b.1080p.x264.mkv"),
+                )),
+            ),
+            hardwareCodecs = setOf(VideoCodec.H264, VideoCodec.HEVC),
+        )
+        assertEquals("1080p H264", merged.first().stream.name)
+    }
+
+    @Test
+    fun `mergeForDisplay applies no codec penalty when box capabilities are unknown`() {
+        // Empty capability set -> everything treated as playable, so 4K wins.
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "1080p H264", filename = "b.1080p.x264.mkv"),
+                    stream(name = "4K HEVC 10bit", filename = "a.2160p.x265.10bit.mkv"),
+                )),
+            ),
+        )
+        assertEquals("4K HEVC 10bit", merged.first().stream.name)
     }
 }

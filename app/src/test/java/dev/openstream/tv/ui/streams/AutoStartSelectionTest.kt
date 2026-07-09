@@ -33,7 +33,7 @@ class AutoStartSelectionTest {
 
     @Test
     fun `initializing means wait`() {
-        assertEquals(AutoStartResult.Waiting, firstPlayableWhenSettled(true, emptyList()))
+        assertEquals(AutoStartResult.Waiting, bestPlayableWhenSettled(true, emptyList()))
     }
 
     @Test
@@ -42,7 +42,7 @@ class AutoStartSelectionTest {
             GroupState.Loading(addon("a")),
             GroupState.Loaded(addon("b"), listOf(playable)),
         )
-        assertEquals(AutoStartResult.Waiting, firstPlayableWhenSettled(false, groups))
+        assertEquals(AutoStartResult.Waiting, bestPlayableWhenSettled(false, groups))
     }
 
     @Test
@@ -51,7 +51,7 @@ class AutoStartSelectionTest {
             GroupState.Failed(addon("a"), "boom"),
             GroupState.Loaded(addon("b"), listOf(playable)),
         )
-        val found = firstPlayableWhenSettled(false, groups) as AutoStartResult.Found
+        val found = bestPlayableWhenSettled(false, groups) as AutoStartResult.Found
         assertEquals("b", found.addon.manifestUrl)
     }
 
@@ -61,18 +61,20 @@ class AutoStartSelectionTest {
             GroupState.Loaded(addon("a"), listOf(torrentOnly)),
             GroupState.Loaded(addon("b"), listOf(torrentOnly, playable)),
         )
-        val found = firstPlayableWhenSettled(false, groups) as AutoStartResult.Found
+        val found = bestPlayableWhenSettled(false, groups) as AutoStartResult.Found
         assertEquals(playable, found.stream)
     }
 
     @Test
-    fun `first addon answering playable wins even while later ones load`() {
+    fun `waits for every source before the auto-pick`() {
+        // A still-loading source could carry the better (e.g. hardware-decodable)
+        // stream, so the best-first pick isn't final until ALL sources settle
+        // (owner 2026-07-09 — supersedes the old first-in-addon-order pick).
         val groups = listOf(
             GroupState.Loaded(addon("a"), listOf(playable)),
             GroupState.Loading(addon("b")),
         )
-        val found = firstPlayableWhenSettled(false, groups) as AutoStartResult.Found
-        assertEquals("a", found.addon.manifestUrl)
+        assertEquals(AutoStartResult.Waiting, bestPlayableWhenSettled(false, groups))
     }
 
     @Test
@@ -82,7 +84,7 @@ class AutoStartSelectionTest {
             GroupState.Loaded(addon("b"), listOf(torrentOnly)),
             GroupState.Loaded(addon("c"), emptyList()),
         )
-        assertEquals(AutoStartResult.None, firstPlayableWhenSettled(false, groups))
+        assertEquals(AutoStartResult.None, bestPlayableWhenSettled(false, groups))
     }
 
     @Test
@@ -108,7 +110,7 @@ class AutoStartSelectionTest {
             GroupState.Loaded(addon("a"), listOf(tagged)),
             GroupState.Loaded(addon("b"), listOf(playable)),
         )
-        val found = firstPlayableWhenSettled(false, groups) as AutoStartResult.Found
+        val found = bestPlayableWhenSettled(false, groups) as AutoStartResult.Found
         assertEquals(tagged, found.stream)
     }
 

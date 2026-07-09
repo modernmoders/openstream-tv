@@ -2,54 +2,67 @@ package dev.openstream.tv.ui.streams
 
 import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
+import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.player.StreamAlternatives
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 
 /**
- * Auto-play-first-stream selection (owner request 2026-07-06). Pure so the
- * timing rule is table-testable: the "first stream in the list" is only
- * final once every addon BEFORE the first one with results has settled —
- * the fan-out (§4.1.5) renders incrementally, and a slow first addon must
- * not lose its top spot to a fast second one.
+ * Auto-play + "Try another server" selection. Pure so the rules are
+ * table-testable. Both run through [StreamCascade.mergeForDisplay]: the three
+ * AIOStreams instances are interwoven, de-duplicated, and ranked cached-first →
+ * hardware-decodable → resolution (owner 2026-07-09), so the auto-pick lands on
+ * a stream the box actually plays cleanly instead of an HEVC-10bit that
+ * macroblocks / forces the software player. Ranking never reorders by LANGUAGE
+ * (owner 2026-07-08 — that swapped anime dubs away); the source order, which
+ * already carries AIOStreams' language sort, is the finest tiebreaker.
  */
 sealed interface AutoStartResult {
-    /** Some addon that could still claim the top spot is loading — wait. */
+    /** A source that could still contribute the best stream is loading — wait. */
     data object Waiting : AutoStartResult
 
-    /** Every addon settled and nothing is playable — no auto-start. */
+    /** Every source settled and nothing is playable — no auto-start. */
     data object None : AutoStartResult
 
     data class Found(val addon: InstalledAddon, val stream: Stream) : AutoStartResult
 }
 
-fun firstPlayableWhenSettled(initializing: Boolean, groups: List<GroupState>): AutoStartResult {
-    if (initializing) return AutoStartResult.Waiting
-    // Play the first playable stream in the user's addon order — the one they
-    // "normally watch" (owner 2026-07-08: don't reorder the auto-pick, e.g. to
-    // prefer English — it swapped anime away from their usual release). Wait on
-    // any still-loading earlier addon so a slow #1 keeps its top spot (§4.1.5).
-    for (group in groups) {
-        when (group) {
-            is GroupState.Loading -> return AutoStartResult.Waiting
-            is GroupState.Failed -> continue
-            is GroupState.Loaded -> {
-                val stream = group.streams.firstOrNull { it.isPlayableInV1 }
-                if (stream != null) return AutoStartResult.Found(group.addon, stream)
-            }
+/** Loaded groups → [StreamCascade.AddonStreams], addon order preserved. */
+private fun loadedAsAddonStreams(groups: List<GroupState>): List<StreamCascade.AddonStreams> {
+    var index = 0
+    return groups.mapNotNull { group ->
+        (group as? GroupState.Loaded)?.let {
+            StreamCascade.AddonStreams(it.addon.manifestUrl, index++, it.streams)
         }
     }
-    return AutoStartResult.None
+}
+
+fun bestPlayableWhenSettled(
+    initializing: Boolean,
+    groups: List<GroupState>,
+    hardwareCodecs: Set<StreamCascade.VideoCodec> = emptySet(),
+): AutoStartResult {
+    if (initializing) return AutoStartResult.Waiting
+    // The best stream can come from ANY source, so wait until they've all
+    // settled before committing the auto-pick. The "Finding more streams…"
+    // state covers the wait; a dead source times out to Failed, so this never
+    // hangs. Supersedes the old first-in-addon-order pick.
+    if (groups.any { it is GroupState.Loading }) return AutoStartResult.Waiting
+    val top = StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs)
+        .firstOrNull() ?: return AutoStartResult.None
+    val addon = groups.filterIsInstance<GroupState.Loaded>()
+        .firstOrNull { it.addon.manifestUrl == top.addonUrl }?.addon
+        ?: return AutoStartResult.None
+    return AutoStartResult.Found(addon, top.stream)
 }
 
 /**
- * Flatten to the "Try another server" walk order: addon order, then stream
- * order (§4.1.7). Untouched — tapping "Try a different stream" walks the list
- * exactly as the addons returned it.
+ * The "Try a different stream" walk order — the same interwoven, ranked,
+ * de-duplicated list the picker shows, so tapping it steps through streams
+ * best-first (and never revisits a duplicate the sources all returned).
  */
-fun orderedAlternatives(groups: List<GroupState>): List<StreamAlternatives.Alternative> =
-    groups.flatMap { group ->
-        (group as? GroupState.Loaded)?.streams
-            ?.filter { it.isPlayableInV1 }
-            ?.map { StreamAlternatives.Alternative(group.addon.manifestUrl, it) }
-            .orEmpty()
-    }
+fun orderedAlternatives(
+    groups: List<GroupState>,
+    hardwareCodecs: Set<StreamCascade.VideoCodec> = emptySet(),
+): List<StreamAlternatives.Alternative> =
+    StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs)
+        .map { StreamAlternatives.Alternative(it.addonUrl, it.stream) }

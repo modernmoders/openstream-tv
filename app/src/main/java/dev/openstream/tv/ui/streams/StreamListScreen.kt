@@ -171,7 +171,8 @@ fun StreamListScreen(
         StreamCascade.mergeForDisplay(
             loadedGroups.mapIndexed { i, g ->
                 StreamCascade.AddonStreams(g.addon.manifestUrl, i, g.streams)
-            }
+            },
+            viewModel.hardwareCodecs,
         )
     }
     val addonByUrl = remember(state.groups) {

@@ -88,6 +88,7 @@ class StreamListViewModelTest {
         noExternalPlayers,
         AutoplayController(NeverAutoplayGateway),
         alternatives,
+        dev.openstream.tv.player.DecoderCapabilities(),
         playbackPrefs,
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )

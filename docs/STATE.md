@@ -1,5 +1,27 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 22 cont. 3 — 2026-07-09 — alpha.33 BUILT: codec-aware / hardware-informed stream ranking)
+**alpha.33 (versionCode 33) BUILT — assembleDebug + testDebugUnitTest GREEN (flaky HomeViewModelTest
+Main-dispatcher test cleared on rerun). NOT deployed.** THE SOFTWARE-PLAYER-KILLER (owner's repeated
+wish). Can't be emulator-verified — codec detection is per-box; needs a real box.
+- New `player/DecoderCapabilities.kt` (@Singleton): reads the box's HARDWARE video decoders once from
+  `MediaCodecList` → `Set<StreamCascade.VideoCodec>` {H264, HEVC, HEVC_10BIT, AV1, VP9}. Best-effort:
+  query wrapped in runCatching → empty set on failure (and on the JVM in unit tests) → no-op ranking.
+- `StreamCascade`: new `VideoCodec` enum + `videoCodecOf(stream)` (parses codec + 10-bit/HDR from the
+  release label) + `canHardwareDecode(stream, hw)` (unknown codec OR empty caps → true; only DEMOTES
+  codecs positively known-undecodable). `mergeForDisplay` now takes `hardwareCodecs` and ranks
+  **cached → hardware-decodable → resolution → source order**. Does NOT reorder by language (owner
+  2026-07-08 anime-dub rule preserved; source order is the finest tiebreaker).
+- `AutoStartSelection`: `firstPlayableWhenSettled` → **`bestPlayableWhenSettled`** — the auto-pick now
+  waits for ALL sources to settle then takes the merged-ranked TOP (was: first playable in addon order).
+  `orderedAlternatives` ("Try a different stream") now walks the same merged/ranked/deduped order.
+  `StreamListViewModel` injects `DecoderCapabilities`, exposes `hardwareCodecs` to the screen.
+- Tests: StreamCascadeTest 19 (codec + merge), AutoStartSelectionTest 11, StreamListViewModelTest 6.
+⏳ **Owner verify on a box:** does auto-play now pick a stream that plays CLEAN (no macroblocking, no
+software-decoder trip) on an anime/HEVC title? If the box still macroblocks, read the App log — may need
+the codec label heuristics widened. ⏳ Deploy target **alpha.33**. Still open in Round 13: focus drift,
+Home-back-to-tile, season selector, next-episode, scroll indicator, de-emphasize help buttons.
+
 ## ⚠️ READ FIRST (session 22 cont. 2 — 2026-07-09 — alpha.32 BUILT: interwoven stream list)
 **alpha.32 (versionCode 32) BUILT — assembleDebug + testDebugUnitTest GREEN. NOT deployed.**
 On top of alpha.31: **the stream list is now ONE interwoven, ranked, de-duplicated list**
