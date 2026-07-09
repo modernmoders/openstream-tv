@@ -105,6 +105,14 @@ class PlayerViewModel @Inject constructor(
         /** Whether the CURRENT playback is using software decoding — the
          *  "Having trouble?" toggle reflects this ON/OFF (owner 2026-07-08). */
         val softwareDecoderOn: Boolean = false,
+        /**
+         * Non-null = there is saved progress and we haven't decided where to
+         * start yet: the player shows a "Resume from X / Start from the
+         * beginning" prompt over the loading animation while the stream is
+         * tested, and holds playback paused until answered (owner 2026-07-08).
+         * Cleared once answered — never shown twice in a session.
+         */
+        val resumePromptMs: Long? = null,
     )
 
     /** A neighbouring episode the player's prev/next buttons can open. */
@@ -150,7 +158,14 @@ class PlayerViewModel @Inject constructor(
         if (req == null) {
             _uiState.value = UiState(hasSource = false)
         } else {
-            _uiState.value = UiState(title = req.source.title, canTryNext = alternatives.hasNext())
+            // A staged start position means there IS saved progress: ask where
+            // to start (over the loading animation) instead of silently jumping.
+            val resumeAt = req.source.startPositionMs.takeIf { it > 0 }
+            _uiState.value = UiState(
+                title = req.source.title,
+                canTryNext = alternatives.hasNext(),
+                resumePromptMs = resumeAt,
+            )
             context.startService(Intent(context, PlaybackService::class.java))
             resolveEpisodeNav(req)
             viewModelScope.launch {
@@ -173,6 +188,11 @@ class PlayerViewModel @Inject constructor(
                 val languages = playbackPrefs.languages.first()
                 engine.exoPlayer.applyPreferredLanguages(languages.audio ?: "en", languages.subtitle)
                 engine.play(req.source)
+                // Resume prompt pending → buffer/test the stream but hold it
+                // paused (no surprise audio) until the viewer picks resume or
+                // start-over. play() prepared at the saved position already, so
+                // "resume" is just letting it go; "start over" seeks to 0 first.
+                if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
                 launch { collectPlayerEvents(engine) }
                 launch { collectAutoplayCommands(engine) }
                 launch {
@@ -341,6 +361,26 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** Resume prompt → "Resume": drop the prompt and let the (already prepared
+     *  at the saved position) playback go. */
+    fun resumeFromSaved() {
+        if (_uiState.value.resumePromptMs == null) return
+        _uiState.value = _uiState.value.copy(resumePromptMs = null)
+        engine.value?.exoPlayer?.playWhenReady = true
+    }
+
+    /** Resume prompt → "Start from the beginning": seek to 0, drop the prompt,
+     *  play. The seek re-buffers, so the loading animation carries over until
+     *  the fresh position renders. */
+    fun startFromBeginning() {
+        if (_uiState.value.resumePromptMs == null) return
+        _uiState.value = _uiState.value.copy(resumePromptMs = null)
+        engine.value?.exoPlayer?.let {
+            it.seekTo(0)
+            it.playWhenReady = true
+        }
+    }
+
     /** OK on the Skip button: jump past the intro/credits and drop the button. */
     fun skipCurrentSegment() {
         val segment = _uiState.value.skipSegment ?: return
@@ -395,6 +435,10 @@ class PlayerViewModel @Inject constructor(
                 switching = true, canTryNext = alternatives.hasNext(),
             )
             engine.play(newRequest.source)
+            // Broke DURING the resume prompt (first link failed to test): keep
+            // the replacement held paused so the prompt still governs where the
+            // working stream starts, instead of blaring audio behind the prompt.
+            if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
             return true
         }
     }

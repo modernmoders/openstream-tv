@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,7 @@ import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
 import dev.openstream.tv.player.applyTrackOption
 import dev.openstream.tv.player.disableSubtitles
 import dev.openstream.tv.player.toTrackMenu
+import dev.openstream.tv.ui.components.LoadingAnimation
 import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
@@ -128,6 +130,12 @@ fun PlayerScreen(
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var playing by remember { mutableStateOf(true) }
+    // Loading/test phase driver: the looping spinner shows while the stream
+    // buffers (and while the debrid services serve their "resolving" clips),
+    // clearing when the player reaches READY. Seeded from the CURRENT state, not
+    // a fixed default: the ViewModel calls play() before this listener attaches,
+    // so a stream that opened fast would otherwise never leave the spinner.
+    var playbackState by remember(engine) { mutableIntStateOf(engine.exoPlayer.playbackState) }
 
     val outerFocus = remember { FocusRequester() }
     val scrubFocus = remember { FocusRequester() }
@@ -144,6 +152,9 @@ fun PlayerScreen(
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
                 tracksMenu = tracks.toTrackMenu()
+            }
+            override fun onPlaybackStateChanged(state: Int) {
+                playbackState = state
             }
         }
         engine.exoPlayer.addListener(listener)
@@ -183,10 +194,25 @@ fun PlayerScreen(
             delay(300)
         }
     }
+    // The load/test phase: spinner (and, if there's saved progress, the resume
+    // prompt) covers the black/debrid-placeholder until the first real frame
+    // paints. While a resume prompt is pending, playback is held paused by the
+    // ViewModel, so `loading` stays true until the viewer answers.
+    val loading = state.error == null && !state.ended && autoplay == null &&
+        (state.resumePromptMs != null || playbackState != Player.STATE_READY)
+
     // Focus follows the bar: on it when shown, back to the full-screen catcher
-    // when hidden (so the next key wakes it rather than seeking blindly).
-    LaunchedEffect(overlayVisible) {
-        runCatching { if (overlayVisible) scrubFocus.requestFocus() else outerFocus.requestFocus() }
+    // when hidden (so the next key wakes it rather than seeking blindly). While
+    // loading the resume prompt (or nothing) owns focus, so don't grab the
+    // hidden scrub bar out from under it.
+    LaunchedEffect(overlayVisible, loading) {
+        runCatching {
+            when {
+                loading -> Unit
+                overlayVisible -> scrubFocus.requestFocus()
+                else -> outerFocus.requestFocus()
+            }
+        }
     }
 
     Box(
@@ -198,6 +224,10 @@ fun PlayerScreen(
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 val code = event.key.nativeKeyCode
+                // Load/test phase: the resume prompt's buttons (or nothing) own
+                // the keys — never wake a hidden bar or blind-seek here. BACK
+                // still falls through to BackHandler to leave the player.
+                if (loading) return@onPreviewKeyEvent false
                 // Up Next countdown: OK plays now (§7.1 step 2).
                 if ((code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
                         code == AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) &&
@@ -236,7 +266,30 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (overlayVisible && state.error == null && !state.ended && autoplay == null) {
+        if (loading) {
+            // Near-opaque scrim so the paused resume-point frame and the debrid
+            // "resolving" clip stay hidden behind the spinner.
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xF0000000)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(32.dp),
+                ) {
+                    LoadingAnimation()
+                    state.resumePromptMs?.let { resumeMs ->
+                        ResumePrompt(
+                            resumeMs = resumeMs,
+                            onResume = viewModel::resumeFromSaved,
+                            onStartOver = viewModel::startFromBeginning,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (overlayVisible && !loading && state.error == null && !state.ended && autoplay == null) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -591,6 +644,39 @@ private fun AnotherAppDialog(
                     modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
                 )
             }
+        }
+    }
+}
+
+/**
+ * "Resume from X / Start from the beginning" shown over the loading spinner
+ * while the stream is tested (owner 2026-07-08). Same content survives whatever
+ * stream/link is picked because progress is keyed by the video, not the URL
+ * (MediaRef, §8.4). Resume holds initial focus so a single OK continues — the
+ * common case for someone getting back to a show they were partway through.
+ */
+@Composable
+private fun ResumePrompt(
+    resumeMs: Long,
+    onResume: () -> Unit,
+    onStartOver: () -> Unit,
+) {
+    val resumeFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { resumeFocus.requestFocus() } }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            "You've watched part of this",
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = onResume, modifier = Modifier.focusRequester(resumeFocus)) {
+                Text("Resume from ${resumeMs.asClock()}")
+            }
+            Button(onClick = onStartOver) { Text("Start from the beginning") }
         }
     }
 }

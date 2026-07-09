@@ -108,14 +108,25 @@ fun StreamListScreen(
         }
     }
 
-    /** Player decided; ask about resume only when there is progress to resume. */
+    /**
+     * Player decided. The INTERNAL player now asks "resume / start over" itself,
+     * over its loading animation (owner 2026-07-08), so we just launch it at the
+     * saved position (resume by default) and let it prompt. An EXTERNAL player
+     * (VLC/MX) can't host our prompt, so it still gets the pre-launch dialog.
+     */
     fun onPlayerDecided(play: PendingPlay) {
         choosingPlayer = false
-        if (state.resumePositionMs != null) {
-            pendingPlay = play // keep dialog chain going: resume question next
-        } else {
-            pendingPlay = null
-            launch(play, 0)
+        val resume = state.resumePositionMs
+        when {
+            play.external == null -> {
+                pendingPlay = null
+                launch(play, resume ?: 0)
+            }
+            resume != null -> pendingPlay = play // external: ask before leaving the app
+            else -> {
+                pendingPlay = null
+                launch(play, 0)
+            }
         }
     }
 

@@ -1252,3 +1252,45 @@ carefully, not rushed.
 
 alpha.29 (versionCode 29). Gates green: assembleDebug + testDebugUnitTest (283
 tests, 0 fail) + assembleRelease (R8) clean. (b) is live; (c) is diagnosis + plan.
+
+## 47. 2026-07-08 (session 21) — In-player resume prompt over a looping loading animation (alpha.30)
+
+Owner: reopening a partly-watched thing should return to the same spot **no
+matter what stream/link**, and the "resume or start over?" question should be
+asked **while the video is being tested** (buffering + the static
+Real-Debrid/Torbox/Debridio "resolving" clips), with a **looping loading
+animation** on screen.
+
+(a) **Resume is already stream-agnostic — confirmed, no code.** Watch progress
+is keyed by `MediaRef` (video id for episodes, meta id for movies), never by the
+stream URL (§8.4), so any stream of the same item resumes at the same position.
+This is what the owner asked for in the first clause; nothing to build.
+
+(b) **`LoadingAnimation` component** (`ui/components/LoadingAnimation.kt`) — a
+spinning accent arc (spins via `graphicsLayer { rotationZ }`, layer-phase only,
+no per-frame recomposition — DECISIONS #22 discipline so the 32-bit onn boxes
+stay smooth; degrades to a static ring if a box suppresses infinite animations)
+plus a "Getting your show ready…" line. Replaces the black screen the player
+showed while buffering.
+
+(c) **Resume question moved INTO the internal player, over the loader.** The
+player now shows the spinner during its load/test phase (driven by
+`playbackState != STATE_READY`, seeded from the CURRENT engine state to dodge a
+listener-attaches-after-play() race that would otherwise wedge the spinner). If
+there is saved progress, a **"Resume from X / Start from the beginning"** prompt
+sits over the spinner and playback is **held paused** (owner's choice — no
+surprise audio; the stream still buffers so a bad link fails fast). Resume holds
+initial focus (one OK to continue). `PlayerViewModel.resumePromptMs` is set from
+`source.startPositionMs > 0` at init; `resumeFromSaved()` lets it go,
+`startFromBeginning()` seeks to 0 first. An error-driven auto-skip during the
+prompt re-holds the replacement paused so the prompt still governs.
+
+(d) **Stream list defers to the player for the internal path.** The old blocking
+pre-launch `ResumeDialog` is skipped for the internal player (it launches at the
+saved position and the player asks). It's **kept for external players** (VLC/MX)
+— we can't overlay another app, so those still ask before leaving.
+
+alpha.30 (versionCode 30). Gates green: assembleDebug + testDebugUnitTest (283
+tests, 0 fail) + assembleRelease (R8) clean. NOT device-verified — the AVD can't
+play the family's real streams; owner to eyeball on a box (the Compose overlays
+draw above the video surface, so a screencap during loading should show them).
