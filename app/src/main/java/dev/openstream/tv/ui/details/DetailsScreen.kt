@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
@@ -297,23 +298,55 @@ private fun DetailsContent(
                             .background(AppBackground)
                             .padding(bottom = 10.dp),
                     ) {
+                        // Without a restorer, coming back UP from an episode row
+                        // leaves the chip to Compose's geometric focus search:
+                        // the episode row spans the full width, so the search
+                        // picks whichever chip sits nearest its centre — which is
+                        // never the one you left, and drifts further right on
+                        // every trip (owner round 13 #5: season 1 → 3 → 5 → 7).
+                        // focusRestorer pins re-entry to the chip focus left from,
+                        // falling back to the SELECTED season, the one whose
+                        // episodes are actually on screen.
+                        val selectedChipFocus = remember { FocusRequester() }
+                        val seasonRowState = rememberLazyListState()
+                        // Bring the selected chip on screen once, at entry: a
+                        // resume can land on season 5, whose chip would otherwise
+                        // never be composed — and an unattached fallback
+                        // FocusRequester is one the restorer cannot focus. Entry
+                        // only, so selecting a season later doesn't jolt the row.
+                        val selectedChipIndex = seasons.indexOf(selectedSeason)
+                        LaunchedEffect(Unit) {
+                            if (selectedChipIndex > 0) seasonRowState.scrollToItem(selectedChipIndex)
+                        }
                         // 8dp edge padding: the row clips on its scroll axis, so
                         // the first/last chip's focus scale needs headroom. The
                         // slight indent is invisible at 10 feet (§5.3).
                         LazyRow(
+                            state = seasonRowState,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp),
+                            modifier = Modifier.focusRestorer(selectedChipFocus),
                         ) {
                             items(seasons, key = { it }) { season ->
+                                // With a resume target the episode row owns entry
+                                // focus, not the season chip.
+                                val isEntryChip =
+                                    season == seasons.first() && resumeVideoId == null
                                 SurfacePill(
                                     label = if (season == 0) "Specials" else "Season $season",
                                     onClick = { onSelectSeason(season) },
                                     selected = season == selectedSeason,
-                                    // With a resume target the episode row owns
-                                    // entry focus, not the season chip.
-                                    modifier = if (season == seasons.first() && resumeVideoId == null) {
-                                        Modifier.focusRequester(primaryFocus)
-                                    } else Modifier,
+                                    modifier = Modifier
+                                        .then(
+                                            if (season == selectedSeason) {
+                                                Modifier.focusRequester(selectedChipFocus)
+                                            } else Modifier
+                                        )
+                                        .then(
+                                            if (isEntryChip) {
+                                                Modifier.focusRequester(primaryFocus)
+                                            } else Modifier
+                                        ),
                                 )
                             }
                         }

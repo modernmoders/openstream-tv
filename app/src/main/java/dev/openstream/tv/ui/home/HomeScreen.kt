@@ -22,9 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -60,6 +63,38 @@ import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
 import dev.openstream.tv.ui.theme.SurfaceCard
 
+/** LazyColumn item keys for the two rows that aren't addon catalogs. */
+internal const val HOME_FEATURED_KEY = "featured"
+internal const val HOME_CONTINUE_WATCHING_KEY = "continue-watching"
+
+/** Frames to wait for a restored row to compose before giving up on its focus. */
+private const val RESTORE_FOCUS_FRAMES = 12
+
+/**
+ * Which LazyColumn item holds [targetRowKey], or -1 when it isn't on screen.
+ *
+ * The column is header, then an optional hero, then an optional Continue
+ * Watching row, then the catalog rows — so a catalog's index depends on which
+ * of the optional rows exist. Pure so the arithmetic is unit-testable.
+ */
+internal fun homeRestoreIndex(
+    rowKeys: List<String>,
+    hasFeatured: Boolean,
+    hasContinueWatching: Boolean,
+    targetRowKey: String,
+): Int {
+    val featuredIndex = 1 // item 0 is always the header
+    if (targetRowKey == HOME_FEATURED_KEY) return if (hasFeatured) featuredIndex else -1
+    val continueWatchingIndex = if (hasFeatured) featuredIndex + 1 else featuredIndex
+    if (targetRowKey == HOME_CONTINUE_WATCHING_KEY) {
+        return if (hasContinueWatching) continueWatchingIndex else -1
+    }
+    val firstCatalogIndex =
+        if (hasContinueWatching) continueWatchingIndex + 1 else continueWatchingIndex
+    val offset = rowKeys.indexOf(targetRowKey)
+    return if (offset < 0) -1 else firstCatalogIndex + offset
+}
+
 /**
  * Home: catalog rows from all enabled addons, rendered incrementally as each
  * addon answers. Continue Watching will become the always-first row in
@@ -77,12 +112,27 @@ fun HomeScreen(
 
     // Predictable entry point (§10): land on the header so Home opens at the
     // very top — the featured hero stays in view instead of the list auto-
-    // scrolling to a focusable poster deeper down. Re-request when the screen
-    // switches branches (initializing → loaded): each branch composes its own
-    // header instance, and the old focused node is disposed with the branch.
+    // scrolling to a focusable poster deeper down.
     val headerFocus = remember { FocusRequester() }
     val showingRows = !state.initializing && state.hasAddons
-    LaunchedEffect(showingRows) { runCatching { headerFocus.requestFocus() } }
+    // Only the branches that have nothing else to focus. The rows branch owns
+    // its own entry focus below, because focusing the header there would drag
+    // a restored scroll position back to the top (header == list item 0).
+    LaunchedEffect(showingRows) { if (!showingRows) runCatching { headerFocus.requestFocus() } }
+
+    // Back from Details must land on the tile you opened, not the top of Home
+    // (owner round 13 #4). Navigating away disposes this screen, so the focused
+    // node — and every focusRestorer's memory with it — is gone by the time we
+    // return. Remember WHICH tile was opened instead; rememberSaveable outlives
+    // the back stack. It is never cleared: the last tile you opened stays the
+    // anchor for every later return to Home.
+    var openedRowKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var openedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    val openItem: (String, MetaItem) -> Unit = { rowKey, item ->
+        openedRowKey = rowKey
+        openedItemId = item.id
+        onItemClick(item)
+    }
 
     Column(
         modifier = Modifier
@@ -113,10 +163,43 @@ fun HomeScreen(
                 // hero is inserted just under the header (rows load after the
                 // first frame) it can land above the viewport. Snap to the top
                 // once, the moment the hero first appears — after that the
-                // user's own scrolling is left alone.
+                // user's own scrolling is left alone. The saveable latch matters
+                // on the way BACK from Details: the hero is already there, so an
+                // unguarded effect would re-snap Home to the top (round 13 #4).
                 val listState = rememberLazyListState()
+                var didSnapToHero by rememberSaveable { mutableStateOf(false) }
                 LaunchedEffect(featured != null) {
-                    if (featured != null) listState.scrollToItem(0)
+                    if (featured != null && !didSnapToHero) {
+                        listState.scrollToItem(0)
+                        didSnapToHero = true
+                    }
+                }
+
+                // Entry focus: the tile we left, else the header. Both the column
+                // and the target row scroll lazily, so the row's FocusRequester
+                // only attaches a frame or two after the column reaches it —
+                // probe until it takes, then fall back to the header.
+                val restoreFocus = remember { FocusRequester() }
+                val rowKeys = state.rows.map { it.ref.key }
+                LaunchedEffect(Unit) {
+                    val index = openedRowKey?.let {
+                        homeRestoreIndex(
+                            rowKeys = rowKeys,
+                            hasFeatured = featured != null,
+                            hasContinueWatching = state.continueWatching.isNotEmpty(),
+                            targetRowKey = it,
+                        )
+                    } ?: -1
+                    if (index >= 0) {
+                        listState.scrollToItem(index)
+                        repeat(RESTORE_FOCUS_FRAMES) {
+                            withFrameNanos {}
+                            if (runCatching { restoreFocus.requestFocus() }.isSuccess) {
+                                return@LaunchedEffect
+                            }
+                        }
+                    }
+                    runCatching { headerFocus.requestFocus() }
                 }
 
                 LazyColumn(
@@ -138,17 +221,35 @@ fun HomeScreen(
                         HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
                     }
                     if (featured != null) {
-                        item(key = "featured") {
-                            FeaturedHero(featured, onItemClick)
+                        item(key = HOME_FEATURED_KEY) {
+                            FeaturedHero(
+                                item = featured,
+                                onItemClick = { openItem(HOME_FEATURED_KEY, it) },
+                                modifier = if (openedRowKey == HOME_FEATURED_KEY) {
+                                    Modifier.focusRequester(restoreFocus)
+                                } else Modifier,
+                            )
                         }
                     }
                     if (state.continueWatching.isNotEmpty()) {
-                        item(key = "continue-watching") {
-                            ContinueWatchingRow(state.continueWatching, onItemClick)
+                        item(key = HOME_CONTINUE_WATCHING_KEY) {
+                            ContinueWatchingRow(
+                                entries = state.continueWatching,
+                                onItemClick = { openItem(HOME_CONTINUE_WATCHING_KEY, it) },
+                                restoreItemId = openedItemId
+                                    .takeIf { openedRowKey == HOME_CONTINUE_WATCHING_KEY },
+                                restoreFocus = restoreFocus,
+                            )
                         }
                     }
                     items(state.rows, key = { it.ref.key }) { row ->
-                        CatalogRow(row, state.columns, onItemClick)
+                        CatalogRow(
+                            row = row,
+                            columns = state.columns,
+                            onItemClick = { openItem(row.ref.key, it) },
+                            restoreItemId = openedItemId.takeIf { openedRowKey == row.ref.key },
+                            restoreFocus = restoreFocus,
+                        )
                     }
                 }
             }
@@ -198,11 +299,12 @@ private fun HomeHeader(
 private fun FeaturedHero(
     item: MetaItem,
     onItemClick: (MetaItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(18.dp)
     Surface(
         onClick = { onItemClick(item) },
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 48.dp)
             .height(300.dp),
@@ -311,14 +413,15 @@ private fun EmptyHome() {
  * Always-first row when non-empty (§5.6). A click navigates to the item's
  * DETAILS page — from there the resume dialog (stream list) takes over.
  */
-// OptIn: focusRestorer — same §10 row-entry rule as Search (no stable
-// equivalent yet); DOWN into a fresh row lands on the FIRST card, but
-// returning to a row you were just in restores the card you left.
-@OptIn(ExperimentalComposeUiApi::class)
+// focusRestorer — the §10 row-entry rule, same as Search: DOWN into a fresh row
+// lands on the FIRST card, but returning to a row you were just in restores the
+// card you left.
 @Composable
 private fun ContinueWatchingRow(
     entries: List<WatchProgress>,
     onItemClick: (MetaItem) -> Unit,
+    restoreItemId: String?,
+    restoreFocus: FocusRequester,
 ) {
     Column {
         Text(
@@ -328,14 +431,20 @@ private fun ContinueWatchingRow(
             modifier = Modifier.padding(horizontal = 48.dp),
         )
         val firstCardFocus = remember { FocusRequester() }
+        val rowState = rememberLazyListState()
+        val restoreIndex = restoreItemId?.let { id -> entries.indexOfFirst { it.metaId == id } } ?: -1
+        // Scroll the restored card into existence: a LazyRow hasn't composed
+        // off-screen cards, so its FocusRequester wouldn't be attached yet.
+        LaunchedEffect(restoreIndex) { if (restoreIndex > 0) rowState.scrollToItem(restoreIndex) }
         LazyRow(
+            state = rowState,
             horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
             // Vertical headroom: a focused card scales into this gap instead
             // of overlaying the row title / getting clipped (§5.3).
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
             ),
-            modifier = Modifier.focusRestorer { firstCardFocus },
+            modifier = Modifier.focusRestorer(firstCardFocus),
         ) {
             itemsIndexed(entries, key = { _, it -> "${it.ref.sourceKind}:${it.ref.externalId}" }) { index, p ->
                 ContinueWatchingCard(
@@ -346,20 +455,23 @@ private fun ContinueWatchingRow(
                             MetaItem(id = p.metaId, type = p.metaType, name = p.title, poster = p.poster)
                         )
                     },
-                    modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
+                    modifier = Modifier
+                        .then(if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier)
+                        .then(if (index == restoreIndex) Modifier.focusRequester(restoreFocus) else Modifier),
                 )
             }
         }
     }
 }
 
-// OptIn: focusRestorer — see ContinueWatchingRow above.
-@OptIn(ExperimentalComposeUiApi::class)
+// focusRestorer — see ContinueWatchingRow above.
 @Composable
 private fun CatalogRow(
     row: RowState,
     columns: Int,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
+    restoreItemId: String?,
+    restoreFocus: FocusRequester,
 ) {
     Column {
         Row(
@@ -388,18 +500,30 @@ private fun CatalogRow(
                     RowMessage("Nothing in this catalog")
                 } else {
                     val firstCardFocus = remember { FocusRequester() }
+                    val rowState = rememberLazyListState()
+                    val restoreIndex =
+                        restoreItemId?.let { id -> row.items.indexOfFirst { it.id == id } } ?: -1
+                    // Scroll the restored card into existence: a LazyRow hasn't
+                    // composed off-screen cards, so its FocusRequester wouldn't
+                    // be attached yet.
+                    LaunchedEffect(restoreIndex) {
+                        if (restoreIndex > 0) rowState.scrollToItem(restoreIndex)
+                    }
                     LazyRow(
+                        state = rowState,
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
                         ),
-                        modifier = Modifier.focusRestorer { firstCardFocus },
+                        modifier = Modifier.focusRestorer(firstCardFocus),
                     ) {
                         itemsIndexed(row.items, key = { _, it -> it.id }) { index, item ->
                             PosterCard(
                                 item,
                                 onClick = { onItemClick(item) },
-                                modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
+                                modifier = Modifier
+                                    .then(if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier)
+                                    .then(if (index == restoreIndex) Modifier.focusRequester(restoreFocus) else Modifier),
                                 columns = columns,
                             )
                         }
