@@ -37,7 +37,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
-import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.MicIconImage
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
@@ -76,7 +75,6 @@ fun SearchScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                BackButton(onBack)
                 Text(
                     text = "Search",
                     style = MaterialTheme.typography.headlineLarge,

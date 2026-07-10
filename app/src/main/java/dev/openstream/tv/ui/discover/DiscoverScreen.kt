@@ -42,7 +42,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
-import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.OptionRow
 import dev.openstream.tv.ui.components.PosterCard
@@ -116,7 +115,6 @@ fun DiscoverScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(bottom = 14.dp),
         ) {
-            BackButton(onBack)
             Text(
                 text = "Discover",
                 style = MaterialTheme.typography.headlineLarge,

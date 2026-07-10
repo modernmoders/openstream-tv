@@ -10,6 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.navigation.compose.currentBackStackEntryAsState
+import dev.openstream.tv.ui.components.NavDestination
+import dev.openstream.tv.ui.components.NavRail
+import dev.openstream.tv.ui.components.RailIconKind
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -95,9 +103,38 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
     // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
     val goBack: () -> Unit = { navController.popBackStack() }
 
+    // Persistent left rail (owner 2026-07-10). Home/Discover/Search/Settings are
+    // SIBLINGS, not a stack: switching between them pops back to the start
+    // destination with saveState, so the back stack never grows and each section
+    // keeps its scroll/focus. That's what lets their Back buttons go away.
+    val sections = remember {
+        listOf(
+            NavDestination(Routes.HOME, "Home", RailIconKind.HOME),
+            NavDestination(Routes.DISCOVER, "Discover", RailIconKind.DISCOVER),
+            NavDestination(Routes.SEARCH, "Search", RailIconKind.SEARCH),
+            NavDestination(Routes.SETTINGS, "Settings", RailIconKind.SETTINGS),
+        )
+    }
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    val goSection: (String) -> Unit = { route ->
+        if (route != currentRoute) {
+            navController.navigate(route) {
+                popUpTo(Routes.HOME) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
+    Row(modifier = Modifier.fillMaxSize()) {
+    if (sections.any { it.route == currentRoute }) {
+        NavRail(currentRoute = currentRoute, destinations = sections, onSelect = goSection)
+    }
     NavHost(
         navController = navController,
         startDestination = startDestination,
+        modifier = Modifier.weight(1f),
         // Refined, snappy screen motion (owner UX pass #4): a quick cross-fade
         // with a whisper of scale — enough to feel alive on a TV, never enough
         // to disorient or stutter. One place, so every destination inherits it.
@@ -211,4 +248,5 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
             )
         }
     }
+    }  // end Row(rail + NavHost)
 }

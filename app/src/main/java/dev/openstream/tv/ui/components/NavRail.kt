@@ -1,0 +1,192 @@
+package dev.openstream.tv.ui.components
+
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
+import androidx.tv.material3.Text
+import dev.openstream.tv.ui.theme.Accent
+import dev.openstream.tv.ui.theme.MutedText
+import dev.openstream.tv.ui.theme.SurfaceCard
+
+/** One top-level section of the app. [icon] selects a drawn glyph, not a font
+ *  character — the boxes' fonts render unicode symbols/emoji inconsistently
+ *  (the search mic was already swapped from an emoji to a vector). */
+data class NavDestination(val route: String, val label: String, val icon: RailIconKind)
+
+enum class RailIconKind { HOME, DISCOVER, SEARCH, SETTINGS }
+
+private val COLLAPSED_WIDTH = 78.dp
+private val EXPANDED_WIDTH = 210.dp
+
+/**
+ * Persistent left navigation rail for the top-level sections (owner 2026-07-10:
+ * "if you're on Home and go to Discover, it would be cool to still have the
+ * Home/Discover/Search/Settings buttons on-screen").
+ *
+ * It replaces the per-screen Back button on those sections: the sections are
+ * siblings, not a stack, so LEFT from the content always lands here and the
+ * current one stays highlighted. Collapsed to icons until the rail takes focus,
+ * then it expands to show labels — the Google-TV pattern, so poster rows keep
+ * their width while you're browsing.
+ */
+@Composable
+fun NavRail(
+    currentRoute: String?,
+    destinations: List<NavDestination>,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val width by animateDpAsState(
+        targetValue = if (focused) EXPANDED_WIDTH else COLLAPSED_WIDTH,
+        animationSpec = tween(180),
+        label = "rail-width",
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(width)
+            // hasFocus (not isFocused): expand while ANY rail item holds focus.
+            .onFocusChanged { focused = it.hasFocus }
+            .focusGroup()
+            .background(Color(0xCC0E0E16))
+            .padding(vertical = 28.dp, horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        destinations.forEach { destination ->
+            RailItem(
+                destination = destination,
+                selected = currentRoute == destination.route,
+                expanded = focused,
+                onClick = { onSelect(destination.route) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RailItem(
+    destination: NavDestination,
+    selected: Boolean,
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            // The SELECTED section stays visibly lit even when focus is in the
+            // content — that's what tells you where you are.
+            containerColor = if (selected) Accent.copy(alpha = 0.22f) else Color.Transparent,
+            focusedContainerColor = SurfaceCard,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            RailIcon(destination.icon, if (selected) Accent else Color.White)
+            if (expanded) {
+                Text(
+                    text = destination.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (selected) Accent else MutedText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** Simple drawn glyphs — no font/emoji dependency (see [NavDestination.icon]). */
+@Composable
+private fun RailIcon(kind: RailIconKind, tint: Color) {
+    Canvas(Modifier.size(24.dp)) {
+        val w = size.width
+        val stroke = Stroke(width = w * 0.09f, cap = StrokeCap.Round)
+        when (kind) {
+            RailIconKind.HOME -> {
+                // roof + body
+                val roof = Path().apply {
+                    moveTo(w * 0.10f, w * 0.48f)
+                    lineTo(w * 0.50f, w * 0.12f)
+                    lineTo(w * 0.90f, w * 0.48f)
+                }
+                drawPath(roof, tint, style = stroke)
+                drawRect(
+                    color = tint,
+                    topLeft = Offset(w * 0.24f, w * 0.48f),
+                    size = Size(w * 0.52f, w * 0.40f),
+                    style = stroke,
+                )
+            }
+            RailIconKind.DISCOVER -> {
+                // compass diamond inside a ring
+                drawCircle(tint, radius = w * 0.42f, style = stroke)
+                val needle = Path().apply {
+                    moveTo(w * 0.50f, w * 0.24f)
+                    lineTo(w * 0.66f, w * 0.50f)
+                    lineTo(w * 0.50f, w * 0.76f)
+                    lineTo(w * 0.34f, w * 0.50f)
+                    close()
+                }
+                drawPath(needle, tint, style = stroke)
+            }
+            RailIconKind.SEARCH -> {
+                drawCircle(tint, radius = w * 0.30f, center = Offset(w * 0.43f, w * 0.43f), style = stroke)
+                drawLine(tint, Offset(w * 0.66f, w * 0.66f), Offset(w * 0.88f, w * 0.88f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
+            }
+            RailIconKind.SETTINGS -> {
+                drawCircle(tint, radius = w * 0.20f, style = stroke)
+                // six teeth around the hub
+                repeat(6) { i ->
+                    val a = (Math.PI / 3.0 * i).toFloat()
+                    val inner = w * 0.30f
+                    val outer = w * 0.44f
+                    val cx = w / 2f
+                    drawLine(
+                        tint,
+                        Offset(cx + inner * kotlin.math.cos(a), cx + inner * kotlin.math.sin(a)),
+                        Offset(cx + outer * kotlin.math.cos(a), cx + outer * kotlin.math.sin(a)),
+                        strokeWidth = w * 0.09f,
+                        cap = StrokeCap.Round,
+                    )
+                }
+            }
+        }
+    }
+}

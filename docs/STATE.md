@@ -1,5 +1,47 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 22 cont. 5 — 2026-07-10 — alpha.36/.37/.38; Adam's 5-instance stack LIVE)
+🚨 **BOXES STILL ON alpha.30** (adb-verified). alpha.31–.38 are ALL undeployed. Deploy before triaging
+any owner bug report. 🚨 **DO NOT EDIT RACHAEL'S ACCOUNTS** without explicit per-request permission.
+
+**App (all build + testDebugUnitTest GREEN, none deployed):**
+- alpha.36 — search "Go" now dismisses the on-screen keyboard (supplying KeyboardActions REPLACES the
+  IME default action, so it never hid); player BACK closes the control bar first (second BACK exits);
+  UP from the scrub bar escapes the control UI instead of trapping focus.
+- alpha.37 — **audio-language ranking**: `StreamCascade.hasEnglishAudio` reads the label's *Audio*
+  section only (the release tag lies — a stream tagged English can carry Italian/Japanese audio, which
+  is why AIOStreams `requiredLanguages=English` never caught it). mergeForDisplay order is now
+  **cached → English audio → hardware-decodable → resolution → source**. Conservative: unknown audio =
+  English. 21 tests in StreamCascadeTest. Also: `ProfileLink.profileName` (captured on install,
+  refreshed each sync) → Settings header shows "<name> · <brand> <version>" (blank until one sync on
+  .37+ since existing installs never stored it).
+- alpha.38 — **persistent left NavRail** (`ui/components/NavRail.kt`): Home/Discover/Search/Settings are
+  now SIBLINGS, not a stack (navigate with popUpTo(HOME){saveState} + launchSingleTop + restoreState),
+  so the back stack never grows. Rail collapses to Canvas-drawn icons (no font/emoji dependency),
+  expands on focus, highlights the current section. Removed the on-screen BackButton from those 4
+  screens; sub-screens (HomeRows/AppLog/Addons/Details/Streams) keep theirs.
+  ⚠️ **Home still renders its old Discover/Search/Settings pills** — they carry `headerFocus`, the
+  anchor for the hold-UP scroll fix (DECISIONS #33). Removing them needs an emulator pass to re-anchor
+  entry focus first. Redundant-but-harmless until then.
+  ⚠️ **NavRail focus is NOT emulator-verified** — LEFT-from-content → rail, and rail→content, need a
+  real focus pass.
+
+**Config — Adam's 5-instance stack is LIVE and complete:**
+- AIOMetadata A `aiometadata.elfhosted.com` = "AIO - Adam - Movies & Series" (meta authority, the ONLY
+  Trakt check-in; it is also the only one declaring `subtitles`, so the alpha.35 ping can't double-fire).
+  AIOMetadata B `aiometadata.fortheweak.cloud` = "AIO - Adam - Anime & Streaming".
+- All 3 AIOStreams pushed: meta OFF, catalogs OFF, excludeUncached=true, requiredLanguages→preference.
+  **TorrentsDB auto-disabled on primary+backup (host 502)** — re-enable when it recovers.
+  Removed a deprecated `usa-tv` preset that blocked every save on fortheweebs.
+- ⚠️ **AIOStreams trap:** `resources: []` means ALL resources, not none. Stripping "meta" off a
+  catalog-only preset leaves [] and it silently serves catalog+meta again. DISABLE catalog-only addons
+  (tmdb-addon, debridio-tmdb/tvdb, streaming-catalogs) instead.
+- Box profile deployed (7 addons) to `savoy.click/setup/adam-savoy-cYoj-ZKYTwQ.json`; Stremio account
+  updated via `stremio_api.set_addons` (only Anime & Streaming was missing).
+- The base AIOMetadata export carries a stray instance UUID in `regexExclusionFilter` — junk, now
+  zeroed in both builder scripts.
+⏳ Deploy target **alpha.38**. Still open: Round-13 focus drift, Home-back-to-tile, season-selector jump.
+
 ## ⚠️ READ FIRST (session 22 cont. 4 — 2026-07-09 — alpha.34/.35: scrub fix, ⏭, Trakt check-in ROOT-CAUSED)
 🚨 **BOXES ARE ON alpha.30** (verified via adb on .117; .196 offline). alpha.31–.35 were NEVER
 deployed — every "still broken" owner report was tested against alpha.30. Deploy before triaging.

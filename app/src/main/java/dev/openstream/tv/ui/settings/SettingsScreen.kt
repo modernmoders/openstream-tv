@@ -42,7 +42,6 @@ import dev.openstream.tv.data.MIN_POSTER_COLUMNS
 import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
-import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
@@ -97,7 +96,6 @@ fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            BackButton(onBack)
             Column {
                 Text(
                     text = "Settings",
