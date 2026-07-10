@@ -35,6 +35,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import dev.openstream.tv.BuildConfig
 import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.MAX_POSTER_COLUMNS
 import dev.openstream.tv.data.MIN_POSTER_COLUMNS
@@ -76,6 +77,7 @@ fun SettingsScreen(
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
+    val profileName by viewModel.profileName.collectAsStateWithLifecycle()
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
     var pickingNumbering by remember { mutableStateOf(false) }
@@ -96,11 +98,22 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             BackButton(onBack)
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
-            )
+            Column {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                )
+                // Who this box is signed in as, and which build it runs — the
+                // owner could previously only see the name during setup, and the
+                // version only over adb (owner 2026-07-10).
+                Text(
+                    text = "${profileName.ifBlank { "Not connected" }} · " +
+                        "${viewModel.brand} ${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedText,
+                )
+            }
         }
 
         Spacer(Modifier.padding(top = 24.dp))

@@ -15,6 +15,7 @@ import dev.openstream.tv.player.ExternalPlayer
 import dev.openstream.tv.player.ExternalPlayerPort
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -33,6 +34,18 @@ class SettingsViewModel @Inject constructor(
     /** "Connect this TV" only exists when this build knows a setup site. */
     val setupConfigured: Boolean = setupConfig.isConfigured
     val brand: String = setupConfig.brand
+
+    /**
+     * Whose profile this box is running — so a household with several boxes can
+     * tell which account a TV is on without re-running setup (owner 2026-07-10).
+     * Blank until the box is connected to a setup link.
+     */
+    private val _profileName = MutableStateFlow("")
+    val profileName: StateFlow<String> = _profileName
+
+    init {
+        viewModelScope.launch { _profileName.value = profileSyncPrefs.get()?.profileName.orEmpty() }
+    }
 
     val posterColumns: StateFlow<Int> = viewPrefs.posterColumns
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_POSTER_COLUMNS)

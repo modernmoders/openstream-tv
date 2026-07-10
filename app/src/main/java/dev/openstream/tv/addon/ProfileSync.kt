@@ -90,7 +90,7 @@ class ProfileSync @Inject constructor(
             )
         }
         // Failed installs stay wanted-but-absent, so the next sync retries them.
-        prefs.save(ProfileLink(link.url, plan.managed, nowMs))
+        prefs.save(ProfileLink(link.url, plan.managed, nowMs, profile.name.ifBlank { link.profileName }))
     }
 
     companion object {

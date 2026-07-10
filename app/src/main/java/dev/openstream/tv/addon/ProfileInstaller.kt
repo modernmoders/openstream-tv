@@ -79,7 +79,9 @@ class ProfileInstaller @Inject constructor(
         val urls = plan.entries.mapNotNull { it.manifestUrl }
         val ok = urls.map { repository.install(it) }.count { it.isSuccess } // sequential: order matters
         if (ok > 0) {
-            profileSyncPrefs.save(ProfileLink(plan.profileUrl, urls.toSet(), System.currentTimeMillis()))
+            profileSyncPrefs.save(
+                ProfileLink(plan.profileUrl, urls.toSet(), System.currentTimeMillis(), plan.profileName)
+            )
         }
         return ok
     }

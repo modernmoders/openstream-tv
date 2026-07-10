@@ -92,17 +92,52 @@ object StreamCascade {
                     .thenBy { it.serverIndex }
             )
             .distinctBy { dedupKey(it.stream) }
-        // Final order: cached first, then streams the box can HARDWARE-decode
-        // (an unplayable 4K HEVC-10bit that would macroblock / force the
-        // software player must not out-rank a clean 1080p H.264 — owner
-        // 2026-07-09), then higher resolution, then the source order.
+        // Final order:
+        //   cached           - instantly playable
+        //   English audio    - a release tagged "English" overall can still carry
+        //                      only Italian/Japanese AUDIO; an unwatchable stream
+        //                      beats nothing (owner 2026-07-10)
+        //   hardware-decode  - an unplayable 4K HEVC-10bit that macroblocks /
+        //                      forces the software player must not out-rank a
+        //                      clean 1080p H.264 (owner 2026-07-09)
+        //   resolution, then the source order (which carries AIOStreams' own sort)
         return deduped.sortedWith(
             compareByDescending<Candidate> { hasCacheMarker(it.stream) }
+                .thenByDescending { hasEnglishAudio(it.stream) }
                 .thenByDescending { canHardwareDecode(it.stream, hardwareCodecs) }
                 .thenByDescending { resolutionRank(it.stream) }
                 .thenBy { it.addonIndex }
                 .thenBy { it.serverIndex }
         )
+    }
+
+    // --- audio language (read the stream's "Audio" field, not its overall tag) ---
+
+    /** The stream's Audio section, e.g. "Audio: 🇮🇹 Italian". Null when absent. */
+    private val AUDIO_SECTION = Regex("""audio[^|\n·]{0,80}""", RegexOption.IGNORE_CASE)
+    private val ENGLISH_AUDIO = Regex("""\b(english|eng)\b""", RegexOption.IGNORE_CASE)
+    private val NON_ENGLISH_AUDIO = Regex(
+        """\b(italian|japanese|spanish|french|german|russian|hindi|portuguese|korean|""" +
+            """chinese|mandarin|cantonese|turkish|polish|dutch|swedish|arabic|thai|""" +
+            """vietnamese|indonesian|tamil|telugu|ukrainian|czech|danish|finnish|greek|""" +
+            """hebrew|hungarian|norwegian|romanian|serbian|latino)\b""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * Does this stream carry English audio? Read from the label's **Audio**
+     * section only — the release's overall language tag lies (owner 2026-07-10:
+     * "the app clearly labels them Italian and Japanese even if the stream's
+     * overall metadata says English").
+     *
+     * No Audio section, or one naming no language we recognise, returns true:
+     * we only ever DEMOTE streams we positively know are foreign-audio, never
+     * ones we can't reason about.
+     */
+    fun hasEnglishAudio(stream: Stream): Boolean {
+        val audio = AUDIO_SECTION.find(labelText(stream))?.value ?: return true
+        if (ENGLISH_AUDIO.containsMatchIn(audio)) return true
+        return !NON_ENGLISH_AUDIO.containsMatchIn(audio)
     }
 
     /** Video codecs we can tell apart from a release label. */

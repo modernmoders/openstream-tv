@@ -264,6 +264,44 @@ class StreamCascadeTest {
         assertEquals("1080p H264", merged.first().stream.name)
     }
 
+    // --- audio language (owner 2026-07-10: read the Audio field, not the tag) ---
+
+    @Test
+    fun `hasEnglishAudio reads the Audio section, not the overall tag`() {
+        // Release tagged English overall, but the Audio field says Italian.
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(name = "Movie 1080p English", description = "Audio: 🇮🇹 Italian")
+        ))
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(description = "Audio: Japanese")
+        ))
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(description = "Audio: English")
+        ))
+        // Dual audio that names English counts as English.
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(description = "Audio: English, Japanese")
+        ))
+        // No Audio section at all -> neutral, never demoted.
+        assertTrue(StreamCascade.hasEnglishAudio(stream(name = "Movie 1080p")))
+    }
+
+    @Test
+    fun `mergeForDisplay floats English audio above foreign audio`() {
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "4K Italian", filename = "a.2160p.x264.mkv", description = "Audio: Italian"),
+                    stream(name = "720p English", filename = "b.720p.x264.mkv", description = "Audio: English"),
+                )),
+            ),
+            hardwareCodecs = setOf(VideoCodec.H264),
+        )
+        // Unwatchable Italian must not out-rank a watchable English stream,
+        // even at 4K.
+        assertEquals("720p English", merged.first().stream.name)
+    }
+
     @Test
     fun `mergeForDisplay applies no codec penalty when box capabilities are unknown`() {
         // Empty capability set -> everything treated as playable, so 4K wins.

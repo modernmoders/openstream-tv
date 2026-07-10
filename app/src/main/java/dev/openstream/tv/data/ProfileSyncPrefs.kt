@@ -30,6 +30,13 @@ data class ProfileLink(
     val managedUrls: Set<String> = emptySet(),
     /** Epoch millis of the last successful sync (or the initial install). */
     val lastSyncMs: Long = 0,
+    /**
+     * Whose profile this box is running ("Adam Savoy"). Shown in Settings so a
+     * household with several boxes can tell at a glance which account a TV is
+     * on, without re-running setup (owner 2026-07-10). Safe to display — unlike
+     * [managedUrls] it carries no token.
+     */
+    val profileName: String = "",
 )
 
 /** Interface so the sync engine and ViewModels stay JVM-testable. */
