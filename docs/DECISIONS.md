@@ -1294,3 +1294,66 @@ alpha.30 (versionCode 30). Gates green: assembleDebug + testDebugUnitTest (283
 tests, 0 fail) + assembleRelease (R8) clean. NOT device-verified — the AVD can't
 play the family's real streams; owner to eyeball on a box (the Compose overlays
 draw above the video surface, so a screencap during loading should show them).
+
+## 48. 2026-07-10 (session 22) — Back lands on the tile you opened; season chips stop drifting (alpha.39)
+
+Round 13 items #4 and #5. Both are focus-restoration bugs, and both were
+**reproduced on the emulator against alpha.38 and re-verified fixed against
+alpha.39** — the first emulator-proven before/after in this project's focus work.
+
+### #4 Home returned to the TOP on Back
+
+Two effects re-fired whenever Home came back off the nav back stack. Coming back
+from Details, the HomeViewModel is retained (it is scoped to the HOME
+NavBackStackEntry), so the rows are already loaded on Home's very first
+composition:
+
+- `LaunchedEffect(featured != null) { listState.scrollToItem(0) }` — the key is
+  already `true`, so the "snap to the hero the moment it appears" effect ran again
+  and re-snapped Home to item 0.
+- `LaunchedEffect(showingRows) { headerFocus.requestFocus() }` — focusing the
+  header pill dragged the restored scroll up behind it, because the header IS list
+  item 0 (that placement is itself the DECISIONS #33 hold-UP fix, so it stays).
+
+Measured on alpha.38: open a tile 4 rows down, press BACK → Home is scrolled to
+the very top with focus on the NavRail.
+
+Fix: latch the hero snap behind a `rememberSaveable` flag, and let the rows branch
+own its entry focus instead of the shared effect. Navigating away disposes the
+screen, so the focused node — and every `focusRestorer`'s memory with it — is gone
+by the time we return; remembering the *card* is therefore not enough. Home now
+remembers WHICH tile was opened (`rememberSaveable`, so it outlives the back
+stack), and on return scrolls the column to that row, scrolls the row to that
+card, and focuses it. Because both lazy lists compose late, the focus request is
+probed across a few frames (`withFrameNanos`) and falls back to the header when
+the row is gone (addon disabled, row hidden, process death).
+
+The target is deliberately **never cleared**: the last tile you opened stays the
+anchor for every later return to Home. Clearing it would send the next return to
+the header, which — per the second bullet above — scrolls Home back to the top.
+
+`homeRestoreIndex()` is pure and unit-tested: the hero and Continue Watching rows
+are conditional, so a catalog row's LazyColumn index shifts under it.
+
+### #5 The season selector jumped 1 → 3 → 5 → 7
+
+Coming back UP from an episode row left the chip to Compose's geometric focus
+search. Episode rows span the full width, so the search picks whichever chip sits
+nearest the row's centre — never the one you left, and further right on each trip.
+Measured on alpha.38 (Dark Side of the Ring, 7 seasons): chip x = 703 → 930 → 930.
+
+Fix: `Modifier.focusRestorer(selectedChipFocus)` on the season LazyRow pins
+re-entry to the chip you left, falling back to the SELECTED season — the one whose
+episodes are actually on screen. The selected chip is now scrolled into view at
+entry, because a resume can land on season 5 whose chip would otherwise never be
+composed, and an unattached FocusRequester is one the restorer cannot focus.
+
+Measured on alpha.39, same series: chip x = 112, stable across 4 round trips.
+
+Also moved the touched call sites onto the non-deprecated `focusRestorer(FocusRequester)`
+overload, which is stable — dropping three `ExperimentalComposeUiApi` opt-ins.
+`DiscoverScreen`/`SearchScreen` still use the deprecated lambda form; migrate when
+next touched.
+
+alpha.39 (versionCode 39). Gates green: assembleDebug + testDebugUnitTest. The
+`HomeViewModelTest` Main-dispatcher flake hit once and cleared on rerun (known).

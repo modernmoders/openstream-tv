@@ -1,4 +1,52 @@
-# STATE — updated 2026-07-08 by session 21
+# STATE — updated 2026-07-10 by session 22
+
+## ⚠️ READ FIRST (session 22 cont. 6 — 2026-07-10 — alpha.39: R13-4 + R13-5 FIXED *and emulator-proven*)
+🚨 **BOXES STILL ON alpha.30.** alpha.31–.39 are ALL undeployed. **Deploy before triaging any owner bug
+report** — every "still broken" report so far was tested against alpha.30.
+🚨 **DO NOT EDIT RACHAEL'S ACCOUNTS** without explicit per-request permission.
+
+**alpha.39 (versionCode 39) BUILT — assembleDebug + testDebugUnitTest GREEN. NOT deployed.**
+Unlike every prior focus fix in this project, these two were **reproduced on the emulator against
+alpha.38 and re-verified fixed against alpha.39** (before/after, same content). DECISIONS #48.
+- **R13-4 Home-returns-to-top-on-Back — FIXED.** Two effects re-fired when Home came back off the nav
+  back stack (the ViewModel is retained, so rows are already loaded on the first composition):
+  `LaunchedEffect(featured != null){scrollToItem(0)}` re-snapped to the top, and
+  `LaunchedEffect(showingRows){headerFocus.requestFocus()}` dragged the restored scroll up behind it
+  (the header IS list item 0 — that's the #33 hold-UP fix, so it stays). Home now remembers WHICH tile
+  was opened (`rememberSaveable` → outlives the back stack; the focused node and every focusRestorer's
+  memory die when the screen is disposed), then on return scrolls the column to that row, the row to
+  that card, and focuses it — probing a few frames because both lazy lists compose late. Falls back to
+  the header when the row is gone. New pure `homeRestoreIndex()` + 4 unit tests (the hero and Continue
+  Watching rows are conditional, so a catalog row's index shifts under it).
+  ⚠️ The target is **never cleared** on purpose — the last tile opened stays the anchor for every later
+  return to Home. Clearing it would send the next return to the header → back to the top.
+  MEASURED: alpha.38 Back → Home at top, focus on the NavRail. alpha.39 Back → identical screen coords
+  as before opening (same tile, same column AND row scroll).
+- **R13-5 season selector jumped 1→3→5→7 — FIXED.** Coming UP from an episode row left the chip to
+  Compose's geometric focus search; episode rows span the full width, so it picks whichever chip is
+  nearest the row's centre, drifting right each trip. `focusRestorer(selectedChipFocus)` on the season
+  LazyRow pins re-entry to the chip you left, falling back to the SELECTED season — whose chip is now
+  scrolled into view at entry, since an unattached FocusRequester is one the restorer cannot focus.
+  MEASURED (Dark Side of the Ring, 7 seasons): alpha.38 chip x = 703 → 930 → 930. alpha.39 x = 112,
+  stable across 4 round trips.
+- Also: touched call sites moved to the non-deprecated `focusRestorer(FocusRequester)` (stable) →
+  3 `ExperimentalComposeUiApi` opt-ins dropped. Discover/Search still use the old lambda form.
+
+**Emulator harness notes (save the next session an hour):**
+- The AVD's screen sleeps and **silently eats d-pad keys** → run `adb shell svc power stayon true`
+  first, or your key presses drive the Google TV launcher and every reading is garbage.
+- `uiautomator dump` **lags a step behind** the UI; re-dump after ~5s before trusting it. Always assert
+  `dev.openstream.tv` appears in the dump — otherwise you are measuring the launcher.
+- `am force-stop` + `am start` **restores the nav back stack** (you can land back on Details, not Home).
+- Compare focus by `bounds=` on the `focused="true"` node — identical bounds before/after = same tile,
+  same scroll. That is the whole test.
+
+⏳ Deploy target **alpha.39**. Still open from Round 13: **R13-1 focus drift on vertical scroll**
+(down 9 / up 6 / down 6 shifts rows horizontally) and **B2 hold-UP scroll** — both need the owner's
+remote (adb cannot simulate genuine key-repeat, proven in #33). Also open: Home still renders its old
+Discover/Search/Settings pills next to the NavRail (they carry `headerFocus`, the #33 anchor —
+removing them needs an entry-focus re-anchor first), and NavRail LEFT-from-content focus is still
+not emulator-verified.
 
 ## ⚠️ READ FIRST (session 22 cont. 5 — 2026-07-10 — alpha.36/.37/.38; Adam's 5-instance stack LIVE)
 🚨 **BOXES STILL ON alpha.30** (adb-verified). alpha.31–.38 are ALL undeployed. Deploy before triaging
@@ -161,10 +209,8 @@ Config/provisioning session (NO app build). All LIVE + verified:
 2. **Progress bar + "watched" ✓ hard to see** — increase contrast/size (alpha.25 feature).
 3. **Continue Watching shows one row PER EPISODE** — watched 3 eps → 3 tiles of same show.
    Collapse to ONE entry per series (latest position).
-4. **Home scroll position lost on Back** — 30 rows down → open item → Back → returns to TOP
-   instead of the title you were on. Restore focus/scroll to the originating tile.
-5. **Season selector jumps** — highlight Season 1, down then up → lands on Season 3, repeat →
-   5, 7… (settles mid-list). Up/back must return to the SAME season.
+4. ✅ **DONE (alpha.39)** — Home scroll position lost on Back. Emulator-proven before/after.
+5. ✅ **DONE (alpha.39)** — Season selector jumps. Emulator-proven before/after.
 6. **"Next episode" missing on some streams** — the prev/next-episode control doesn't appear
    for every item that has another episode. Make it appear whenever a neighbour exists.
 7. **Number/label streams in the stream list** — so the user can tell they're looping back
@@ -1217,6 +1263,26 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 - none
 
 ## NEXT ACTION (start here)
+
+### ⭐ START HERE (session 22 cont. 6 — 2026-07-10)
+A0. ⏳ **DEPLOY alpha.39 to BOTH boxes.** This is the single highest-value action left — the boxes are
+   still on alpha.30, so nine releases of fixes (.31–.39) have never been seen by the family, and every
+   owner bug report is being made against alpha.30. Build the release APK, then:
+   `adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+   (repeat for `192.168.1.196`). A versionCode bump is MANDATORY or Android refuses the reinstall.
+   `.117` was reachable over adb on 2026-07-10. **Ask the owner before installing** — these are the
+   living-room TVs and someone may be watching.
+A1. ⏳ **R13-1 focus drift on vertical scroll** (down 9 / up 6 / down 6 leaves rows shifted right) and
+   **B2 hold-UP scroll on Home + Discover**. Both need the OWNER'S REMOTE — adb cannot simulate genuine
+   key-repeat (proven, DECISIONS #33). Approach for B2: Discover likely never got the #33 structural fix
+   (header/hero as LazyColumn item 0); compare `HomeScreen.kt` (fixed) against `DiscoverScreen.kt`.
+A2. ⏳ **Remove Home's redundant Discover/Search/Settings pills** now that the NavRail (alpha.38) owns
+   those. Blocked on re-anchoring entry focus: the pills carry `headerFocus`, which alpha.39's restore
+   path also falls back to. Do it with an emulator pass (the harness notes in READ FIRST make this cheap).
+A3. ⏳ **Verify NavRail focus on the emulator**: LEFT-from-content → rail, and rail → content.
+   Never emulator-verified since alpha.38.
+A4. Then the two big pre-existing builds, unchanged: **S3 Trakt scrobbling** and **S4 rich
+   multi-instance profile builder** (both specced below).
 
 ### ⭐ OWNER BATCH 2026-07-08 (session 21) — DONE + one owner decision open
 S0. ✅ **Software decoder DEFAULT ON** (was B4/N1) — shipped alpha.25.
