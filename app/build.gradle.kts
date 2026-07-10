@@ -32,8 +32,8 @@ android {
         targetSdk = 37
         // Bump both for every pre-release: the Phase 5 in-app updater will
         // compare versionCode, and Android refuses to upgrade over an equal one.
-        versionCode = 34
-        versionName = "0.3.0-alpha.34"
+        versionCode = 35
+        versionName = "0.3.0-alpha.35"
 
         buildConfigField(
             "String", "SETUP_URL",

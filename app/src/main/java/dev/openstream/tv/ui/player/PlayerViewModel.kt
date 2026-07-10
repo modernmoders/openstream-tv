@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.openstream.tv.addon.Video
+import dev.openstream.tv.addon.WatchTrackingPing
 import dev.openstream.tv.addon.toPlayableSource
 import dev.openstream.tv.autoplay.AutoplayController
 import dev.openstream.tv.autoplay.AutoplayGateway
@@ -68,6 +69,7 @@ class PlayerViewModel @Inject constructor(
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
     private val skipTimes: SkipTimesRepository,
+    private val watchTrackingPing: WatchTrackingPing,
     playerHolder: PlayerHolder,
     private val uiSounds: UiSounds,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
@@ -193,6 +195,7 @@ class PlayerViewModel @Inject constructor(
                 val languages = playbackPrefs.languages.first()
                 engine.exoPlayer.applyPreferredLanguages(languages.audio ?: "en", languages.subtitle)
                 engine.play(req.source)
+                pingWatchTracking()
                 // Resume prompt pending → buffer/test the stream but hold it
                 // paused (no surprise audio) until the viewer picks resume or
                 // start-over. play() prepared at the saved position already, so
@@ -308,6 +311,7 @@ class PlayerViewModel @Inject constructor(
             title = source.title, ended = false, error = null, canTryNext = false,
         )
         engine.play(source)
+        pingWatchTracking() // new episode → a fresh Trakt check-in
         updateEpisodeNav() // autoplay advanced an episode — refresh ⏮/⏭ targets
         loadSkipSegments() // …and its intro/credits windows
     }
@@ -429,6 +433,22 @@ class PlayerViewModel @Inject constructor(
             }
             _uiState.value.nextEpisode?.let { openEpisode(it) } ?: endCurrentVideo()
         }
+    }
+
+    /**
+     * Tell subtitle-declaring addons (AIOMetadata) that this video started, so
+     * their "Watch Tracking → Trakt Check-in" fires. Guarded per video id: a
+     * "Try a different stream" swap re-plays the SAME episode and must not
+     * check in twice (owner 2026-07-09).
+     */
+    private var pingedVideoId: String? = null
+
+    private fun pingWatchTracking() {
+        val req = request ?: return
+        val videoId = req.mediaRef?.externalId ?: return
+        if (pingedVideoId == videoId) return
+        pingedVideoId = videoId
+        watchTrackingPing.playbackStarted(req.metaType, videoId)
     }
 
     /** No next episode: run the natural end-of-video flow (the ended panel). */
