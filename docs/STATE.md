@@ -1,5 +1,34 @@
 # STATE — updated 2026-07-08 by session 21
 
+## ⚠️ READ FIRST (session 22 cont. 4 — 2026-07-09 — alpha.34/.35: scrub fix, ⏭, Trakt check-in ROOT-CAUSED)
+🚨 **BOXES ARE ON alpha.30** (verified via adb on .117; .196 offline). alpha.31–.35 were NEVER
+deployed — every "still broken" owner report was tested against alpha.30. Deploy before triaging.
+🚨 **DO NOT EDIT RACHAEL'S ACCOUNTS** without explicit per-request permission (owner 2026-07-09);
+she is a live user on Stremio + her box. Adam's account IS editable.
+- **alpha.34**: (a) loading scrim now only on the INITIAL load — it was true for ANY non-READY
+  state, so every seek re-buffered → blocking scrim → keys swallowed → held-scrub impossible, and
+  the spinner flashed per skipped section (which is why it looked like a still image).
+  (b) ⏭ shows for EVERY series episode (UiState.isSeries); resolves the episode list on demand,
+  opens the next episode's stream list (auto-picks best; no Up Next countdown), else ends the video.
+- **alpha.35 — Trakt check-in ROOT CAUSE.** AIOMetadata DOES have Watch Tracking → Trakt Check-in.
+  It fires on the `subtitles/{type}/{id}.json` request a Stremio client sends at playback start —
+  the ONLY playback-time signal a catalog/meta addon gets. We had `AddonClient.subtitles()` and
+  NEVER called it → check-ins worked in Stremio, never in SStreams. New `addon/WatchTrackingPing`
+  pings every enabled subtitles-declaring addon on playback start (fire-and-forget, guarded per
+  videoId so a stream-swap doesn't double check in). ⚠️ Only ONE AIOMetadata instance may have
+  traktWatchTracking=true or one ping checks in twice.
+- **Adam's 2 AIOMetadata configs BUILT** (`Projects/AIOMetadata/build_adam_aiometadata.py` → `adam/`):
+  A "Movies & Series" 51 catalogs, meta authority, **the only Trakt check-in**; B "Anime & Streaming"
+  54 catalogs (MAL tab + anime + 30 streaming incl. Crunchyroll/HIDIVE + 18 networks). Anime ON,
+  NSFW ON. Keys stripped. **Owner must import them → send the 2 URLs** (no AIOMetadata push tool).
+- **Adam's AIOStreams:** nightly/elfhosted PUSHED (meta off, library off, excludeUncached=true,
+  requiredLanguages []→preference). **primary BLOCKED** — AIOStreams validates every preset manifest
+  and `TorrentsDB` returns 502; left unchanged (safe). **backup BLOCKED** — stale stored password.
+- ⏳ NEXT: audio-language ranking in the app (parse the stream's "Audio" field — releases tagged
+  English carry Italian/Japanese audio; requiredLanguages=English never caught it). Then adam's
+  profile deploy (scp, no owner upload needed) + optional `push_stremio.py` into his Stremio.
+⏳ Deploy target **alpha.35**.
+
 ## ⚠️ READ FIRST (session 22 cont. 3 — 2026-07-09 — alpha.33 BUILT: codec-aware / hardware-informed stream ranking)
 **alpha.33 (versionCode 33) BUILT — assembleDebug + testDebugUnitTest GREEN (flaky HomeViewModelTest
 Main-dispatcher test cleared on rerun). NOT deployed.** THE SOFTWARE-PLAYER-KILLER (owner's repeated
