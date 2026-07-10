@@ -25,6 +25,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,6 +51,16 @@ fun TvTextField(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    // Supplying a KeyboardActions handler REPLACES the IME's default action, so
+    // Go/Search/Done submitted the query but left the on-screen keyboard covering
+    // the results (owner 2026-07-10). Dismiss it ourselves. Focus stays on the
+    // field, so DOWN still walks into the results (§5.4 focus is never lost).
+    val submitAndDismiss = {
+        onSubmit()
+        keyboard?.hide()
+    }
 
     BasicTextField(
         value = value,
@@ -57,9 +68,9 @@ fun TvTextField(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(
-            onGo = { onSubmit() },
-            onSearch = { onSubmit() },
-            onDone = { onSubmit() },
+            onGo = { submitAndDismiss() },
+            onSearch = { submitAndDismiss() },
+            onDone = { submitAndDismiss() },
         ),
         textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
         cursorBrush = SolidColor(Color.White),

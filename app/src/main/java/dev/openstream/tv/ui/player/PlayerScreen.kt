@@ -263,6 +263,13 @@ fun PlayerScreen(
                     viewModel.skipCurrentSegment()
                     return@onPreviewKeyEvent true
                 }
+                // BACK closes the control bar first; a SECOND back leaves the
+                // player (owner 2026-07-10). Panels/loading already returned
+                // above, so this only ever dismisses the normal control UI.
+                if (code == AndroidKeyEvent.KEYCODE_BACK && overlayVisible) {
+                    overlayVisible = false
+                    return@onPreviewKeyEvent true
+                }
                 if (!overlayVisible) {
                     // Controls asleep: any key but Back wakes them and is
                     // swallowed, so the same press doesn't also seek/pause.
@@ -321,8 +328,24 @@ fun PlayerScreen(
                     overflow = TextOverflow.Ellipsis,
                 )
                 // Wrapping the scrub bar redirects its DOWN to "Try a different
-                // stream" so that button owns the default landing spot.
-                Box(modifier = Modifier.focusProperties { down = tryStreamFocus }) {
+                // stream" so that button owns the default landing spot. UP has
+                // nothing above it, so instead of trapping focus it ESCAPES the
+                // whole control UI: dismiss the bar and hand focus back to the
+                // video (owner 2026-07-10).
+                Box(
+                    modifier = Modifier
+                        .focusProperties { down = tryStreamFocus }
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown &&
+                                event.key.nativeKeyCode == AndroidKeyEvent.KEYCODE_DPAD_UP
+                            ) {
+                                overlayVisible = false
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                ) {
                     ScrubBar(
                         positionMs = positionMs,
                         durationMs = durationMs,
