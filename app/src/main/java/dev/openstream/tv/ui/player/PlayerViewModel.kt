@@ -97,8 +97,13 @@ class PlayerViewModel @Inject constructor(
         val switching: Boolean = false,
         /** The episode the ⏮ button jumps to; null = at the first episode (or a movie). */
         val previousEpisode: EpisodeTarget? = null,
-        /** The episode the ⏭ button jumps to; null = at the last episode (or a movie). */
+        /** The episode the ⏭ button jumps to; null = at the last episode, or the
+         *  episode list hasn't resolved yet (⏭ still shows — see [isSeries]). */
         val nextEpisode: EpisodeTarget? = null,
+        /** Series (not a movie): ⏭ is shown for EVERY episode, resolved or not
+         *  (owner 2026-07-09) — pressing it resolves on demand, then either opens
+         *  the next episode or ends the video. Never a dead button. */
+        val isSeries: Boolean = false,
         /** Active anime intro/credits window — the "Skip Intro/Credits" button;
          *  null when not inside one (AniSkip, owner 2026-07-08). */
         val skipSegment: SkipSegment? = null,
@@ -313,7 +318,9 @@ class PlayerViewModel @Inject constructor(
      * buttons simply stay hidden, exactly as autoplay stands down (§7.1).
      */
     private fun resolveEpisodeNav(req: PlaybackRequest) {
-        if (req.metaType != "series") return
+        val series = req.metaType == "series"
+        _uiState.value = _uiState.value.copy(isSeries = series)
+        if (!series) return
         val ref = req.mediaRef ?: return
         if (ref.sourceKind != MediaRef.KIND_ADDON) return
         viewModelScope.launch {
@@ -399,9 +406,38 @@ class PlayerViewModel @Inject constructor(
         )
     }
 
-    /** ⏭ / ⏮: open a neighbouring episode's stream list — auto-playing if that
-     *  setting is on — via the same nav path autoplay's manual fallback uses. */
-    fun goToNextEpisode() = openEpisode(_uiState.value.nextEpisode)
+    /**
+     * ⏭ : skip straight to the next episode — no Up Next countdown, no stream
+     * list detour: [openEpisode] hands off to the next episode's stream list,
+     * which auto-picks the best (cached, hardware-decodable) stream.
+     *
+     * The button shows for EVERY episode of a series (owner 2026-07-09), so the
+     * neighbour may not be resolved yet when it's pressed. Resolve on demand,
+     * then open it — or, when this really is the last episode, just end the
+     * current video (the natural ended flow) rather than doing nothing.
+     */
+    fun goToNextEpisode() {
+        _uiState.value.nextEpisode?.let { openEpisode(it); return }
+        if (!_uiState.value.isSeries) return
+        val req = request ?: return
+        viewModelScope.launch {
+            if (episodeVideos.isEmpty()) {
+                autoplayGateway.resolveMeta(req.metaType, req.metaId)?.let { meta ->
+                    episodeVideos = meta.videos
+                    updateEpisodeNav()
+                }
+            }
+            _uiState.value.nextEpisode?.let { openEpisode(it) } ?: endCurrentVideo()
+        }
+    }
+
+    /** No next episode: run the natural end-of-video flow (the ended panel). */
+    private fun endCurrentVideo() {
+        val player = engine.value?.exoPlayer ?: return
+        val duration = player.duration
+        if (duration > 0) player.seekTo(duration)
+    }
+
     fun goToPreviousEpisode() = openEpisode(_uiState.value.previousEpisode)
 
     private fun openEpisode(target: EpisodeTarget?) {

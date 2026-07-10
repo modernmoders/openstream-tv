@@ -194,12 +194,27 @@ fun PlayerScreen(
             delay(300)
         }
     }
+    // Has this video reached READY at least once? Reset when a new media item
+    // prepares (ExoPlayer passes through IDLE), so the next stream / next
+    // episode still gets its own load spinner.
+    var startedOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(playbackState) {
+        when (playbackState) {
+            Player.STATE_IDLE -> startedOnce = false
+            Player.STATE_READY -> startedOnce = true
+        }
+    }
     // The load/test phase: spinner (and, if there's saved progress, the resume
     // prompt) covers the black/debrid-placeholder until the first real frame
     // paints. While a resume prompt is pending, playback is held paused by the
     // ViewModel, so `loading` stays true until the viewer answers.
+    //
+    // ONLY the initial load. A mid-playback re-buffer — every seek causes one —
+    // must not throw a blocking scrim over the video: it swallowed the keys so
+    // held scrubbing was impossible, and it flashed the spinner on each skipped
+    // section (owner 2026-07-09).
     val loading = state.error == null && !state.ended && autoplay == null &&
-        (state.resumePromptMs != null || playbackState != Player.STATE_READY)
+        (state.resumePromptMs != null || (!startedOnce && playbackState != Player.STATE_READY))
 
     // Focus follows the bar: on it when shown, back to the full-screen catcher
     // when hidden (so the next key wakes it rather than seeking blindly). While
@@ -335,15 +350,17 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.Bottom,
                 ) {
                     // Prev/Next episode jumps — icon-only, tucked next to each
-                    // other in a single slot at the far left. Shown only when a
-                    // neighbour exists, so movies / first / last never get a
-                    // dead button.
-                    if (state.previousEpisode != null || state.nextEpisode != null) {
+                    // other in a single slot at the far left. ⏮ needs a known
+                    // neighbour; ⏭ shows for EVERY episode of a series (owner
+                    // 2026-07-09) even before the episode list resolves — it
+                    // resolves on demand, then opens the next episode or ends
+                    // the video. Movies get neither.
+                    if (state.previousEpisode != null || state.isSeries) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             if (state.previousEpisode != null) {
                                 SurfacePill("⏮", onClick = { viewModel.goToPreviousEpisode(); wake() })
                             }
-                            if (state.nextEpisode != null) {
+                            if (state.isSeries) {
                                 SurfacePill("⏭", onClick = { viewModel.goToNextEpisode(); wake() })
                             }
                         }
