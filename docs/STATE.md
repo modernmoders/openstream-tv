@@ -1,5 +1,27 @@
 # STATE — updated 2026-07-11 by session 24
 
+## ⚠️ READ FIRST (session 24 cont. — 2026-07-11 — alpha.43 DEPLOYED to .117: owner's wave-dots loader; Trakt-history no-code answer)
+- **alpha.43 (versionCode 43) BUILT + DEPLOYED to .117, smoke-launched** (gates
+  green). The player load spinner is now the owner's own "SStreams Loader"
+  wave-dots design (saved Claude Design page in repo root, gitignored-ish —
+  untracked). DECISIONS #52: pure unit-tested keyframe math in
+  `ui/components/WaveLoader.kt`; frame-clock + draw-phase only (R13-8 + #22
+  lessons); dots are brand periwinkle #A8CBE8, not accent blue. ⚠️ NOT
+  visually verified — seeing it requires starting a stream, which fires the
+  alpha.35 Trakt check-in on the owner's account (and it was ~2am — no TV
+  audio). **Owner eyeballs it on his next stream load.**
+- **"Trakt history works in Stremio but not the app" — ANSWERED, no code bug.**
+  The check-in fires off the subtitles/{type}/{id}.json ping (alpha.35), and
+  the ONLY addon declaring `subtitles` (= the Trakt check-in instance,
+  "AIO - Adam - Movies & Series") was MISSING from .117 from Jul 9 until the
+  alpha.42 profile-cache fix installed it tonight. No target → no ping → no
+  history; his Stremio account always had the addon → worked there. Verified:
+  WatchTrackingPing targets enabled installed subtitles-declaring addons;
+  adam-A + rachael-A live manifests declare subtitles (B instances don't —
+  correct, exactly one check-in source per person). **Owner: play anything on
+  the box, then check trakt.tv history** — should appear now. If it still
+  doesn't: App log → look for "watch-tracking: check-in ping failed".
+
 ## ⚠️ READ FIRST (session 24 — 2026-07-11 — alpha.42 DEPLOYED to .117: manual-list Trakt rows gone everywhere; profile-cache root cause)
 Finished the cut-off "remove Trakt collection rows" session. The rows came from
 TWO places, and neither was the live configs (already clean — audited all 4
