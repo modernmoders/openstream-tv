@@ -38,9 +38,11 @@ Priorities this session: #15 (broken now) → #1/#2/#17/#18 (contained) → Torr
 then the hard clusters #7/#8/#9 (focus+perf) and #3/#4 (anime numbering) as budget allows.
 ✅ **#15, #1, #2, #17, #18 all BUILT in alpha.44** (cont. 3, below) — owner CONFIRMED GREEN
 2026-07-11 ("all is green on my end"). ✅ **#5, #10, #11, #12, #13, #14 all BUILT + DEPLOYED
-in alpha.45** (cont. 4, below). STILL OPEN in Round 14: #3/#4 (anime IMDb→MAL + numbering),
-#6 (re-enable TorrentsDB — config, not app), #7/#8/#9 (Home focus drift + hold-UP + scroll
-perf — need the owner's remote), #16 (user skins, future).
+in alpha.45** (cont. 4, below). ✅ **#6 DONE (cont. 4): TorrentsDB re-enabled + LIVE-VERIFIED
+on Adam's primary + backup AIOStreams** (primary was already on; backup flipped via API PUT,
+fresh GET confirms enabled=true on both; same UUIDs → manifest URLs unchanged, nothing to
+re-add). STILL OPEN in Round 14: #3/#4 (anime IMDb→MAL + numbering), #7/#8/#9 (Home focus
+drift + hold-UP + scroll perf — need the owner's remote), #16 (user skins, future).
 
 ## ⚠️ READ FIRST (session 24 cont. 4 — 2026-07-11 — alpha.45 DEPLOYED to .117: Round-14 polish batch — pinned recs, poster indicators, drawn glyphs, filter pills)
 **alpha.45 (versionCode 45) BUILT — assembleDebug + testDebugUnitTest GREEN (332
@@ -80,11 +82,14 @@ Six Round-14 items in one commit:
 (then leanback relaunch). (b) **Owner to eyeball alpha.45 on .117:** Trakt Recs
 row first + CW right under it; progress bars/✓ on tiles he's watched; the new
 round play/pause chip (accent when paused); prev/next glyphs; Discover filter
-pills + "View ⚙"; Home's Settings pill moved apart with the gear. (c) Then the
-remaining Round-14 backlog in order: **#6 TorrentsDB re-enable** (config push,
-primary+backup AIOStreams — needs owner-gated live push), **#3/#4 anime
-IMDb→MAL bridge + numbering** (app build, big), **#7/#8/#9 Home focus/perf**
-(need the owner's remote at the TV — adb can't fake key-repeat, DECISIONS #33).
+pills + "View ⚙"; Home's Settings pill moved apart with the gear. (c) ✅ #6
+DONE this session: TorrentsDB re-enabled on primary+backup AIOStreams via the
+API (GET userData → flip preset.enabled → PUT → verify GET; the config lives
+at `data.userData`, NOT `data.config` — scratchpad `enable_torrentsdb.py`
+pattern). (d) Then the remaining backlog: **#3/#4 anime IMDb→MAL bridge +
+numbering** (app build, big — start from the box log's `malId(tt…) →
+unresolved scheme=` line), **#7/#8/#9 Home focus/perf** (need the owner's
+remote at the TV — adb can't fake key-repeat, DECISIONS #33).
 
 ## ⚠️ READ FIRST (session 24 cont. 3 — 2026-07-11 — alpha.44 DEPLOYED to .117: return-to-your-place + NavRail glitch + Round 14 batch)
 **alpha.44 (versionCode 44) BUILT — assembleDebug + testDebugUnitTest GREEN (320
