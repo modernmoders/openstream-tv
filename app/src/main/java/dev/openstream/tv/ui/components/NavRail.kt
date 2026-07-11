@@ -36,7 +36,6 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.MutedText
-import dev.openstream.tv.ui.theme.SurfaceCard
 
 /** One top-level section of the app. [icon] selects a drawn glyph, not a font
  *  character — the boxes' fonts render unicode symbols/emoji inconsistently
@@ -102,6 +101,10 @@ private fun RailItem(
     expanded: Boolean,
     onClick: () -> Unit,
 ) {
+    // Round 14 (owner 2026-07-11): the item you're HOVERING must outshine the
+    // current-section highlight — focused = solid accent pill with dark glyph,
+    // selected-but-unfocused = the quiet tinted pill it always was.
+    var itemFocused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
@@ -109,21 +112,28 @@ private fun RailItem(
             // The SELECTED section stays visibly lit even when focus is in the
             // content — that's what tells you where you are.
             containerColor = if (selected) Accent.copy(alpha = 0.22f) else Color.Transparent,
-            focusedContainerColor = SurfaceCard,
+            focusedContainerColor = Accent,
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged { itemFocused = it.isFocused },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            RailIcon(destination.icon, if (selected) Accent else Color.White)
+            val tint = when {
+                itemFocused -> RailInk
+                selected -> Accent
+                else -> Color.White
+            }
+            RailIcon(destination.icon, tint)
             if (expanded) {
                 Text(
                     text = destination.label,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (selected) Accent else MutedText,
+                    color = if (itemFocused) RailInk else if (selected) Accent else MutedText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -131,6 +141,9 @@ private fun RailItem(
         }
     }
 }
+
+/** Glyph/label ink on the focused accent pill — the rail's own background. */
+private val RailInk = Color(0xFF0E0E16)
 
 /** Simple drawn glyphs — no font/emoji dependency (see [NavDestination.icon]). */
 @Composable

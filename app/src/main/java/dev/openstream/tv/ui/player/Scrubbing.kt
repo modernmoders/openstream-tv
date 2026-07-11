@@ -21,13 +21,15 @@ object Scrubbing {
 
     /**
      * Seek step for the [streak]-th consecutive press (1-based). A remote's
-     * key-repeat fires ~10-20/s once held, so a hold reaches the big steps in
-     * about a second while the first taps stay a fine 10s.
+     * key-repeat fires ~10-20/s once held. Round-14 (owner 2026-07-11): the
+     * original ramp (5/12/20) hit the big steps too fast — "acceleration cut
+     * by half", so every threshold is doubled; a hold now takes ~2s to reach
+     * 60s steps while the first taps stay a fine 10s.
      */
     fun stepMs(streak: Int): Long = when {
-        streak < 5 -> 10_000L
-        streak < 12 -> 30_000L
-        streak < 20 -> 60_000L
+        streak < 10 -> 10_000L
+        streak < 24 -> 30_000L
+        streak < 40 -> 60_000L
         else -> 120_000L
     }
 

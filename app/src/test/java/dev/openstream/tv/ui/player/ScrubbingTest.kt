@@ -6,14 +6,14 @@ import org.junit.Test
 class ScrubbingTest {
 
     @Test
-    fun `steps accelerate with the press streak`() {
+    fun `steps accelerate with the press streak — round-14 half-speed ramp`() {
         assertEquals(10_000L, Scrubbing.stepMs(1))
-        assertEquals(10_000L, Scrubbing.stepMs(4))
-        assertEquals(30_000L, Scrubbing.stepMs(5))
-        assertEquals(30_000L, Scrubbing.stepMs(11))
-        assertEquals(60_000L, Scrubbing.stepMs(12))
-        assertEquals(60_000L, Scrubbing.stepMs(19))
-        assertEquals(120_000L, Scrubbing.stepMs(20))
+        assertEquals(10_000L, Scrubbing.stepMs(9))
+        assertEquals(30_000L, Scrubbing.stepMs(10))
+        assertEquals(30_000L, Scrubbing.stepMs(23))
+        assertEquals(60_000L, Scrubbing.stepMs(24))
+        assertEquals(60_000L, Scrubbing.stepMs(39))
+        assertEquals(120_000L, Scrubbing.stepMs(40))
         assertEquals(120_000L, Scrubbing.stepMs(500))
     }
 

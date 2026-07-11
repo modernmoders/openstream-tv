@@ -122,7 +122,12 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
             navController.navigate(route) {
                 popUpTo(Routes.HOME) { saveState = true }
                 launchSingleTop = true
-                restoreState = true
+                // Never restoreState when the target is HOME: Home is the
+                // popUpTo anchor, so its "saved state" is whatever section was
+                // last popped ON TOP of it — restoring that resurrected the
+                // old section (Search → Home landed on Discover, and clicking
+                // Home again "did nothing", owner 2026-07-11; emulator-proven).
+                restoreState = route != Routes.HOME
             }
         }
     }
@@ -145,9 +150,13 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
     ) {
         composable(Routes.HOME) {
             HomeScreen(
-                onDiscover = { navController.navigate(Routes.DISCOVER) },
-                onSearch = { navController.navigate(Routes.SEARCH) },
-                onSettings = { navController.navigate(Routes.SETTINGS) },
+                // The header pills are section switches, so they MUST use the
+                // rail's goSection: a plain navigate() pushes the section onto
+                // the stack, and the next rail move pops-and-saves it — the
+                // saved segment then shadowed Home forever (see goSection).
+                onDiscover = { goSection(Routes.DISCOVER) },
+                onSearch = { goSection(Routes.SEARCH) },
+                onSettings = { goSection(Routes.SETTINGS) },
                 onItemClick = openDetails,
             )
         }

@@ -2,6 +2,7 @@ package dev.openstream.tv.ui.player
 
 import android.content.Context
 import android.content.Intent
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,6 +73,7 @@ class PlayerViewModel @Inject constructor(
     private val watchTrackingPing: WatchTrackingPing,
     playerHolder: PlayerHolder,
     private val uiSounds: UiSounds,
+    private val savedState: SavedStateHandle,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) : ViewModel() {
 
@@ -91,6 +93,14 @@ class PlayerViewModel @Inject constructor(
         val title: String = "",
         /** Null = nothing to play (process death) — screen must pop back. */
         val hasSource: Boolean = true,
+        /**
+         * Set when [hasSource] is false but we know WHAT was playing (saved
+         * across process death): the screen re-opens that video through the
+         * stream flow — fresh stream, resume prompt — instead of dumping the
+         * viewer out of the video (Round 14: "exit the app… stays where you
+         * were"). Null = nothing to restore, pop as before.
+         */
+        val restore: OpenStreams? = null,
         val ended: Boolean = false,
         val error: String? = null,
         /** More streams to walk — shows the "Try another server" affordances. */
@@ -163,8 +173,31 @@ class PlayerViewModel @Inject constructor(
         uiSounds.suppressed = true
         val req = request
         if (req == null) {
-            _uiState.value = UiState(hasSource = false)
+            // Process death mid-playback: CurrentPlayback (a process-scoped
+            // holder) is gone, but SavedStateHandle survives. If we stashed
+            // what was playing, hand the screen a restore target — it re-opens
+            // the video through the stream flow (fresh link, resume prompt).
+            val videoId = savedState.get<String>(KEY_RESTORE_VIDEO)
+            val restore = if (videoId != null) {
+                OpenStreams(
+                    type = savedState.get<String>(KEY_RESTORE_TYPE).orEmpty(),
+                    videoId = videoId,
+                    title = savedState.get<String>(KEY_RESTORE_TITLE).orEmpty(),
+                    metaId = savedState.get<String>(KEY_RESTORE_META).orEmpty(),
+                    poster = savedState.get<String>(KEY_RESTORE_POSTER),
+                )
+            } else {
+                null
+            }
+            _uiState.value = UiState(hasSource = false, restore = restore)
         } else {
+            req.mediaRef?.let { ref ->
+                savedState[KEY_RESTORE_VIDEO] = ref.externalId
+                savedState[KEY_RESTORE_TYPE] = req.metaType
+                savedState[KEY_RESTORE_TITLE] = req.source.title
+                savedState[KEY_RESTORE_META] = req.metaId
+                savedState[KEY_RESTORE_POSTER] = req.poster
+            }
             // A staged start position means there IS saved progress: ask where
             // to start (over the loading animation) instead of silently jumping.
             val resumeAt = req.source.startPositionMs.takeIf { it > 0 }
@@ -691,5 +724,14 @@ class PlayerViewModel @Inject constructor(
         // Back from the player means stop (TV UX): tear the service down,
         // which releases the session and the engine.
         context.stopService(Intent(context, PlaybackService::class.java))
+    }
+
+    private companion object {
+        // SavedStateHandle keys for the process-death restore target.
+        const val KEY_RESTORE_VIDEO = "restore.videoId"
+        const val KEY_RESTORE_TYPE = "restore.type"
+        const val KEY_RESTORE_TITLE = "restore.title"
+        const val KEY_RESTORE_META = "restore.metaId"
+        const val KEY_RESTORE_POSTER = "restore.poster"
     }
 }

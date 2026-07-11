@@ -101,7 +101,18 @@ fun PlayerScreen(
     val autoplay by viewModel.autoplayState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.hasSource) {
-        if (!state.hasSource) onExit() // process death restored this route
+        if (!state.hasSource) {
+            // Process death restored this route. If the ViewModel knows what
+            // was playing (SavedStateHandle), re-enter the video through the
+            // stream flow — fresh link + resume prompt — instead of dumping
+            // the viewer out of it (Round 14: "stays where you were").
+            val restore = state.restore
+            if (restore != null) {
+                onOpenStreams(restore.type, restore.videoId, restore.title, restore.metaId, restore.poster)
+            } else {
+                onExit()
+            }
+        }
     }
     LaunchedEffect(Unit) {
         viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }

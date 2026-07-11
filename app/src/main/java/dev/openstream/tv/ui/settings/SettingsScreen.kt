@@ -159,18 +159,6 @@ fun SettingsScreen(
             )
             // OK toggles directly, same as autoplay above.
             SettingEntry(
-                title = "Prefer software video decoder",
-                description = if (softwareDecoder) {
-                    "On — plays video in software. Fixes blocky or glitchy " +
-                        "picture on some shows (like anime). Turn off if video stutters"
-                } else {
-                    "Off — uses the TV's built-in video chip (fastest). Turn this " +
-                        "on if the picture looks blocky or scrambled on some shows"
-                },
-                onClick = { viewModel.setPreferSoftwareDecoder(!softwareDecoder) },
-            )
-            // OK toggles directly, same as autoplay above.
-            SettingEntry(
                 title = "Skip anime intros & credits",
                 description = if (skipIntros) {
                     "On — a “Skip Intro” button pops up during an anime's opening " +
@@ -190,14 +178,6 @@ fun SettingsScreen(
                 },
                 onClick = { viewModel.setUiSounds(!sounds) },
             )
-            if (viewModel.setupConfigured) {
-                SettingEntry(
-                    title = "Connect this TV",
-                    description = "Type your name and your ${viewModel.brand} " +
-                        "shows set themselves up — nothing else to do",
-                    onClick = onConnect,
-                )
-            }
             // Deliberately LAST (owner directive 2026-07-06): technical tools
             // stay out of sight unless whoever looks after the box opts in.
             SettingEntry(
@@ -210,6 +190,29 @@ fun SettingsScreen(
                 onClick = { viewModel.setExpertMode(!expert) },
             )
             if (expert) {
+                // Round 14 (owner 2026-07-11): the decoder toggle and re-connect
+                // moved in here — a viewer has no business re-linking the box or
+                // flipping decoders; the in-player "Fix blocky video" covers the
+                // everyday case.
+                SettingEntry(
+                    title = "Prefer software video decoder",
+                    description = if (softwareDecoder) {
+                        "On — plays video in software. Fixes blocky or glitchy " +
+                            "picture on some shows (like anime). Turn off if video stutters"
+                    } else {
+                        "Off — uses the TV's built-in video chip (fastest). Turn this " +
+                            "on if the picture looks blocky or scrambled on some shows"
+                    },
+                    onClick = { viewModel.setPreferSoftwareDecoder(!softwareDecoder) },
+                )
+                if (viewModel.setupConfigured) {
+                    SettingEntry(
+                        title = "Connect this TV",
+                        description = "Type your name and your ${viewModel.brand} " +
+                            "shows set themselves up — nothing else to do",
+                        onClick = onConnect,
+                    )
+                }
                 SettingEntry(
                     title = "Addons",
                     description = "Add, remove, or reorder the services this TV gets its shows from",
