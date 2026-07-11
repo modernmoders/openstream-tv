@@ -1648,3 +1648,46 @@ catalog". NOT built from the handoff's "intended interactions": click-to-
 unwatch, long-press mark-season-watched (both need a progress write path for
 never-played episodes — no duration is known), and the dimWatched/showPercent/
 showTimeLeft tweak toggles (shipped as always-on defaults; YAGNI until asked).
+
+## 56. 2026-07-11 (session 24 cont. 5) — Home row drift ROOT-CAUSED: focusRestorer remembers NODES, lazy rows recycle them; BACK now opens the rail (alpha.47)
+
+### The drift (#7, with the owner's "third spot" clue) — reproduced, fixed, re-verified on the emulator
+Owner's new detail cracked it: every shifted row had the selector "in the
+third spot from the beginning". Reproduced with DISCRETE d-pad presses
+(no key-repeat needed, so the emulator harness worked): down 5 / up 5 on
+alpha.46 left one row scrolled ~half a card with focus at x=685 — not a
+grid position (cards sit at 252/544/836). Mechanism: `focusRestorer` saves
+the focused CHILD NODE, but lazy layouts recycle nodes across items as the
+column scrolls; by the time you scroll back, the saved node can be showing
+a DIFFERENT card, so re-entry focused mid-row and the bring-into-view drag
+shifted the whole row. A second face of the same report: each row's
+restore-scroll effect (`LaunchedEffect(restoreIndex) { scrollToItem }`)
+re-fired EVERY time the row scrolled back into composition — the
+last-opened row kept re-snapping to the opened tile forever.
+**Fix:** `RowEntryMemory` — remember the last focused INDEX per row
+(rememberSaveable + custom Saver; the index survives row disposal, which is
+exactly when it's needed), one FocusRequester on that index's card, and
+`focusProperties { onEnter }` redirecting row entry to it (runCatching: if
+the card isn't composed, default geometric entry stands). The restore snap
+is gated by a screen-level `restorePending` flag that flips false once the
+entry probe finishes — restores still happen on every return from Details
+(R13-4 intact, emulator re-verified), but never again while browsing.
+alpha.47 emulator-measured: down 5 / up 5 lands x=252 every step; leaving a
+row at card 3 and coming back lands card 3 at identical bounds.
+⚠️ Discover's grid and Search rows still use the old focusRestorer — the
+owner has not reported drift there (single grid = far less node recycling);
+swap them to RowEntryMemory if he ever does.
+
+### BACK opens the rail (owner 2026-07-11: "I had to go left a bunch just to get to search")
+On the four section routes, BACK from content now focuses the NavRail with
+the selector on the CURRENT section (NavRail grew `sectionFocus` +
+`onFocusWithinChanged`); BACK on the rail shows "Press BACK again to exit"
+and a second BACK within 3s exits the app. Non-obvious: the two
+BackHandlers are composed AFTER the NavHost on purpose — the last
+registered enabled handler wins, and the NavHost registers its own
+back-pop while composing; ours must beat it or BACK on Discover pops to
+Home before the rail can take focus (emulator-verified it doesn't).
+They're `enabled = onSection && …`, so Details/Streams/Player back flows
+(including the player's two-stage BACK) are untouched. Exiting from any
+section directly is deliberate: the sections are siblings (alpha.38), so
+there is no deeper "up" for BACK to mean.

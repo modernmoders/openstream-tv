@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,6 +66,14 @@ fun NavRail(
     destinations: List<NavDestination>,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Attached to the CURRENT section's item, so BACK-from-content can land
+     * the selector on "where you are" (owner 2026-07-11: deep in a grid,
+     * BACK should open the rail instead of a long LEFT-crawl).
+     */
+    sectionFocus: FocusRequester? = null,
+    /** Reports whether ANY rail item holds focus (drives the BACK handlers). */
+    onFocusWithinChanged: ((Boolean) -> Unit)? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
     val width by animateDpAsState(
@@ -77,18 +87,25 @@ fun NavRail(
             .fillMaxHeight()
             .width(width)
             // hasFocus (not isFocused): expand while ANY rail item holds focus.
-            .onFocusChanged { focused = it.hasFocus }
+            .onFocusChanged {
+                focused = it.hasFocus
+                onFocusWithinChanged?.invoke(it.hasFocus)
+            }
             .focusGroup()
             .background(Color(0xCC0E0E16))
             .padding(vertical = 28.dp, horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         destinations.forEach { destination ->
+            val selected = currentRoute == destination.route
             RailItem(
                 destination = destination,
-                selected = currentRoute == destination.route,
+                selected = selected,
                 expanded = focused,
                 onClick = { onSelect(destination.route) },
+                modifier = if (selected && sectionFocus != null) {
+                    Modifier.focusRequester(sectionFocus)
+                } else Modifier,
             )
         }
     }
@@ -100,6 +117,7 @@ private fun RailItem(
     selected: Boolean,
     expanded: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Round 14 (owner 2026-07-11): the item you're HOVERING must outshine the
     // current-section highlight — focused = solid accent pill with dark glyph,
@@ -114,7 +132,7 @@ private fun RailItem(
             containerColor = if (selected) Accent.copy(alpha = 0.22f) else Color.Transparent,
             focusedContainerColor = Accent,
         ),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .onFocusChanged { itemFocused = it.isFocused },
     ) {

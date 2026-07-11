@@ -1,6 +1,10 @@
 package dev.openstream.tv.ui
 
 import android.net.Uri
+import android.os.SystemClock
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,8 +16,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.currentBackStackEntryAsState
 import dev.openstream.tv.ui.components.NavDestination
 import dev.openstream.tv.ui.components.NavRail
@@ -132,9 +140,22 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
         }
     }
 
+    // BACK-to-rail (owner 2026-07-11): deep inside a section's grid, BACK
+    // opens the rail with the selector on the CURRENT section — no more
+    // LEFT-crawling across a whole row just to switch sections.
+    val railSectionFocus = remember { FocusRequester() }
+    var railHasFocus by remember { mutableStateOf(false) }
+    val onSection = sections.any { it.route == currentRoute }
+
     Row(modifier = Modifier.fillMaxSize()) {
-    if (sections.any { it.route == currentRoute }) {
-        NavRail(currentRoute = currentRoute, destinations = sections, onSelect = goSection)
+    if (onSection) {
+        NavRail(
+            currentRoute = currentRoute,
+            destinations = sections,
+            onSelect = goSection,
+            sectionFocus = railSectionFocus,
+            onFocusWithinChanged = { railHasFocus = it },
+        )
     }
     NavHost(
         navController = navController,
@@ -258,4 +279,31 @@ fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
         }
     }
     }  // end Row(rail + NavHost)
+
+    // Composed AFTER the NavHost on purpose: the last-registered enabled
+    // BackHandler wins, and the NavHost registers its own back-pop while it
+    // composes — these must beat it on the four section routes (elsewhere
+    // they're disabled, so Details/Streams/Player back flows are untouched).
+    // BACK in a section's content → rail, selector on the current section.
+    BackHandler(enabled = onSection && !railHasFocus) {
+        runCatching { railSectionFocus.requestFocus() }
+    }
+    // BACK again on the rail → confirm-then-exit ("press back again", owner
+    // 2026-07-11). Sections are siblings, so there's no deeper "up" to pop —
+    // exiting is the only honest meaning left for BACK here.
+    val activity = LocalActivity.current
+    val context = LocalContext.current
+    var exitArmedAtMs by remember { mutableStateOf(0L) }
+    BackHandler(enabled = onSection && railHasFocus) {
+        val now = SystemClock.uptimeMillis()
+        if (now - exitArmedAtMs <= EXIT_CONFIRM_WINDOW_MS) {
+            activity?.finish()
+        } else {
+            exitArmedAtMs = now
+            Toast.makeText(context, "Press BACK again to exit", Toast.LENGTH_SHORT).show()
+        }
+    }
 }
+
+/** How long the exit toast keeps the second BACK armed. */
+private const val EXIT_CONFIRM_WINDOW_MS = 3_000L
