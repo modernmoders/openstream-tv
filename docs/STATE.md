@@ -1,5 +1,34 @@
 # STATE — updated 2026-07-11 by session 24 cont. 5
 
+## ⚠️ READ FIRST (session 24 cont. 5b — 2026-07-11 — alpha.47 DEPLOYED to .117: Home row drift FIXED (emulator-proven) + BACK opens the rail)
+**alpha.47 (versionCode 47) BUILT — gates green (340 tests; the known
+HomeViewModelTest dispatcher flake cleared on a fresh full run) — DEPLOYED
+to .117 + smoke-launched (versionCode 47, MainActivity resumed, crash buffer
+empty). .196 STILL OFFLINE.** DECISIONS #56. Commit `4d0a0cb`.
+- **Round-14 #7 "rows shift on their own" ROOT-CAUSED + FIXED + emulator-
+  proven.** Owner's new clue ("shifted rows have the selection in the third
+  spot") + a DISCRETE-press repro (no key-repeat needed — the old "needs the
+  owner's remote" assumption was wrong for THIS bug): alpha.46 down5/up5 put
+  focus at x=685, off the card grid, row dragged sideways. Cause:
+  `focusRestorer` remembers the focused child NODE; lazy rows recycle nodes
+  across items, so re-entry landed on whatever card the recycled node now
+  showed. Plus the per-row restore-scroll effect re-snapped the last-opened
+  row on EVERY recomposition. Fix: `RowEntryMemory` (saveable last-focused
+  INDEX + `focusProperties { onEnter }` redirect) + a `restorePending` gate.
+  alpha.47 measured: down5/up5 = x=252 every step; leave a row at card 3,
+  come back → card 3, same bounds; back-from-Details tile restore intact.
+  ⚠️ Discover grid / Search rows still use focusRestorer (no drift reported
+  there); swap to RowEntryMemory if the owner ever sees it.
+  ⚠️ #9 hold-lag: NOT separately addressed — the fix removes the restore-
+  snap/focus-restorer churn which should help; skeleton unevenness remains.
+- **BACK opens the rail (new owner ask, this session).** On Home/Discover/
+  Search/Settings: BACK from content focuses the NavRail with the selector
+  on the CURRENT section (deep-in-a-grid → one BACK, not 20 LEFTs); BACK on
+  the rail = "Press BACK again to exit" toast, second BACK within 3s exits.
+  Handlers composed AFTER the NavHost (later registration outranks its
+  back-pop — otherwise Discover popped to Home); disabled off-section so
+  player/details BACK flows untouched. Emulator-verified on Home + Discover.
+
 ## ⚠️ READ FIRST (session 24 cont. 5 — 2026-07-11 — alpha.46 DEPLOYED to .117: the WATCHED SYSTEM from the owner's design handoff)
 **alpha.46 (versionCode 46) BUILT — assembleDebug + testDebugUnitTest GREEN
 (340 tests, 8 new) + assembleRelease clean. DEPLOYED to .117 + smoke-launched
@@ -38,16 +67,19 @@ stream to create one would fire the alpha.35 Trakt check-in on the owner's
 account. **Owner eyeballs on the box:** tiles he's mid-way through show a
 ring with a percent; finished ones dim with a check; Details shows the
 NEW/RESUME/WATCHED rail + season roll-ups; Discover's "Hide watched" pill.
-⏳ **NEXT ACTION:** (a) **.196 still offline** — install alpha.46 when it pings:
+⏳ **NEXT ACTION:** (a) **.196 still offline** — install alpha.47 when it pings:
 `adb connect 192.168.1.196:5555 && adb -s 192.168.1.196:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
-(then leanback relaunch). (b) **Owner to eyeball alpha.46 on .117** (list
-above). (c) Remaining backlog unchanged: **#3/#4 anime IMDb→MAL bridge +
-numbering** (big app build — start from the box log's `malId(tt…) →
-unresolved scheme=` line), **#7/#8/#9 Home focus drift + hold-UP + scroll
-perf** (need the owner's remote at the TV — adb can't fake key-repeat,
-DECISIONS #33), #16 user skins (future). If the owner wants the handoff's
-remaining interactions (click-to-unwatch, long-press mark-season-watched,
-dim/percent/time-left toggles), see DECISIONS #55 for what they need.
+(then leanback relaunch — carries alpha.46+47 out together). (b) **Owner to
+eyeball alpha.47 on .117:** the watched system (rings/checks/dim, episode
+NEW/RESUME/WATCHED rail, season roll-ups, Discover "Hide watched"), the
+Home drift fix (down/up over rows — no sideways shift, selector stays in
+your column's card), and BACK-opens-rail (BACK from a grid → rail with
+current section selected; BACK BACK → exit). Report whether hold-scroll
+lag (#9) feels better after the churn removal or still needs a perf pass.
+(c) Remaining backlog: **#3/#4 anime IMDb→MAL bridge + numbering** (big app
+build — start from the box log's `malId(tt…) → unresolved scheme=` line),
+**#8 hold-UP hero skip + #9 residual scroll perf** (still remote-dependent),
+#16 user skins (future). Watched-system follow-ups if asked: DECISIONS #55.
 
 ## ⚠️ OWNER ROUND 14 (2026-07-11, session 24 cont. 2) — FULL LIST, logged before building
 🚨 Log first, build second (usage-cutoff lesson). Config notes: **keep "Skip filler" +
