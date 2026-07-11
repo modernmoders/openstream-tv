@@ -1519,3 +1519,40 @@ ease-in-out cycle, 0.16s stagger. Non-obvious choices:
   UI accent blue (#4DA3FF): the loader is brand art, and the owner picked
   that value in his design's props.
 Deployed to .117 (smoke-launched). Visual eyeball = owner's next stream load.
+
+## 53. 2026-07-11 (session 24 cont. 3) — Return-to-your-place on app exit; NavRail Home glitch root-caused (alpha.44)
+
+Owner Round 14 batch. Two of the five items carried non-obvious reasoning:
+
+### Exit-app-keeps-place re-enters the video, it does not resume the same link
+Round 14 #1 ("leaving the app and coming back should land exactly where you
+were, paused"). When Android reclaims the process, `CurrentPlayback` (the
+process-scoped holder the player reads its request from) is gone, so the
+restored PlayerScreen route has no source and used to `onExit()` straight to
+Home. We now stash the identity of what was playing in `SavedStateHandle`
+(videoId/type/title/metaId/poster — it survives process death, unlike the
+holder) and, on a null request, hand the screen a `restore` target. The screen
+re-opens the video through the **normal stream flow** (`onOpenStreams`), NOT a
+saved stream URL. Why re-enter instead of resume the exact link:
+- Stream links are ephemeral (debrid-resolved, expire) — replaying a stale URL
+  would fail; a fresh resolve is the reliable path.
+- The stream flow already carries the resume prompt (alpha.30) keyed on
+  `MediaRef`, so the viewer lands paused at their saved position "no matter
+  what stream/link" (§8.4) — exactly the ask, for free.
+Position itself was never at risk: progress is MediaRef-keyed in Room, not tied
+to the player lifecycle. This change only fixes WHERE you land (back in the
+video) vs. dumped to Home.
+
+### NavRail: never restoreState when the target is HOME
+Round 14 #15 (LIVE bug: Home click did nothing; Search→Home landed on
+Discover). The alpha.38 rail navigates with `popUpTo(HOME){saveState} +
+launchSingleTop + restoreState`. HOME is the popUpTo anchor, so the segment
+saved under its key is *whatever section was popped on top of it* — restoring
+that on a Home click resurrected the old section instead of showing Home. Fix:
+`restoreState = route != Routes.HOME` (Home always shows Home; the other
+sections still restore their scroll/focus). Second half of the same bug: Home's
+own header pills called a bare `navigate(DISCOVER/SEARCH/SETTINGS)`, pushing the
+section onto the stack so the next rail move pop-and-saved it — the saved
+segment then shadowed Home permanently. The pills now route through the rail's
+`goSection`. Both halves emulator-reasoned from the alpha.38 back-stack model;
+owner confirms on the box.

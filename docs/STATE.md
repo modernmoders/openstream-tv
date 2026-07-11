@@ -1,4 +1,4 @@
-# STATE — updated 2026-07-11 by session 24
+# STATE — updated 2026-07-11 by session 24 cont. 3
 
 ## ⚠️ OWNER ROUND 14 (2026-07-11, session 24 cont. 2) — FULL LIST, logged before building
 🚨 Log first, build second (usage-cutoff lesson). Config notes: **keep "Skip filler" +
@@ -36,6 +36,50 @@
 18. **Move "Connect this TV" + "Prefer software video decoder" under Expert mode.**
 Priorities this session: #15 (broken now) → #1/#2/#17/#18 (contained) → TorrentsDB config →
 then the hard clusters #7/#8/#9 (focus+perf) and #3/#4 (anime numbering) as budget allows.
+✅ **#15, #1, #2, #17, #18 all BUILT in alpha.44** (cont. 3, below). STILL OPEN in Round 14:
+#3/#4 (anime IMDb→MAL + numbering), #5 (poster progress indicators), #6 (re-enable TorrentsDB —
+config, not app), #7/#8/#9 (Home focus drift + hold-UP + scroll perf — need the owner's remote),
+#10/#11/#12/#13 (Discover/Home top-bar + filter + play-pause redesign), #14 (Trakt Recs / Continue
+Watching to top of Home), #16 (user skins, future).
+
+## ⚠️ READ FIRST (session 24 cont. 3 — 2026-07-11 — alpha.44 BUILT: return-to-your-place + NavRail glitch + Round 14 batch)
+**alpha.44 (versionCode 44) BUILT — assembleDebug + testDebugUnitTest GREEN (320
+tests; known HomeViewModelTest Main-dispatcher flake cleared on rerun) +
+assembleRelease clean. NOT deployed, NOT device-verified.** DECISIONS #53.
+Five Round-14 items landed in one commit (818b377):
+- **#15 NavRail glitch (was LIVE on .117) — FIXED.** `restoreState = route !=
+  Routes.HOME` (HOME is the popUpTo anchor, so its saved segment was whatever
+  section sat on top → Search→Home landed on Discover, Home click "did
+  nothing"). Home's header pills now route through `goSection`, not a bare
+  `navigate()` (a plain push got pop-and-saved and then shadowed Home forever).
+- **#1 Exit-app-keeps-place — BUILT.** PlayerViewModel stashes the playing
+  video's identity in SavedStateHandle; on process-death restore, PlayerScreen
+  re-enters the video via the stream flow (fresh link + resume prompt) instead
+  of dumping to Home. Lands paused at the saved MediaRef position.
+- **#2 Scrub acceleration halved.** `Scrubbing.stepMs` thresholds doubled
+  (5/12/20 → 10/24/40); ~2s hold to reach 60s steps, first taps stay 10s. Test
+  updated.
+- **#17 NavRail focus emphasis.** Hovered item = solid accent pill + dark glyph;
+  selected-but-unfocused = the quiet tinted pill as before.
+- **#18 Expert-mode gating.** "Prefer software video decoder" + "Connect this
+  TV" moved under Expert mode (the in-player "Fix blocky video" covers the
+  everyday decoder case).
+⚠️ **Only #2/#17/#18 are safely emulator/reason-verifiable; #1 and #15 need a
+real box** — #1 requires forcing process death mid-playback, #15 needs genuine
+d-pad section switching. Both were reasoned from the alpha.38 back-stack model
+and the SavedStateHandle lifecycle, not measured.
+⏳ **NEXT ACTION (owner or next session):** deploy alpha.44 to .117 (and .196
+when it pings) →
+`adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+then relaunch. **Verify on the box:** (a) NavRail — from Search, click Home →
+lands on Home (not Discover); Home click when already on Home does nothing bad;
+(b) start a show, HOME key out, reopen the app → back in the video, paused, at
+your spot; (c) the hovered rail item is the bright accent pill; (d) Settings →
+decoder + Connect are gone until Expert mode is on. Then resume the Round-14
+backlog (priorities updated in the OWNER ROUND 14 block above): the remaining
+easy config item is #6 (re-enable TorrentsDB on primary+backup AIOStreams), then
+the hard clusters #7/#8/#9 (Home focus+perf, need the remote) and #3/#4 (anime
+IMDb→MAL numbering).
 
 ## ⚠️ READ FIRST (session 24 cont. — 2026-07-11 — alpha.43 DEPLOYED to .117: owner's wave-dots loader; Trakt-history no-code answer)
 - **alpha.43 (versionCode 43) BUILT + DEPLOYED to .117, smoke-launched** (gates
