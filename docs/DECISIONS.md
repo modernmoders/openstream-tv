@@ -1691,3 +1691,28 @@ They're `enabled = onSection && …`, so Details/Streams/Player back flows
 (including the player's two-stage BACK) are untouched. Exiting from any
 section directly is deliberate: the sections are siblings (alpha.38), so
 there is no deeper "up" for BACK to mean.
+
+## 57. 2026-07-11 (session 24 cont. 5) — Consistency polish: shared RowEntryMemory everywhere + skeleton tile loading (alpha.48)
+
+Owner: "polish the app to match the consistency of Stremio/Netflix."
+1. **RowEntryMemory promoted to `ui/components/`** and adopted by EVERY
+   browse surface: Home rows (already, #56), Search result rows, and the
+   Discover grid — one focus behavior app-wide (enter fresh = first card,
+   re-enter = the card you left, index-based so node recycling can never
+   drift it). Discover's memory is keyed on (catalog, genre): a new filter
+   is a brand-new list and must not inherit the old grid's position — this
+   replaces the old keyed-FocusRequester trick with the same semantics.
+   The last `focusRestorer` call sites and their ExperimentalComposeUiApi
+   opt-ins are gone.
+2. **Skeleton tiles replace loading text/spinners** (round 14 #9's visual
+   half): new `ui/components/Skeletons.kt` — SkeletonPosterRow/Grid paint
+   full-size tile silhouettes (same geometry incl. the ±focusHeadroom
+   reservation, so the content swap never reflows). Used by Home loading
+   rows, Search "Searching…" rows, and Discover's initial grid load.
+   Deliberately STATIC — no shimmer: animation costs frames exactly when
+   catalogs are streaming in (DECISIONS #22 lesson).
+3. **contentType on Home's LazyColumn items** ("header"/"hero"/
+   "catalog-row"/"cw-row"): reuse pools are keyed by contentType, so a
+   disposed catalog row's nodes get recycled for the next catalog row
+   instead of being torn down for a structurally different item — cheaper
+   hold-scroll on the 32-bit boxes.

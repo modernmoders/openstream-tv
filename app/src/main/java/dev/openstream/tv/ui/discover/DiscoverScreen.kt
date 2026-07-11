@@ -28,11 +28,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -50,7 +49,10 @@ import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.OptionRow
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SkeletonPosterGrid
 import dev.openstream.tv.ui.components.SurfacePill
+import dev.openstream.tv.ui.components.rememberRowEntryMemory
+import dev.openstream.tv.ui.components.rowEntry
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
@@ -62,11 +64,6 @@ import dev.openstream.tv.ui.theme.CardSizeTokens
  * the grid below deep-browses the selection with skip pagination. Pickers are
  * real Dialogs so D-pad focus is trapped and Back dismisses (§5.4).
  */
-// OptIn: focusRestorer — same §10 row-entry rule as Search/Home (no stable
-// equivalent yet): DOWN from the filter bar into a freshly-shown grid lands
-// on the FIRST poster, but returning to the SAME grid (e.g. dismissing a
-// picker without changing the selection) restores the card you left.
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DiscoverScreen(
     onBack: () -> Unit = {},
@@ -84,11 +81,13 @@ fun DiscoverScreen(
         if (state.types.isNotEmpty()) runCatching { typeFocus.requestFocus() }
     }
 
-    // A new filter selection is a brand-new list — a fresh FocusRequester so
-    // focusRestorer's "last focused child" memory can't leak from the
-    // PREVIOUS filter's grid into this one (owner bug: DOWN from the filter
-    // bar landed mid-row, e.g. the 3rd item, instead of the first poster).
-    val firstCardFocus = remember(state.selected?.key, state.selectedGenre) { FocusRequester() }
+    // Grid-entry memory in the shared index-based language (DECISIONS #56):
+    // DOWN from the filter bar into a freshly-shown grid lands on the FIRST
+    // poster; returning to the SAME grid (e.g. dismissing a picker without
+    // changing the selection) restores the card you left. Keyed on the
+    // filter so a brand-new list can't inherit the previous filter's memory
+    // (owner bug: DOWN landed mid-row instead of the first poster).
+    val gridMemory = rememberRowEntryMemory(state.selected?.key, state.selectedGenre)
 
     // Ask for the next page when the last visible item is near the tail.
     val nearEnd by remember {
@@ -220,14 +219,10 @@ fun DiscoverScreen(
                 horizontalPadding = 0.dp,
             )
             state.error != null -> RowMessage("⚠ ${state.error}", horizontalPadding = 0.dp)
-            state.items.isEmpty() && state.loading -> Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center,
-            ) {
-                LoadingMessage(horizontalPadding = 0.dp, style = MaterialTheme.typography.titleMedium)
-            }
+            // Tile silhouettes instead of a centered spinner line: the page
+            // paints its final structure immediately and posters fade in over
+            // it — the Netflix loading pattern (#9).
+            state.items.isEmpty() && state.loading -> SkeletonPosterGrid(columns = state.view.columns)
             state.items.isEmpty() -> RowMessage("Nothing in this catalog", horizontalPadding = 0.dp)
             // The filter emptied a non-empty page: say why the grid is blank
             // instead of showing the misleading "nothing in this catalog".
@@ -242,8 +237,9 @@ fun DiscoverScreen(
                 verticalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                 // Scroll-axis headroom for the first/last row's focus scale (§5.3).
                 contentPadding = PaddingValues(vertical = CardSizeTokens.focusHeadroom),
-                modifier = Modifier.focusRestorer { firstCardFocus },
+                modifier = Modifier.rowEntry(gridMemory),
             ) {
+                val entryIndex = gridMemory.entryIndex(shown.size)
                 itemsIndexed(
                     items = shown,
                     key = { _, it -> it.id },
@@ -252,7 +248,13 @@ fun DiscoverScreen(
                     PosterCard(
                         item = item,
                         onClick = { onItemClick(item) },
-                        modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
+                        modifier = Modifier
+                            .onFocusChanged { if (it.isFocused) gridMemory.lastFocusedIndex = index }
+                            .then(
+                                if (index == entryIndex) {
+                                    Modifier.focusRequester(gridMemory.entryFocus)
+                                } else Modifier
+                            ),
                         columns = state.view.columns,
                         progress = state.progressByMeta[ProgressRepository.metaKey(item.type, item.id)],
                     )

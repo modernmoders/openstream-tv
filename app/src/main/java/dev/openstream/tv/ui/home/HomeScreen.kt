@@ -24,7 +24,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -32,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -56,9 +54,11 @@ import androidx.compose.foundation.layout.size
 import dev.openstream.tv.ui.components.ContinueWatchingCard
 import dev.openstream.tv.ui.components.GearIcon
 import dev.openstream.tv.ui.components.PosterCard
-import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SkeletonPosterRow
 import dev.openstream.tv.ui.components.SurfacePill
+import dev.openstream.tv.ui.components.rememberRowEntryMemory
+import dev.openstream.tv.ui.components.rowEntry
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
@@ -240,11 +240,16 @@ fun HomeScreen(
                     // half-scrolled (owner's hold-UP glitch, 2026-07-06). As
                     // item 0, reaching the header forces the list to finish
                     // scrolling to the very top.
-                    item(key = "header") {
+                    // contentType on every item: lazy reuse pools are keyed by
+                    // it, so a disposed catalog row's nodes are recycled for
+                    // the NEXT catalog row (near-identical trees) instead of
+                    // being torn down for a header/hero — cheaper hold-scroll
+                    // on the 32-bit boxes (round 14 #9).
+                    item(key = "header", contentType = "header") {
                         HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
                     }
                     if (featured != null) {
-                        item(key = HOME_FEATURED_KEY) {
+                        item(key = HOME_FEATURED_KEY, contentType = "hero") {
                             FeaturedHero(
                                 item = featured,
                                 onItemClick = { openItem(HOME_FEATURED_KEY, it) },
@@ -259,7 +264,7 @@ fun HomeScreen(
                     // sorted them to the front, this just splits the list.
                     val pinnedRows = state.rows.take(state.pinnedRowCount)
                     val unpinnedRows = state.rows.drop(state.pinnedRowCount)
-                    items(pinnedRows, key = { it.ref.key }) { row ->
+                    items(pinnedRows, key = { it.ref.key }, contentType = { "catalog-row" }) { row ->
                         CatalogRow(
                             row = row,
                             columns = state.columns,
@@ -271,7 +276,7 @@ fun HomeScreen(
                         )
                     }
                     if (state.continueWatching.isNotEmpty()) {
-                        item(key = HOME_CONTINUE_WATCHING_KEY) {
+                        item(key = HOME_CONTINUE_WATCHING_KEY, contentType = "cw-row") {
                             ContinueWatchingRow(
                                 entries = state.continueWatching,
                                 onItemClick = { openItem(HOME_CONTINUE_WATCHING_KEY, it) },
@@ -282,7 +287,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                    items(unpinnedRows, key = { it.ref.key }) { row ->
+                    items(unpinnedRows, key = { it.ref.key }, contentType = { "catalog-row" }) { row ->
                         CatalogRow(
                             row = row,
                             columns = state.columns,
@@ -467,45 +472,9 @@ private fun EmptyHome() {
 }
 
 /**
- * Row-entry focus memory (§10 rule: DOWN into a fresh row lands on the FIRST
- * card; returning to a row restores the card you left) — tracked by INDEX,
- * never by node. The old `focusRestorer` saved the focused child NODE, but
- * lazy layouts recycle nodes across items as the column scrolls, so the saved
- * node could silently be showing a DIFFERENT card by the time you came back:
- * re-entry landed mid-row and the bring-into-view drag shifted the whole row
- * sideways (owner round 14 #7 "rows shift on their own", emulator-proven —
- * down 5 / up 5 left a row scrolled ~half a card with focus off-grid).
- *
- * rememberSaveable is the point: the memory must survive the row scrolling
- * out of composition, which is exactly when it's needed.
- */
-private class RowEntryMemory(initialIndex: Int) {
-    var lastFocusedIndex by mutableStateOf(initialIndex)
-    val entryFocus = FocusRequester()
-}
-
-/** Only the index is saved; a fresh FocusRequester re-attaches on restore. */
-private val RowEntryMemorySaver = Saver<RowEntryMemory, Int>(
-    save = { it.lastFocusedIndex },
-    restore = { RowEntryMemory(it) },
-)
-
-@Composable
-private fun rememberRowEntryMemory(): RowEntryMemory =
-    rememberSaveable(saver = RowEntryMemorySaver) { RowEntryMemory(0) }
-
-/** Redirects entry into the row to the remembered card ([RowEntryMemory]). */
-private fun Modifier.rowEntry(memory: RowEntryMemory): Modifier = focusProperties {
-    onEnter = {
-        // Not composed (items changed under the memory) → swallow and let
-        // the default geometric entry stand.
-        runCatching { memory.entryFocus.requestFocus() }
-    }
-}
-
-/**
  * Always-first row when non-empty (§5.6). A click navigates to the item's
  * DETAILS page — from there the resume dialog (stream list) takes over.
+ * Row-entry focus uses the shared [RowEntryMemory] (DECISIONS #56).
  */
 @Composable
 private fun ContinueWatchingRow(
@@ -532,7 +501,7 @@ private fun ContinueWatchingRow(
             if (restoreIndex > 0) rowState.scrollToItem(restoreIndex)
             if (restoreIndex >= 0) memory.lastFocusedIndex = restoreIndex
         }
-        val entryIndex = memory.lastFocusedIndex.coerceIn(0, entries.lastIndex)
+        val entryIndex = memory.entryIndex(entries.size)
         LazyRow(
             state = rowState,
             horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
@@ -591,7 +560,10 @@ private fun CatalogRow(
         }
 
         when (row) {
-            is RowState.Loading -> LoadingMessage()
+            // Full-size tile silhouettes, not a text line: the row occupies
+            // its real height immediately, so content never reflows the
+            // column when it lands (round 14 #9 "half skeleton, half blank").
+            is RowState.Loading -> SkeletonPosterRow(columns)
             // §4.1.8: a failed addon is a visible chip, never a silent gap
             is RowState.Failed -> RowMessage("⚠ ${row.ref.addon.manifest.name} failed: ${row.message}")
             is RowState.Loaded ->
@@ -610,7 +582,7 @@ private fun CatalogRow(
                         if (restoreIndex > 0) rowState.scrollToItem(restoreIndex)
                         if (restoreIndex >= 0) memory.lastFocusedIndex = restoreIndex
                     }
-                    val entryIndex = memory.lastFocusedIndex.coerceIn(0, row.items.lastIndex)
+                    val entryIndex = memory.entryIndex(row.items.size)
                     LazyRow(
                         state = rowState,
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),

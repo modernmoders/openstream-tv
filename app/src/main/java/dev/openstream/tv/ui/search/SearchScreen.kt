@@ -23,11 +23,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -40,7 +39,10 @@ import androidx.tv.material3.Text
 import dev.openstream.tv.ui.components.MicIconImage
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
+import dev.openstream.tv.ui.components.SkeletonPosterRow
 import dev.openstream.tv.ui.components.TvTextField
+import dev.openstream.tv.ui.components.rememberRowEntryMemory
+import dev.openstream.tv.ui.components.rowEntry
 import dev.openstream.tv.ui.search.SearchViewModel.RowState
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
@@ -152,8 +154,6 @@ fun SearchScreen(
     }
 }
 
-// OptIn: focusRestorer — the §10 focus rule has no stable equivalent yet.
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SearchRow(
     row: RowState,
@@ -179,7 +179,9 @@ private fun SearchRow(
             )
         }
         when (row) {
-            is RowState.Loading -> RowMessage("Searching…")
+            // Tile silhouettes while searching — the row holds its real
+            // height, so results land without reflowing the column (#9).
+            is RowState.Loading -> SkeletonPosterRow(columns)
             is RowState.Failed -> RowMessage("⚠ ${row.ref.addon.manifest.name}: ${row.message}")
             is RowState.Loaded ->
                 if (row.items.isEmpty()) {
@@ -188,8 +190,11 @@ private fun SearchRow(
                     // §10 search focus rule: D-pad entry into a result row
                     // lands on its FIRST card (owner bug 2026-07-05: geometric
                     // focus search dropped you mid-row), while coming back
-                    // from details restores the card you left.
-                    val firstCardFocus = remember { FocusRequester() }
+                    // from details restores the card you left. Shared
+                    // RowEntryMemory (DECISIONS #56): index-based, so lazy
+                    // node recycling can never shift the row sideways.
+                    val memory = rememberRowEntryMemory()
+                    val entryIndex = memory.entryIndex(row.items.size)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                         // Vertical headroom: focus scale grows into this gap
@@ -197,14 +202,19 @@ private fun SearchRow(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
                             horizontal = 48.dp, vertical = CardSizeTokens.focusHeadroom,
                         ),
-                        modifier = Modifier.focusRestorer { firstCardFocus },
+                        modifier = Modifier.rowEntry(memory),
                     ) {
                         itemsIndexed(row.items, key = { _, item -> item.id }) { index, item ->
                             PosterCard(
                                 item,
                                 onClick = { onItemClick(item) },
-                                modifier = if (index == 0) Modifier.focusRequester(firstCardFocus)
-                                else Modifier,
+                                modifier = Modifier
+                                    .onFocusChanged { if (it.isFocused) memory.lastFocusedIndex = index }
+                                    .then(
+                                        if (index == entryIndex) {
+                                            Modifier.focusRequester(memory.entryFocus)
+                                        } else Modifier
+                                    ),
                                 columns = columns,
                                 progress = progressByMeta[
                                     dev.openstream.tv.data.ProgressRepository.metaKey(item.type, item.id),
