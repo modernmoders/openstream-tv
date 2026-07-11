@@ -1,5 +1,17 @@
 # STATE — updated 2026-07-10 by session 23
 
+## ⚠️ READ FIRST (session 23 cont. — 2026-07-10 — alpha.41 HOTFIX DEPLOYED to .117: duplicate catalog ids crashed Home)
+Owner installed alpha.40 on .117 and hit an instant crash "when I go down quickly". Pulled the
+stack over adb: `Key "tt33332385" was already used` — duplicate LazyRow keys. A live catalog now
+serves the same id twice; Home rows never deduped (Discover did, with a comment naming this exact
+failure). NOT the player work — the keys date to alpha.19; the DATA changed (5-instance stack live).
+**Fix (DECISIONS #50): `CatalogRepository.fetch` + `MetaRepository.resolveMeta` now distinctBy id**
+(covers Home/Discover/Search rows + Details episode rows). TDD'd, gates green.
+**Box-proven before/after on .117:** alpha.40 + 14 rapid DOWNs = same FATAL on demand; alpha.41 +
+38 DOWN/UPs = zero crashes. **alpha.41 DEPLOYED + verified on .117. ⏳ .196 was OFFLINE — install
+alpha.41 there when it pings** (same install -r command). Player verification (Z1 below) now
+happens on alpha.41.
+
 ## ⚠️ READ FIRST (session 23 — 2026-07-10 — alpha.40: player picks its decoder PER STREAM; fluid scrubbing)
 🚨 **BOXES STILL ON alpha.30.** alpha.31–.40 are ALL undeployed. Deploy before triaging any owner
 bug report. 🚨 **DO NOT EDIT RACHAEL'S ACCOUNTS** without explicit per-request permission.
