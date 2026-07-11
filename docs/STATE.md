@@ -1,4 +1,43 @@
-# STATE — updated 2026-07-10 by session 23
+# STATE — updated 2026-07-11 by session 24
+
+## ⚠️ READ FIRST (session 24 — 2026-07-11 — alpha.42 DEPLOYED to .117: manual-list Trakt rows gone everywhere; profile-cache root cause)
+Finished the cut-off "remove Trakt collection rows" session. The rows came from
+TWO places, and neither was the live configs (already clean — audited all 4
+AIOMetadata instances, Adam's + Rachael's: zero manual-curation catalogs live).
+1. **"Trakt Integration" addon hand-installed on .117** (official strem.io Trakt
+   addon — every row is add-it-yourself). Not profile-managed, so sync
+   (correctly) never touched it. **Removed via the box's addon manager.**
+2. **alpha.42 (versionCode 42) BUILT + DEPLOYED to .117 + box-proven** — gates
+   green (315 tests; known HomeViewModelTest flake cleared on rerun). Two
+   cache layers had hidden every owner config edit from boxes (DECISIONS #51):
+   (a) sync never re-fetched manifests of already-installed addons → new
+   `SyncPlan.refresh` re-upserts them each due sync; (b) **the profile JSON
+   itself was disk-cached for 2 days** (Dreamhost `max-age=172800` + OkHttp
+   cache) → .117 synced "successfully" with ZERO network since Jul 9 and was
+   stuck on a pre-5-instance 3-addon profile. `SetupProfileClient` now sends
+   `no-cache` (ETag → 304), and `/setup/.htaccess` serves `no-cache` for
+   `*.json`. **Box-proven:** profile GET hits the server on launch, all 7
+   profile addons installed (2 AIOMetadata + 3 AIOStreams + Cinemeta +
+   AIOLists), Home rows = Featured/Popular/Trending/Trakt Recommendations/
+   Trakt's Popular only. Diagnosis trick: Dreamhost access log = ground truth
+   for "did the box actually fetch".
+3. **Both Stremio accounts re-synced to live manifests** (stremio_api
+   set_addons; backups in StremioSurfer/stremio-addons-backup-*-2026-07-11.json).
+   Adam's elfhosted AIOMetadata snapshot was a config-generation behind
+   ("AIO - Friends Anime" 66 cats → "AIO - Adam - Movies & Series" 59) and his
+   primary AIOStreams snapshot still declared 48 junk catalogs (Live TV/
+   sports/Hindi) → now 0. Rachael's (explicit owner permission this request):
+   same refresh, minor version diffs only. Her AIOLists = search-only, her
+   AIOStreams library rows auto-fill — nothing manual anywhere.
+⚠️ During box UI driving, a BACK press surfaced a background STREMIO task that
+resumed mid-playback ("Hachi: A Dog's Tale", ~1 min) — may have stamped Adam's
+Trakt history/Continue Watching; owner can remove it in Trakt if it shows.
+⏳ **.196 still OFFLINE** — install alpha.42 when it pings:
+`adb connect 192.168.1.196:5555 && adb -s 192.168.1.196:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+(then relaunch; its profile sync will also self-heal the addon list).
+Rachael's box: her profile + configs are clean; if her Home ever shows
+add-it-yourself rows, check HER box for a hand-installed Trakt addon too.
+Player verification (Z1, alpha.40 work) still pending on alpha.42.
 
 ## ⚠️ READ FIRST (session 23 cont. — 2026-07-10 — alpha.41 HOTFIX DEPLOYED to .117: duplicate catalog ids crashed Home)
 Owner installed alpha.40 on .117 and hit an instant crash "when I go down quickly". Pulled the
