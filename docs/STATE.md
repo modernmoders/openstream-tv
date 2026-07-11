@@ -1,5 +1,42 @@
 # STATE — updated 2026-07-11 by session 24
 
+## ⚠️ OWNER ROUND 14 (2026-07-11, session 24 cont. 2) — FULL LIST, logged before building
+🚨 Log first, build second (usage-cutoff lesson). Config notes: **keep "Skip filler" +
+"Skip recap" + "Allow users to mark" ENABLED on both of his streams — do NOT disable.**
+1. **Exit app must keep place** — leaving the app (HOME key) and coming back should land
+   exactly where you were, playback paused (pause already works). Currently returns to Home.
+2. **Scrub acceleration cut in half** — alpha.40 ramp (10s→30s→60s→120s) too fast.
+3. **Skip Intro/credits never appears** ("auto or manual"); next-episode prompt only at very
+   end. AniSkip is MAL-keyed; his anime is IMDb-only (box log: `malId(tt…) → unresolved
+   scheme=`). Needs an IMDb→MAL bridge + the anime absolute-vs-seasonal numbering story.
+4. **Naruto episode photos blank after season 1** — owner recalls the same on Stremio when
+   switching anime numbering seasonal↔absolute (TMDB/IMDb couldn't map). Same numbering story.
+5. **Watched-progress indicators on poster artwork** (Home tiles etc.) — none show today.
+6. (config, done/keep) skip-filler settings stay on; **TorrentsDB is back online → re-enable**
+   on primary+backup AIOStreams.
+7. **Home rows shift left on their own** (Home only, NOT Discover). Exact repro: down 4 rows,
+   up 3 → one row shifted by 1, another by 2. Some rows only. (R13-1, now with repro.)
+8. **Hold-UP sometimes skips past the hero to the top pills** — hero is double-height, "it's
+   like it only moves half as much as it needs for that last row. Only sometimes."
+9. **Hold up/down on Home lags badly, not premium** — skeletons load unevenly (half skeleton,
+   half unallocated blank), plus the shifted rows compound it.
+10. **Discover top bar**: use the Discover "settings-next-to-View"-style icon for the sidebar
+    Settings; swap the cog and "View" order in Discover.
+11. **Home top pills**: make Settings look different / farther from Discover+Search; owner may
+    later ask to remove the top pills entirely (they're the #33 headerFocus anchor — re-anchor
+    first).
+12. **Discover filters** should look clickable/filter-like, hint their options, stay clean.
+13. **Play/pause control redesign** — "the pause is totally out of the ballpark".
+14. **Trakt Recommendations row at the TOP of Home; Continue Watching near top too.**
+15. **NavRail nav glitch, LIVE on .117 right now**: Home click does nothing; from Search,
+    clicking Home lands on Discover. (alpha.38 popUpTo/saveState/restoreState suspect.)
+16. Future/cosmetic: user-pickable colors/skins.
+17. **NavRail focus emphasis** — highlight the item you're hovering (focused), not just the
+    current section.
+18. **Move "Connect this TV" + "Prefer software video decoder" under Expert mode.**
+Priorities this session: #15 (broken now) → #1/#2/#17/#18 (contained) → TorrentsDB config →
+then the hard clusters #7/#8/#9 (focus+perf) and #3/#4 (anime numbering) as budget allows.
+
 ## ⚠️ READ FIRST (session 24 cont. — 2026-07-11 — alpha.43 DEPLOYED to .117: owner's wave-dots loader; Trakt-history no-code answer)
 - **alpha.43 (versionCode 43) BUILT + DEPLOYED to .117, smoke-launched** (gates
   green). The player load spinner is now the owner's own "SStreams Loader"
