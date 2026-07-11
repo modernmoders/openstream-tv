@@ -1,4 +1,53 @@
-# STATE — updated 2026-07-11 by session 24 cont. 4
+# STATE — updated 2026-07-11 by session 24 cont. 5
+
+## ⚠️ READ FIRST (session 24 cont. 5 — 2026-07-11 — alpha.46 DEPLOYED to .117: the WATCHED SYSTEM from the owner's design handoff)
+**alpha.46 (versionCode 46) BUILT — assembleDebug + testDebugUnitTest GREEN
+(340 tests, 8 new) + assembleRelease clean. DEPLOYED to .117 + smoke-launched
+(versionCode 46 confirmed; MainActivity resumed, crash buffer empty). .196
+OFFLINE (connect timed out).** DECISIONS #55. Commit `cac216c`.
+Owner dropped `design_handoff_watched_system/` (repo root, gitignored — an
+HTML prototype + README spec) and said "use it as the watched UI for the app".
+Implemented as a REPLACEMENT for the alpha.45 poster bar/badge + alpha.25
+green episode checks — one three-state language everywhere:
+- **Posters (Home/Discover/Search):** unwatched artwork stays PRISTINE;
+  in-progress = 26dp progress ring top-right with the percent inside;
+  watched = accent check disc + the artwork dimmed so unwatched pops. The
+  focus title-reveal now also shows a thin progress bar + "N min left".
+  New `ui/components/WatchIndicators.kt` — all Canvas geometry (no font
+  glyphs, DECISIONS #54 rule), all static (no animation, box-safe).
+- **Details episode view:** every row has a fixed trailing status column —
+  dashed circle + NEW / ring-with-percent + RESUME / check disc + WATCHED;
+  watched rows recede (62% content alpha + thumbnail dim); in-progress rows
+  say "N min left". Season pills: mini check disc when the season is fully
+  watched, "3 / 14" count on the selected one; show header gets a small ring
+  + "31 of 98 episodes watched" (pure `ui/details/WatchStats.kt`, tested).
+  The old green WatchedBadge/WatchedGreen are GONE — watched is accent now.
+- **Discover:** new "Hide watched" toggle pill in the filter bar (selected =
+  ON), persisted (`DiscoverViewPrefs.hideWatched`); drops FINISHED titles
+  only (in-progress/untouched always stay); a page emptied by the filter
+  explains itself. `DiscoverSort.hideWatched`, tested.
+- **Colors:** handoff's #3E8BFF blue family collapsed onto the app's single
+  Accent (#4DA3FF, house one-accent rule); the handoff's neutral label tints
+  + rgba(4,8,14,0.48) artwork dim taken literally.
+- **NOT built (follow-ups if the owner asks):** click-to-unwatch, long-press
+  "mark season watched" (both need a progress write path for never-played
+  episodes — durations unknown), and the dim/percent/time-left tweak
+  toggles (shipped always-on).
+⚠️ NOT visually verified — the emulator has no watch history, and playing a
+stream to create one would fire the alpha.35 Trakt check-in on the owner's
+account. **Owner eyeballs on the box:** tiles he's mid-way through show a
+ring with a percent; finished ones dim with a check; Details shows the
+NEW/RESUME/WATCHED rail + season roll-ups; Discover's "Hide watched" pill.
+⏳ **NEXT ACTION:** (a) **.196 still offline** — install alpha.46 when it pings:
+`adb connect 192.168.1.196:5555 && adb -s 192.168.1.196:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+(then leanback relaunch). (b) **Owner to eyeball alpha.46 on .117** (list
+above). (c) Remaining backlog unchanged: **#3/#4 anime IMDb→MAL bridge +
+numbering** (big app build — start from the box log's `malId(tt…) →
+unresolved scheme=` line), **#7/#8/#9 Home focus drift + hold-UP + scroll
+perf** (need the owner's remote at the TV — adb can't fake key-repeat,
+DECISIONS #33), #16 user skins (future). If the owner wants the handoff's
+remaining interactions (click-to-unwatch, long-press mark-season-watched,
+dim/percent/time-left toggles), see DECISIONS #55 for what they need.
 
 ## ⚠️ OWNER ROUND 14 (2026-07-11, session 24 cont. 2) — FULL LIST, logged before building
 🚨 Log first, build second (usage-cutoff lesson). Config notes: **keep "Skip filler" +
