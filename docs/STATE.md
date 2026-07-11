@@ -1,5 +1,32 @@
 # STATE — updated 2026-07-11 by session 24 cont. 5
 
+## ⚠️ READ FIRST (session 24 cont. 5c — 2026-07-11 — alpha.48 BUILT: consistency polish batch; ⚠️ NOT DEPLOYED — network dropped)
+**alpha.48 (versionCode 48) BUILT — gates green (340 tests, 0 failures) +
+assembleRelease clean + emulator-verified. ⚠️ NOT deployed to EITHER box:
+.117 became unreachable mid-session ("Network is unreachable" — this Mac's
+hostname flipped .lan → .local, so the MAC likely changed Wi-Fi networks;
+the box is probably fine). .196 offline all session.** DECISIONS #57.
+Commit `74b833d`. Owner confirmed alpha.47's drift fix GREEN on .117
+("feels better and the row shift is gone") and asked for Stremio/Netflix
+consistency polish:
+- **RowEntryMemory now app-wide** (`ui/components/RowEntryMemory.kt`):
+  Search result rows + the Discover grid joined Home on the index-based
+  entry memory; the last `focusRestorer` call sites are gone. Discover's
+  memory keys on (catalog, genre) so a new filter never inherits the old
+  grid's position. Emulator-verified: Home drift probe still clean; the
+  Discover grid enters fresh at card 1 and re-enters at the card you left.
+- **Skeleton tile loading** (`ui/components/Skeletons.kt`): Home loading
+  rows, Search "Searching…" rows and Discover's initial load now paint
+  full-size STATIC tile silhouettes (same geometry incl. focusHeadroom →
+  zero reflow when content lands). Round-14 #9's "half skeleton, half
+  blank" visual is gone; no shimmer on purpose (DECISIONS #22).
+- **Home LazyColumn contentType hints** (header/hero/catalog-row/cw-row) —
+  like-for-like node recycling while hold-scrolling.
+⏳ **DEPLOY alpha.48 to BOTH boxes when reachable:**
+`adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+(same for .196; then leanback relaunch. .117 is on alpha.47, .196 on
+alpha.45 — this carries everything forward.)
+
 ## ⚠️ READ FIRST (session 24 cont. 5b — 2026-07-11 — alpha.47 DEPLOYED to .117: Home row drift FIXED (emulator-proven) + BACK opens the rail)
 **alpha.47 (versionCode 47) BUILT — gates green (340 tests; the known
 HomeViewModelTest dispatcher flake cleared on a fresh full run) — DEPLOYED
