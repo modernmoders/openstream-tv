@@ -29,6 +29,8 @@ data class DiscoverViewPrefs(
     /** Poster columns in the Discover grid (§5.1 density). */
     val columns: Int = 6,
     val sort: DiscoverSortMode = DiscoverSortMode.ADDON_ORDER,
+    /** Filter fully-watched titles out of the grid (watched system). */
+    val hideWatched: Boolean = false,
 )
 
 /** Global poster density bounds (§5.1). 6 was the launch default; the owner
@@ -64,6 +66,7 @@ interface ViewPrefs {
 
     suspend fun setDiscoverColumns(columns: Int)
     suspend fun setDiscoverSort(sort: DiscoverSortMode)
+    suspend fun setDiscoverHideWatched(enabled: Boolean)
     suspend fun setPosterColumns(columns: Int)
     suspend fun setExpertMode(enabled: Boolean)
     suspend fun setEpisodeNumbering(mode: EpisodeNumbering)
@@ -85,6 +88,7 @@ class DataStoreViewPrefs @Inject constructor(
                 sort = prefs[DISCOVER_SORT]
                     ?.let { raw -> DiscoverSortMode.entries.firstOrNull { it.name == raw } }
                     ?: DiscoverSortMode.ADDON_ORDER,
+                hideWatched = prefs[DISCOVER_HIDE_WATCHED] ?: false,
             )
         }
 
@@ -102,6 +106,10 @@ class DataStoreViewPrefs @Inject constructor(
 
     override suspend fun setDiscoverSort(sort: DiscoverSortMode) {
         context.viewPrefsStore.edit { it[DISCOVER_SORT] = sort.name }
+    }
+
+    override suspend fun setDiscoverHideWatched(enabled: Boolean) {
+        context.viewPrefsStore.edit { it[DISCOVER_HIDE_WATCHED] = enabled }
     }
 
     override val expertMode: Flow<Boolean> =
@@ -139,6 +147,7 @@ class DataStoreViewPrefs @Inject constructor(
     private companion object {
         val DISCOVER_COLUMNS = intPreferencesKey("discover_columns")
         val DISCOVER_SORT = stringPreferencesKey("discover_sort")
+        val DISCOVER_HIDE_WATCHED = booleanPreferencesKey("discover_hide_watched")
         val POSTER_COLUMNS = intPreferencesKey("poster_columns")
         val EXPERT_MODE = booleanPreferencesKey("expert_mode")
         val EPISODE_NUMBERING = stringPreferencesKey("episode_numbering")

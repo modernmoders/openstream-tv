@@ -43,3 +43,5 @@ templates/
 # Local tool settings + owner design-page saves (never track)
 .claude/
 SStreams Loader.dc_files/
+SStreams Loader.dc.html
+design_handoff_watched_system/

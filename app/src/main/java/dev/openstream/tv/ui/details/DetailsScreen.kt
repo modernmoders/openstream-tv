@@ -15,15 +15,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,8 +38,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
@@ -57,9 +56,14 @@ import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
+import dev.openstream.tv.ui.components.ProgressRing
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.SurfaceRow
+import dev.openstream.tv.ui.components.UnwatchedRing
+import dev.openstream.tv.ui.components.WatchedArtworkDim
+import dev.openstream.tv.ui.components.WatchedDisc
+import dev.openstream.tv.ui.components.minutesLeftOf
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
 import dev.openstream.tv.ui.theme.MutedText
@@ -197,7 +201,11 @@ private fun DetailsContent(
                     style = MaterialTheme.typography.displaySmall,
                     color = Color.White,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     val facts = listOfNotNull(
                         meta.releaseInfo?.takeIf { it.isNotBlank() },
                         meta.runtime?.takeIf { it.isNotBlank() },
@@ -208,7 +216,27 @@ private fun DetailsContent(
                         text = facts.joinToString("  ·  "),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MutedText,
+                        modifier = Modifier.weight(1f),
                     )
+                    // Show-level roll-up (watched system): a small ring + "31 of
+                    // 98 episodes watched". Only once there's history — a fresh
+                    // show doesn't need "0 of 98" chrome.
+                    val showStats = remember(meta.videos, episodeProgress) {
+                        showWatchStats(meta.videos, episodeProgress)
+                    }
+                    if (showStats.watched > 0 && showStats.total > 0) {
+                        ProgressRing(
+                            fraction = showStats.fraction,
+                            size = 18.dp,
+                            showPercent = false,
+                            scrim = false,
+                        )
+                        Text(
+                            text = "${showStats.watched} of ${showStats.total} episodes watched",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MutedText,
+                        )
+                    }
                 }
                 meta.description?.let {
                     Text(
@@ -321,6 +349,12 @@ private fun DetailsContent(
                         // 8dp edge padding: the row clips on its scroll axis, so
                         // the first/last chip's focus scale needs headroom. The
                         // slight indent is invisible at 10 feet (§5.3).
+                        // Season roll-ups (watched system): a mini check disc on
+                        // a fully watched season, a "3 / 14" count on the
+                        // selected one — recomputed live as marks land.
+                        val seasonStats = remember(meta.videos, episodeProgress) {
+                            seasonWatchStats(meta.videos, episodeProgress)
+                        }
                         LazyRow(
                             state = seasonRowState,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -332,8 +366,8 @@ private fun DetailsContent(
                                 // focus, not the season chip.
                                 val isEntryChip =
                                     season == seasons.first() && resumeVideoId == null
+                                val stats = seasonStats[season]
                                 SurfacePill(
-                                    label = if (season == 0) "Specials" else "Season $season",
                                     onClick = { onSelectSeason(season) },
                                     selected = season == selectedSeason,
                                     modifier = Modifier
@@ -347,7 +381,25 @@ private fun DetailsContent(
                                                 Modifier.focusRequester(primaryFocus)
                                             } else Modifier
                                         ),
-                                )
+                                ) {
+                                    Text(
+                                        text = if (season == 0) "Specials" else "Season $season",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                    )
+                                    when {
+                                        stats?.complete == true ->
+                                            WatchedDisc(size = 14.dp)
+                                        season == selectedSeason && (stats?.watched ?: 0) > 0 ->
+                                            Text(
+                                                text = "${stats!!.watched} / ${stats.total}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = Color.White.copy(alpha = 0.8f),
+                                                maxLines = 1,
+                                            )
+                                    }
+                                }
                             }
                         }
                     }
@@ -360,15 +412,13 @@ private fun DetailsContent(
                     EpisodeNumbering.ABSOLUTE -> absoluteNumbers[video.id] ?: video.episode
                     EpisodeNumbering.SEASONAL -> video.episode
                 }
-                // Progress for this episode, if any: a bar for a partly-watched
-                // one, a ✓ for a finished one (keyed by video id = externalId).
+                // This episode's stored progress, if any — the row derives its
+                // watched/resume/new state from it (keyed by video id = externalId).
                 val watch = episodeProgress[video.id]
                 EpisodeRow(
                     video = video,
                     episodeNumber = episodeNumber,
-                    watched = watch != null && ProgressRepository.isWatched(watch),
-                    progressFraction = watch?.takeUnless { ProgressRepository.isWatched(it) }
-                        ?.fractionWatched ?: 0f,
+                    watch = watch,
                     onClick = { onPlayEpisode(video) },
                     // Entry focus lands here when this is the resume episode, or
                     // (no history) on the first episode of a season-less series.
@@ -404,26 +454,34 @@ private fun DetailsContent(
  * FIRST (same trick as PosterCard) so the row's layout never pops/reflows
  * as the image arrives — no jank on the 32-bit boxes.
  *
- * Watch state (owner 2026-07-08): a finished episode gets a green ✓ badge; a
- * partly-watched one gets a resume bar hugging the thumbnail's bottom edge
- * (or a thin line under the text when there's no thumbnail).
+ * Watch state (design_handoff_watched_system): a fixed trailing status
+ * column reads NEW (dashed circle) / RESUME (progress ring + percent) /
+ * WATCHED (check disc); a watched row's content drops to 62% opacity and
+ * its thumbnail dims so unwatched episodes pop forward; an in-progress row
+ * keeps the resume bar on the thumbnail's bottom edge + "N min left".
  */
 @Composable
 private fun EpisodeRow(
     video: Video,
     episodeNumber: Int?,
-    watched: Boolean,
-    progressFraction: Float,
+    watch: WatchProgress?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val watched = watch != null && ProgressRepository.isWatched(watch)
+    val progressFraction = if (watched) 0f else watch?.fractionWatched ?: 0f
+    val inProgress = progressFraction > 0f
+    // Watched rows recede; the status column keeps full strength so the
+    // check + label stay readable across the room.
+    val contentAlpha = if (watched) 0.62f else 1f
     SurfaceRow(onClick = onClick, modifier = modifier) {
         if (video.thumbnail != null) {
             Box(
                 modifier = Modifier
                     .width(128.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(8.dp))
+                    .alpha(contentAlpha),
             ) {
                 AsyncImage(
                     model = video.thumbnail,
@@ -433,41 +491,33 @@ private fun EpisodeRow(
                     error = ColorPainter(EpisodeThumbPlaceholder),
                     modifier = Modifier.fillMaxSize(),
                 )
-                if (progressFraction > 0f) {
+                if (watched) {
+                    Box(Modifier.fillMaxSize().background(WatchedArtworkDim))
+                }
+                if (inProgress) {
                     ProgressBar(
                         fraction = progressFraction,
                         modifier = Modifier.align(Alignment.BottomStart),
                     )
                 }
-                if (watched) {
-                    WatchedBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
-                }
             }
         }
-        Column(Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    // "Episode 1 · System" — spelled out, no "E1" (plain words
-                    // for people who don't speak in TV shorthand, owner
-                    // 2026-07-06). Addons without real episode names title them
-                    // "Episode N" themselves — don't print "Episode 1 · Episode 1".
-                    text = episodeNumber?.let { ep ->
-                        val label = "Episode $ep"
-                        if (video.displayTitle.equals(label, ignoreCase = true)) label
-                        else "$label  ·  ${video.displayTitle}"
-                    } ?: video.displayTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                // Thumbnail-less rows have no artwork to badge — mark the title.
-                if (watched && video.thumbnail == null) WatchedBadge()
-            }
+        Column(Modifier.weight(1f).alpha(contentAlpha)) {
+            Text(
+                // "Episode 1 · System" — spelled out, no "E1" (plain words
+                // for people who don't speak in TV shorthand, owner
+                // 2026-07-06). Addons without real episode names title them
+                // "Episode N" themselves — don't print "Episode 1 · Episode 1".
+                text = episodeNumber?.let { ep ->
+                    val label = "Episode $ep"
+                    if (video.displayTitle.equals(label, ignoreCase = true)) label
+                    else "$label  ·  ${video.displayTitle}"
+                } ?: video.displayTitle,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             video.overview?.let {
                 Text(
                     text = it,
@@ -480,17 +530,60 @@ private fun EpisodeRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // No thumbnail to hang the resume bar on: a thin line under the text.
-            if (video.thumbnail == null && progressFraction > 0f) {
-                ProgressBar(
-                    fraction = progressFraction,
-                    modifier = Modifier
-                        .padding(top = 6.dp)
-                        .fillMaxWidth(0.5f),
+            if (inProgress) {
+                // No thumbnail to hang the resume bar on: a thin line here.
+                if (video.thumbnail == null) {
+                    ProgressBar(
+                        fraction = progressFraction,
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .fillMaxWidth(0.5f),
+                    )
+                }
+                Text(
+                    text = "${minutesLeftOf(watch!!)} min left",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = ResumeLabel,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
+        // Fixed-width status column: same slot on every row, so the state
+        // reads as a scannable rail down the list (handoff 1b).
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+            modifier = Modifier.width(58.dp),
+        ) {
+            when {
+                watched -> {
+                    WatchedDisc(size = 24.dp)
+                    StatusLabel("WATCHED", WatchedLabel)
+                }
+                inProgress -> {
+                    ProgressRing(fraction = progressFraction, size = 28.dp, scrim = false)
+                    StatusLabel("RESUME", ResumeLabel)
+                }
+                else -> {
+                    UnwatchedRing(size = 22.dp)
+                    StatusLabel("NEW", NewLabel)
+                }
+            }
+        }
     }
+}
+
+/** Tiny uppercase caption under a status glyph (WATCHED / RESUME / NEW). */
+@Composable
+private fun StatusLabel(text: String, color: Color) {
+    Text(
+        text = text,
+        color = color,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.8.sp,
+        maxLines = 1,
+    )
 }
 
 /** A resume bar: dim track, accent fill up to [fraction] (0..1).
@@ -512,23 +605,12 @@ private fun ProgressBar(fraction: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** Green ✓ chip = "you've watched this". Enlarged + ringed for glance-ability
- *  on a TV (owner 2026-07-09: "could barely see it"). */
-@Composable
-private fun WatchedBadge(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(28.dp)
-            .background(WatchedGreen, CircleShape)
-            .border(2.dp, Color.White.copy(alpha = 0.85f), CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("✓", style = MaterialTheme.typography.titleMedium, color = Color.White)
-    }
-}
-
 /** Matches SurfaceCard so a loading thumbnail blends into its row. */
 private val EpisodeThumbPlaceholder = Color(0xFF23232F)
 
-/** "Watched" green — reads as done without competing with the accent blue. */
-private val WatchedGreen = Color(0xFF4CC38A)
+// Status-label colors from the handoff: each state's caption carries its own
+// weight — WATCHED muted (it recedes), RESUME an accent tint (it invites),
+// NEW barely-there (untouched content needs no chrome).
+private val WatchedLabel = Color(0xFF7C8B9C)
+private val ResumeLabel = Color(0xFF8FB4E8)
+private val NewLabel = Color(0xFF4E5D6C)

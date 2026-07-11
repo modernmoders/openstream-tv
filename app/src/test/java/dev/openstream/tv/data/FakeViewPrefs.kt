@@ -26,6 +26,10 @@ class FakeViewPrefs : ViewPrefs {
         state.update { it.copy(sort = sort) }
     }
 
+    override suspend fun setDiscoverHideWatched(enabled: Boolean) {
+        state.update { it.copy(hideWatched = enabled) }
+    }
+
     override suspend fun setPosterColumns(columns: Int) {
         columnsState.value = columns.coerceIn(MIN_POSTER_COLUMNS, MAX_POSTER_COLUMNS)
     }

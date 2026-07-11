@@ -176,6 +176,16 @@ fun DiscoverScreen(
                     )
                 }
                 if (state.types.isNotEmpty()) {
+                    // "Hide watched" (watched system): a toggle in the filter
+                    // bar, not a picker — selected = ON in the shared pill
+                    // language, so its state is readable at a glance.
+                    SurfacePill(
+                        label = "Hide watched",
+                        selected = state.view.hideWatched,
+                        onClick = { viewModel.setHideWatched(!state.view.hideWatched) },
+                    )
+                }
+                if (state.types.isNotEmpty()) {
                     // View is display settings, not a tree level — pushed to the
                     // far edge so it reads apart from the pickers (owner 2026-07-05).
                     // Cog AFTER the word, drawn not font (round 14 #10).
@@ -193,11 +203,16 @@ fun DiscoverScreen(
             }
         }
 
-        // Sort once per (items, mode) change — inside the grid lambda it
+        // Sort/filter once per input change — inside the grid lambda it
         // re-sorted the full list on every recomposition, which is exactly
         // when frames are scarce (pages streaming in while the user moves).
-        val shown = remember(state.items, state.view.sort) {
-            DiscoverSort.apply(state.items, state.view.sort)
+        val shown = remember(
+            state.items, state.view.sort, state.view.hideWatched, state.progressByMeta,
+        ) {
+            DiscoverSort.apply(state.items, state.view.sort).let {
+                if (state.view.hideWatched) DiscoverSort.hideWatched(it, state.progressByMeta)
+                else it
+            }
         }
         when {
             state.types.isEmpty() -> RowMessage(
@@ -214,6 +229,12 @@ fun DiscoverScreen(
                 LoadingMessage(horizontalPadding = 0.dp, style = MaterialTheme.typography.titleMedium)
             }
             state.items.isEmpty() -> RowMessage("Nothing in this catalog", horizontalPadding = 0.dp)
+            // The filter emptied a non-empty page: say why the grid is blank
+            // instead of showing the misleading "nothing in this catalog".
+            shown.isEmpty() -> RowMessage(
+                "Everything here is watched — turn off \"Hide watched\" to see it",
+                horizontalPadding = 0.dp,
+            )
             else -> LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Adaptive(CardSizeTokens.posterWidth(state.view.columns)),

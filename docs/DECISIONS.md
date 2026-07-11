@@ -1593,3 +1593,58 @@ label + value + drawn ▾) so they read as openable filters (#12); Home's
 Settings pill moved 26dp apart with the gear + muted text, headerFocus stays
 on Discover — the #33 hold-UP anchor is untouched (#11). "✓" stays a text
 glyph on purpose: it already ships in Details/OptionRow and renders fine.
+
+## 55. 2026-07-11 (session 24 cont. 5) — The watched system: design_handoff_watched_system becomes the app's watch-state UI (alpha.46)
+
+The owner supplied a high-fidelity HTML design handoff (repo root
+`design_handoff_watched_system/`, untracked) for a three-state watch-progress
+system and asked for it to be THE watched UI. Implemented across PosterCard
+(Home/Discover/Search tiles), the Details episode view, and Discover's filter
+bar. Non-obvious mappings from the handoff to this codebase:
+
+### One accent, not the handoff's blue family
+The handoff uses #3E8BFF/#5D9DFF/#2E6FD6 blues. The app has a single-accent
+rule (DECISIONS #29, `ui/theme` Accent = #4DA3FF) — every ring/disc uses
+Accent so the watched system doesn't introduce a second, slightly-off blue.
+The handoff's ROLE (accent = progress + watched) is preserved; the literal
+hex is not. Its status-label tints (WATCHED #7C8B9C / RESUME #8FB4E8 / NEW
+#4E5D6C) and the artwork dim rgba(4,8,14,~0.48) ARE taken literally — they're
+neutrals, not a competing accent.
+
+### Geometry is Canvas-drawn and static — px→dp at the 1720→960 ratio
+New `ui/components/WatchIndicators.kt`: ProgressRing (track + accent arc from
+12 o'clock + percent inside; optional interior scrim for posters), WatchedDisc
+(accent circle + drawn dark check — the font-glyph ban, DECISIONS #54, covers
+the handoff's SVG check), UnwatchedRing (dashed circle, episode rows ONLY —
+the handoff's core principle is that unwatched POSTERS stay pristine). The
+handoff's 1720px frame maps to the app's 960dp screen (×0.56): 44px ring →
+26dp poster / 28dp episode, 40px disc → 24dp, 48px→28dp. Nothing animates —
+every glyph is a single static draw, free on the 32-bit boxes.
+
+### The old indicators are REPLACED, not augmented
+The alpha.45 poster bar + dark-✓ badge and the alpha.25 green WatchedBadge/
+resume-bar-only episode marks are gone. Posters: ring with percent (top-right)
+for in-progress, accent check disc + artwork dim for watched; the focus reveal
+adds a thin progress bar + "N min left" under the title (PosterIndicator
+gained minutesLeft; minutes round UP so it never says "0 min left").
+Episode rows: a fixed 58dp trailing status column — NEW dashed circle /
+RESUME ring with percent / WATCHED disc, each with its tiny uppercase label —
+so state reads as a scannable rail; watched rows drop to 62% content alpha +
+thumbnail dim. The 60s Continue-Watching floor for poster indicators (#54/#5)
+is unchanged; episode rows keep their any-progress threshold. WatchedGreen
+died with WatchedBadge — watched is accent blue now, one color for one system.
+
+### Roll-ups are pure functions; "Hide watched" is a persisted Discover pref
+`ui/details/WatchStats.kt` (unit-tested): show header gets a mini ring +
+"N of M episodes watched" (only once something IS watched — no "0 of 98"
+chrome on fresh shows); a fully watched season's pill gets a 14dp check disc,
+the selected season shows "3 / 14". WatchStats.complete guards total>0 so an
+empty season never reads "all watched". Discover's filter bar gains a
+"Hide watched" toggle pill (selected = ON, shared pill language instead of
+the handoff's switch control) persisted as DiscoverViewPrefs.hideWatched;
+`DiscoverSort.hideWatched` drops only FINISHED titles — in-progress always
+stays. A page emptied by the filter says so instead of "Nothing in this
+catalog". NOT built from the handoff's "intended interactions": click-to-
+unwatch, long-press mark-season-watched (both need a progress write path for
+never-played episodes — no duration is known), and the dimWatched/showPercent/
+showTimeLeft tweak toggles (shipped as always-on defaults; YAGNI until asked).

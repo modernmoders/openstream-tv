@@ -154,6 +154,10 @@ class DiscoverViewModel @Inject constructor(
         viewModelScope.launch { viewPrefs.setDiscoverSort(sort) }
     }
 
+    fun setHideWatched(enabled: Boolean) {
+        viewModelScope.launch { viewPrefs.setDiscoverHideWatched(enabled) }
+    }
+
     /** Called when the grid scrolls near its end. */
     fun loadMore() {
         val state = _uiState.value

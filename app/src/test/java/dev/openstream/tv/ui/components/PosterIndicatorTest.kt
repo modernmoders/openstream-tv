@@ -7,9 +7,10 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * The browse-tile watch indicator (owner round 14 #5): watched → ✓, genuinely
- * in progress → bar, everything short of the Continue Watching floor → nothing
- * (an accidental 20-second click must not stamp posters all over Home).
+ * The browse-tile watch indicator (watched system): watched → check disc,
+ * genuinely in progress → progress ring, everything short of the Continue
+ * Watching floor → nothing (an accidental 20-second click must not stamp
+ * posters all over Home).
  */
 class PosterIndicatorTest {
 
@@ -35,11 +36,22 @@ class PosterIndicatorTest {
     }
 
     @Test
-    fun `mid-playback shows the progress bar at its fraction`() {
+    fun `mid-playback shows the ring at its fraction with minutes left`() {
+        // 300s of 1200s → 25%, 900s = 15 min remaining.
         assertEquals(
-            PosterIndicator.InProgress(0.25f),
+            PosterIndicator.InProgress(0.25f, minutesLeft = 15),
             posterIndicatorFor(progress(positionMs = 300_000)),
         )
+    }
+
+    @Test
+    fun `minutes left rounds up so it never says 0 min left`() {
+        // 30s from the end must read "1 min left", not "0 min left".
+        assertEquals(1, minutesLeftOf(progress(positionMs = 1_170_000)))
+        // Exactly on a minute boundary stays exact: 120s left = 2 min.
+        assertEquals(2, minutesLeftOf(progress(positionMs = 1_080_000)))
+        // Past the end (position beyond duration) clamps to 0, not negative.
+        assertEquals(0, minutesLeftOf(progress(positionMs = 1_300_000)))
     }
 
     @Test

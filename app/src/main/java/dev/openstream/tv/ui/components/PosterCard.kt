@@ -4,7 +4,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,9 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Card
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import coil3.compose.AsyncImage
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.data.ProgressRepository
@@ -43,26 +42,26 @@ import kotlinx.coroutines.delay
 /** How long focus must REST on a card before its title reveals (ms). */
 private const val TITLE_REVEAL_SETTLE_MS = 120L
 
-/** What a browse tile shows about the title's watch history (owner round 14 #5). */
+/** What a browse tile shows about the title's watch history (watched system). */
 sealed interface PosterIndicator {
-    /** Latest watched episode/movie finished → ✓ badge. */
+    /** Latest watched episode/movie finished → check disc + dimmed artwork. */
     data object Watched : PosterIndicator
 
-    /** Partway through → the Continue Watching bar, at this fraction. */
-    data class InProgress(val fraction: Float) : PosterIndicator
+    /** Partway through → progress ring; the focus reveal adds "N min left". */
+    data class InProgress(val fraction: Float, val minutesLeft: Int) : PosterIndicator
 }
 
 /**
  * Maps a title's latest progress row to a tile indicator. Uses the Continue
  * Watching floor (60s), not the resume floor (15s), so an accidental click
- * doesn't stamp a bar on a poster; past 95% shows the ✓ instead. Pure for
- * unit tests — the thresholds already carry owner-tuned meaning.
+ * doesn't stamp a ring on a poster; past 95% shows the check instead. Pure
+ * for unit tests — the thresholds already carry owner-tuned meaning.
  */
 internal fun posterIndicatorFor(progress: WatchProgress?): PosterIndicator? = when {
     progress == null -> null
     ProgressRepository.isWatched(progress) -> PosterIndicator.Watched
     ProgressRepository.isResumable(progress, ProgressRepository.MIN_CONTINUE_WATCHING_MS) ->
-        PosterIndicator.InProgress(progress.fractionWatched)
+        PosterIndicator.InProgress(progress.fractionWatched, minutesLeftOf(progress))
     else -> null
 }
 
@@ -120,6 +119,7 @@ fun PosterCard(
             .onFocusChanged { focused = it.isFocused },
     ) {
         Box(modifier = Modifier.width(width).height(height)) {
+            val indicator = posterIndicatorFor(progress)
             AsyncImage(
                 model = item.poster,
                 contentDescription = item.name,
@@ -131,16 +131,24 @@ fun PosterCard(
                 error = ColorPainter(PosterPlaceholder),
                 modifier = Modifier.fillMaxSize(),
             )
-            Box(
+            // Watched artwork recedes behind a dim so unwatched content pops
+            // forward (watched-system design principle). Static, no animation.
+            if (indicator is PosterIndicator.Watched) {
+                Box(Modifier.fillMaxSize().background(WatchedArtworkDim))
+            }
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .height(height * 0.42f)
                     // Draw-phase alpha (DECISIONS #22): reading revealAlpha.value
                     // inside the lambda defers it to the draw phase, so the fade
                     // never triggers recomposition of this card while scrolling.
                     .graphicsLayer { alpha = revealAlpha.value }
-                    .background(TitleScrim),
+                    .background(TitleScrim)
+                    // Headroom above the title so the scrim fades in over the
+                    // artwork instead of starting with a hard edge.
+                    .padding(top = height * 0.18f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     text = item.name,
@@ -148,43 +156,45 @@ fun PosterCard(
                     color = Color.White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp),
                 )
-            }
-            // Watch-history indicator (owner round 14 #5), same visual language
-            // as ContinueWatchingCard so the two rows read as one system:
-            // in-progress = the 7dp accent bar; watched = a ✓ badge. Static
-            // boxes, no animation — free on the 32-bit boxes.
-            when (val indicator = posterIndicatorFor(progress)) {
-                is PosterIndicator.InProgress -> Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(7.dp)
-                        .background(Color(0xCC000000)),
-                ) {
+                // The focus reveal completes the in-progress story: a thin
+                // progress bar + "N min left" under the title (handoff 1a).
+                if (indicator is PosterIndicator.InProgress) {
                     Box(
                         Modifier
-                            .fillMaxWidth(indicator.fraction)
-                            .height(7.dp)
-                            .background(Accent),
+                            .padding(horizontal = 10.dp)
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .background(Color(0x38FFFFFF)),
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(indicator.fraction)
+                                .height(4.dp)
+                                .background(Accent),
+                        )
+                    }
+                    Text(
+                        text = "${indicator.minutesLeft} min left",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFB9CDE4),
+                        modifier = Modifier.padding(start = 10.dp),
                     )
                 }
-                is PosterIndicator.Watched -> Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xE6101018)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    // "✓" is a plain text glyph the boxes render fine (it
-                    // already ships in Details/OptionRow) — not an emoji.
-                    Text("✓", style = MaterialTheme.typography.labelLarge, color = Accent)
-                }
+                Box(Modifier.height(4.dp))
+            }
+            // Corner indicator (watched system): in-progress = progress ring
+            // with the percent inside; watched = solid accent check disc.
+            // Unwatched artwork stays pristine — no empty badge.
+            when (indicator) {
+                is PosterIndicator.InProgress -> ProgressRing(
+                    fraction = indicator.fraction,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                )
+                is PosterIndicator.Watched -> WatchedDisc(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                )
                 null -> Unit
             }
         }
