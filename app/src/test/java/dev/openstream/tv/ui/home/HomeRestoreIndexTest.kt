@@ -69,6 +69,53 @@ class HomeRestoreIndexTest {
     }
 
     @Test
+    fun `pinned rows sit between hero and continue watching`() {
+        // Round 14 #14: rows[0] is pinned (recommendations); the column is
+        // header, hero, PINNED, Continue Watching, the rest.
+        assertEquals(
+            2,
+            homeRestoreIndex(
+                rows, hasFeatured = true, hasContinueWatching = true,
+                targetRowKey = "addonA:top", pinnedRowCount = 1,
+            ),
+        )
+        assertEquals(
+            3,
+            homeRestoreIndex(
+                rows, hasFeatured = true, hasContinueWatching = true,
+                targetRowKey = HOME_CONTINUE_WATCHING_KEY, pinnedRowCount = 1,
+            ),
+        )
+        // First UNpinned row lands after Continue Watching.
+        assertEquals(
+            4,
+            homeRestoreIndex(
+                rows, hasFeatured = true, hasContinueWatching = true,
+                targetRowKey = "addonA:new", pinnedRowCount = 1,
+            ),
+        )
+    }
+
+    @Test
+    fun `pinned rows shift up when the optional rows are absent`() {
+        assertEquals(
+            1,
+            homeRestoreIndex(
+                rows, hasFeatured = false, hasContinueWatching = false,
+                targetRowKey = "addonA:top", pinnedRowCount = 1,
+            ),
+        )
+        // No Continue Watching: unpinned rows follow the pinned block directly.
+        assertEquals(
+            2,
+            homeRestoreIndex(
+                rows, hasFeatured = false, hasContinueWatching = false,
+                targetRowKey = "addonA:new", pinnedRowCount = 1,
+            ),
+        )
+    }
+
+    @Test
     fun `a row that is no longer on screen restores nothing`() {
         // The addon was disabled, the row hidden, or the hero/CW row emptied
         // out while we were away — fall back to the header rather than focus a

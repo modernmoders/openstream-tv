@@ -148,6 +148,12 @@ private val RailInk = Color(0xFF0E0E16)
 /** Simple drawn glyphs — no font/emoji dependency (see [NavDestination.icon]). */
 @Composable
 private fun RailIcon(kind: RailIconKind, tint: Color) {
+    // Settings shares the one gear glyph used on the Discover View pill and
+    // the Home header, so "settings" looks the same everywhere (round 14 #10).
+    if (kind == RailIconKind.SETTINGS) {
+        GearIcon(tint, Modifier.size(24.dp))
+        return
+    }
     Canvas(Modifier.size(24.dp)) {
         val w = size.width
         val stroke = Stroke(width = w * 0.09f, cap = StrokeCap.Round)
@@ -183,23 +189,9 @@ private fun RailIcon(kind: RailIconKind, tint: Color) {
                 drawCircle(tint, radius = w * 0.30f, center = Offset(w * 0.43f, w * 0.43f), style = stroke)
                 drawLine(tint, Offset(w * 0.66f, w * 0.66f), Offset(w * 0.88f, w * 0.88f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
             }
-            RailIconKind.SETTINGS -> {
-                drawCircle(tint, radius = w * 0.20f, style = stroke)
-                // six teeth around the hub
-                repeat(6) { i ->
-                    val a = (Math.PI / 3.0 * i).toFloat()
-                    val inner = w * 0.30f
-                    val outer = w * 0.44f
-                    val cx = w / 2f
-                    drawLine(
-                        tint,
-                        Offset(cx + inner * kotlin.math.cos(a), cx + inner * kotlin.math.sin(a)),
-                        Offset(cx + outer * kotlin.math.cos(a), cx + outer * kotlin.math.sin(a)),
-                        strokeWidth = w * 0.09f,
-                        cap = StrokeCap.Round,
-                    )
-                }
-            }
+            // Handled above by the shared GearIcon; the early return means
+            // this arm never draws, it just keeps the when exhaustive.
+            RailIconKind.SETTINGS -> Unit
         }
     }
 }

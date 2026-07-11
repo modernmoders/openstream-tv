@@ -8,7 +8,9 @@ import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
+import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.data.ViewPrefs
+import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -28,6 +30,7 @@ class SearchViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
     viewPrefs: ViewPrefs,
+    progressRepository: ProgressRepository,
 ) : ViewModel() {
 
     sealed interface RowState {
@@ -44,6 +47,8 @@ class SearchViewModel @Inject constructor(
         val rows: List<RowState> = emptyList(),
         /** Global poster density (§5.1 Settings → Poster size). */
         val columns: Int = DEFAULT_POSTER_COLUMNS,
+        /** Latest watch progress per "metaType/metaId" for tile indicators (#5). */
+        val progressByMeta: Map<String, WatchProgress> = emptyMap(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -55,6 +60,11 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             viewPrefs.posterColumns.collect { columns ->
                 _uiState.update { it.copy(columns = columns) }
+            }
+        }
+        viewModelScope.launch {
+            progressRepository.observeProgressByMetaKey().collect { byMeta ->
+                _uiState.update { it.copy(progressByMeta = byMeta) }
             }
         }
     }

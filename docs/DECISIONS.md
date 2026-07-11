@@ -1556,3 +1556,40 @@ section onto the stack so the next rail move pop-and-saved it — the saved
 segment then shadowed Home permanently. The pills now route through the rail's
 `goSection`. Both halves emulator-reasoned from the alpha.38 back-stack model;
 owner confirms on the box.
+
+## 54. 2026-07-11 (session 24 cont. 4) — Round-14 polish batch: pinned recs row, poster watch indicators, drawn glyphs everywhere (alpha.45)
+
+### #14 Trakt Recommendations pinned to the top of Home — but only until the user orders rows themselves
+`withRecommendationsFirst` (HomeRowPrefs.kt) moves rows whose *displayed title*
+contains "recommend" to the front, and Home renders the pinned block ABOVE
+Continue Watching (column: header → hero → recs → CW → rest). Two non-obvious
+choices: (a) matched on title, not catalog id — the id is an opaque
+addon-specific string, while every recommendations catalog the family's addons
+declare says "recommend" in its name; (b) the pin is suppressed the moment
+HomeRowPrefs.order is non-empty — an explicit row-manager order IS the override
+tool, so the default must never fight it. `homeRestoreIndex` grew a
+`pinnedRowCount` parameter for the back-from-Details restore arithmetic.
+
+### #5 Poster watch indicators reuse the Continue Watching thresholds
+Browse tiles (Home/Discover/Search) now show the CW-style 7dp accent bar
+(in progress) or a ✓ badge (watched). `posterIndicatorFor` deliberately uses
+the 60s Continue Watching floor, NOT the 15s resume floor: an accidental
+20-second click must not stamp bars across Home. A series tile is keyed by
+"metaType/metaId" and speaks with its most recently watched episode's row
+(`ProgressRepository.latestByMetaKey`) — "fully watched series" is unknowable
+without fetching every episode list, and latest-episode state is what the
+family actually reads off a tile.
+
+### #13/#10/#11/#12 Font symbols are BANNED from controls; one gear, drawn
+The round-14 "pause is totally out of the ballpark" was the ⏸ emoji rendered
+by whatever fallback font the box picked. New `DrawnIcons.kt` (GearIcon,
+CaretDownIcon, PlayerGlyph PLAY/PAUSE/PREV/NEXT) extends the NavRail rule —
+Canvas geometry, never font glyphs, for anything that must look identical on
+every box. Play/pause is now a circular chip that flips to solid Accent while
+paused (state readable from the couch); ⏮/⏭ pills draw their glyphs;
+NavRail/Discover-View/Home-Settings all share the ONE GearIcon so "settings"
+has a single face (#10). Discover pickers became FilterPill (muted dimension
+label + value + drawn ▾) so they read as openable filters (#12); Home's
+Settings pill moved 26dp apart with the gear + muted text, headerFocus stays
+on Discover — the #33 hold-UP anchor is untouched (#11). "✓" stays a text
+glyph on purpose: it already ships in Details/OptionRow and renders fine.

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -62,6 +63,30 @@ fun SurfacePill(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
 ) {
+    SurfacePill(onClick = onClick, modifier = modifier, selected = selected) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * Content-slot variant for pills that mix text with drawn glyphs (the boxes
+ * render font symbols/emoji inconsistently — see DrawnIcons.kt). Same shape,
+ * colors and focus language as the label version; content sits in a centered
+ * [Row] with the pill's standard padding.
+ */
+@Composable
+fun SurfacePill(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    content: @Composable RowScope.() -> Unit,
+) {
     val shape = RoundedCornerShape(999.dp)
     Surface(
         selected = selected,
@@ -88,14 +113,43 @@ fun SurfacePill(
             focusedSelectedBorder = Border(BorderStroke(2.dp, Color.White), shape = shape),
         ),
     ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 11.dp),
+            content = content,
+        )
+    }
+}
+
+/**
+ * A Discover filter chip (owner round 14 #12: "filters should look clickable,
+ * hint their options, stay clean"): a muted dimension label, the current
+ * value, and a drawn ▾ caret — together they read as "a dropdown you can
+ * open", where a bare value pill read as static text.
+ */
+@Composable
+fun FilterPill(
+    dimension: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SurfacePill(onClick = onClick, modifier = modifier) {
         Text(
-            text = label,
+            text = dimension,
+            style = MaterialTheme.typography.labelMedium,
+            color = MutedText,
+            maxLines = 1,
+        )
+        Text(
+            text = value,
             style = MaterialTheme.typography.titleSmall,
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 22.dp, vertical = 11.dp),
         )
+        CaretDownIcon(tint = Accent, modifier = Modifier.size(14.dp))
     }
 }
 

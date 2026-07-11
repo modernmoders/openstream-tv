@@ -42,6 +42,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
+import dev.openstream.tv.data.ProgressRepository
+import androidx.compose.foundation.layout.size
+import dev.openstream.tv.ui.components.FilterPill
+import dev.openstream.tv.ui.components.GearIcon
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.OptionRow
 import dev.openstream.tv.ui.components.PosterCard
@@ -145,31 +149,46 @@ fun DiscoverScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
+                // Round 14 #12: each picker is a FilterPill — dimension label +
+                // current value + drawn ▾ — so it reads as an openable filter,
+                // not static text.
                 if (state.types.isNotEmpty()) {
-                    SurfacePill(
-                        label = typeLabel(state.selectedType),
+                    FilterPill(
+                        dimension = "Type",
+                        value = typeLabel(state.selectedType),
                         onClick = { openPicker = Picker.TYPE },
                         modifier = Modifier.focusRequester(typeFocus),
                     )
                 }
                 if (state.catalogs.isNotEmpty()) {
-                    SurfacePill(
-                        label = state.selected?.title ?: "Catalog",
+                    FilterPill(
+                        dimension = "Catalog",
+                        value = state.selected?.title ?: "Choose",
                         onClick = { openPicker = Picker.CATALOG },
-                        modifier = Modifier.widthIn(max = 300.dp),
+                        modifier = Modifier.widthIn(max = 340.dp),
                     )
                 }
                 if (state.genres.isNotEmpty()) {
-                    SurfacePill(
-                        label = state.selectedGenre ?: "Genre",
+                    FilterPill(
+                        dimension = "Genre",
+                        value = state.selectedGenre ?: "All",
                         onClick = { openPicker = Picker.GENRE },
                     )
                 }
                 if (state.types.isNotEmpty()) {
                     // View is display settings, not a tree level — pushed to the
                     // far edge so it reads apart from the pickers (owner 2026-07-05).
+                    // Cog AFTER the word, drawn not font (round 14 #10).
                     Spacer(Modifier.weight(1f))
-                    SurfacePill(label = "⚙ View", onClick = { openPicker = Picker.VIEW })
+                    SurfacePill(onClick = { openPicker = Picker.VIEW }) {
+                        Text(
+                            text = "View",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White,
+                            maxLines = 1,
+                        )
+                        GearIcon(tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
                 }
             }
         }
@@ -214,6 +233,7 @@ fun DiscoverScreen(
                         onClick = { onItemClick(item) },
                         modifier = if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier,
                         columns = state.view.columns,
+                        progress = state.progressByMeta[ProgressRepository.metaKey(item.type, item.id)],
                     )
                 }
                 if (state.loading) {

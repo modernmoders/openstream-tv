@@ -65,7 +65,11 @@ import dev.openstream.tv.autoplay.AutoplayController.Companion.isCancellable
 import dev.openstream.tv.player.applyTrackOption
 import dev.openstream.tv.player.disableSubtitles
 import dev.openstream.tv.player.toTrackMenu
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import dev.openstream.tv.ui.components.LoadingAnimation
+import dev.openstream.tv.ui.components.PlayerGlyph
+import dev.openstream.tv.ui.components.PlayerGlyphKind
 import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
@@ -461,10 +465,22 @@ fun PlayerScreen(
                     if (state.previousEpisode != null || state.isSeries) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             if (state.previousEpisode != null) {
-                                SurfacePill("⏮", onClick = { viewModel.goToPreviousEpisode(); wake() })
+                                SurfacePill(onClick = { viewModel.goToPreviousEpisode(); wake() }) {
+                                    PlayerGlyph(
+                                        kind = PlayerGlyphKind.PREVIOUS,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
                             }
                             if (state.isSeries) {
-                                SurfacePill("⏭", onClick = { viewModel.goToNextEpisode(); wake() })
+                                SurfacePill(onClick = { viewModel.goToNextEpisode(); wake() }) {
+                                    PlayerGlyph(
+                                        kind = PlayerGlyphKind.NEXT,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -649,7 +665,24 @@ private fun ScrubBar(
                 }
             },
     ) {
-        Text(if (playing) "⏸" else "▶", style = MaterialTheme.typography.titleLarge, color = Color.White)
+        // Round 14 #13: a proper circular transport chip, not a font glyph —
+        // the boxes rendered ⏸ with whatever emoji fallback they had ("the
+        // pause is totally out of the ballpark"). Paused flips the chip to a
+        // solid accent so the state is unmistakable from the couch; the glyph
+        // shows what OK will DO (▶ while paused), the standard TV idiom.
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(if (playing) Color.White.copy(alpha = 0.16f) else Accent),
+            contentAlignment = Alignment.Center,
+        ) {
+            PlayerGlyph(
+                kind = if (playing) PlayerGlyphKind.PAUSE else PlayerGlyphKind.PLAY,
+                tint = if (playing) Color.White else Color(0xFF0E0E16),
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Text(shownMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = Color.White)
         Box(
             modifier = Modifier

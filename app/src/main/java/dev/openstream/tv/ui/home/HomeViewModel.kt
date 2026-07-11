@@ -13,6 +13,8 @@ import dev.openstream.tv.data.HomeRowPrefsStore
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.data.applyTo
+import dev.openstream.tv.data.isRecommendations
+import dev.openstream.tv.data.withRecommendationsFirst
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
@@ -76,12 +78,19 @@ class HomeViewModel @Inject constructor(
         /** True until the addon list itself has been read from Room. */
         val initializing: Boolean = true,
         val hasAddons: Boolean = false,
-        /** Always-first row when non-empty (§5.6). */
+        /** Right under the pinned recommendation rows when non-empty (§5.6, round 14 #14). */
         val continueWatching: List<WatchProgress> = emptyList(),
         /** Rows in addon-order then manifest-order; each loads independently. */
         val rows: List<RowState> = emptyList(),
+        /**
+         * How many leading [rows] render ABOVE Continue Watching (the pinned
+         * recommendation rows, round 14 #14); the rest render below it.
+         */
+        val pinnedRowCount: Int = 0,
         /** Global poster density (§5.1 Settings → Poster size). */
         val columns: Int = DEFAULT_POSTER_COLUMNS,
+        /** Latest watch progress per "metaType/metaId" for tile indicators (#5). */
+        val progressByMeta: Map<String, WatchProgress> = emptyMap(),
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -100,6 +109,11 @@ class HomeViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            progressRepository.observeProgressByMetaKey().collect { byMeta ->
+                _uiState.update { it.copy(progressByMeta = byMeta) }
+            }
+        }
+        viewModelScope.launch {
             // collectLatest: an addon OR row-prefs change cancels in-flight
             // fetches and restarts the fan-out. Prefs edits (row manager) make
             // this cheap in practice — the addon HTTP cache (DECISIONS #17)
@@ -110,6 +124,7 @@ class HomeViewModel @Inject constructor(
                     // row's catalog is never fetched, not just not drawn.
                     val rows = prefs.applyTo(catalogRepository.catalogRefs(addons))
                         .filterNot { it.hidden }
+                        .withRecommendationsFirst(hasUserOrder = prefs.order.isNotEmpty())
                     // update{}, not value=: the Continue Watching collector above
                     // runs in parallel and its state must survive an addon change.
                     _uiState.update {
@@ -117,6 +132,11 @@ class HomeViewModel @Inject constructor(
                             initializing = false,
                             hasAddons = addons.any { a -> a.enabled },
                             rows = rows.map { r -> RowState.Loading(r.ref, r.title) },
+                            // The pinned rows are a PREFIX (withRecommendationsFirst
+                            // just moved them there); zero when a user order exists.
+                            pinnedRowCount =
+                                if (prefs.order.isEmpty()) rows.takeWhile { r -> r.isRecommendations() }.size
+                                else 0,
                         )
                     }
                     coroutineScope {

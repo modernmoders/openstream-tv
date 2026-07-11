@@ -7,6 +7,7 @@ import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
 import dev.openstream.tv.addon.fixtures.Fixtures
 import dev.openstream.tv.addon.fixtures.MockAddonServer
 import dev.openstream.tv.data.FakeViewPrefs
+import dev.openstream.tv.data.testProgressRepository
 import dev.openstream.tv.ui.search.SearchViewModel.RowState
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +58,7 @@ class SearchViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.search("batman")
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
@@ -72,7 +73,7 @@ class SearchViewModelTest {
 
     @Test
     fun `blank query is ignored`() = runTest(timeout = 60.seconds) {
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.search("   ")
         assertTrue(!viewModel.uiState.value.searched)
     }
@@ -85,7 +86,7 @@ class SearchViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.search("x")
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
@@ -105,7 +106,7 @@ class SearchViewModelTest {
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
         val viewPrefs = FakeViewPrefs()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, viewPrefs)
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, viewPrefs, testProgressRepository())
         viewPrefs.setPosterColumns(4)
         viewModel.uiState.first { it.columns == 4 }
 

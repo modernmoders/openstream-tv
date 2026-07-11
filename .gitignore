@@ -39,3 +39,7 @@ docs/reference/myles/
 # Owner's AIOStreams/AIOMetadata config templates — will hold real service
 # tokens once populated. NEVER commit (CLAUDE.md security).
 templates/
+
+# Local tool settings + owner design-page saves (never track)
+.claude/
+SStreams Loader.dc_files/

@@ -2,6 +2,7 @@ package dev.openstream.tv.ui.discover
 
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.data.FakeViewPrefs
+import dev.openstream.tv.data.testProgressRepository
 import dev.openstream.tv.addon.CatalogRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.fixtures.FakeInstalledAddonDao
@@ -52,7 +53,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         val state = viewModel.uiState.first { it.items.isNotEmpty() }
 
         // Types in first-seen manifest order; search-only catalogs contribute
@@ -74,7 +75,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.uiState.first { it.items.isNotEmpty() }
 
         viewModel.selectGenre("Action")
@@ -93,7 +94,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.uiState.first { it.items.isNotEmpty() }
         viewModel.selectGenre("Action")
         viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
@@ -112,7 +113,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         val first = viewModel.uiState.first { it.items.isNotEmpty() }
 
         viewModel.select(first.catalogs.first { it.catalog.id == "bygenre" })
@@ -132,7 +133,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.uiState.first { it.items.isNotEmpty() }
         viewModel.selectGenre("Action") // must not leak into the series fetch
         viewModel.uiState.first { !it.loading && it.items.isNotEmpty() }
@@ -155,7 +156,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.uiState.first { it.items.isNotEmpty() }
 
         viewModel.setColumns(8)
@@ -176,7 +177,7 @@ class DiscoverViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         viewModel.uiState.first { it.items.isNotEmpty() }
 
         viewModel.loadMore()
@@ -193,7 +194,7 @@ class DiscoverViewModelTest {
         server.start() // no catalog route -> 404
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs())
+        val viewModel = DiscoverViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
         val state = viewModel.uiState.first { it.error != null }
 
         assertTrue(state.items.isEmpty())

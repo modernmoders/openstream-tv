@@ -9,7 +9,9 @@ import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.data.DiscoverSortMode
 import dev.openstream.tv.data.DiscoverViewPrefs
+import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.data.ViewPrefs
+import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -31,6 +33,7 @@ class DiscoverViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
     private val viewPrefs: ViewPrefs,
+    progressRepository: ProgressRepository,
 ) : ViewModel() {
 
     data class UiState(
@@ -53,6 +56,8 @@ class DiscoverViewModel @Inject constructor(
         val error: String? = null,
         /** View options (§5.1): persisted per screen, applied at render. */
         val view: DiscoverViewPrefs = DiscoverViewPrefs(),
+        /** Latest watch progress per "metaType/metaId" for tile indicators (#5). */
+        val progressByMeta: Map<String, WatchProgress> = emptyMap(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -67,6 +72,11 @@ class DiscoverViewModel @Inject constructor(
         viewModelScope.launch {
             viewPrefs.discover.collect { prefs ->
                 _uiState.update { it.copy(view = prefs) }
+            }
+        }
+        viewModelScope.launch {
+            progressRepository.observeProgressByMetaKey().collect { byMeta ->
+                _uiState.update { it.copy(progressByMeta = byMeta) }
             }
         }
         viewModelScope.launch {

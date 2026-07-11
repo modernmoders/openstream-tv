@@ -130,6 +130,28 @@ class ProgressRepositoryTest {
         assertEquals(listOf("s:1:3", "mov"), row.map { it.ref.externalId })
     }
 
+    // --- poster tile indicators (owner round 14 #5) ---
+
+    @Test
+    fun `latestByMetaKey keeps the most recent row per title`() {
+        val ep1 = progress(id = "s:1:1", updatedAt = 10, metaId = "series")
+        val ep2 = progress(id = "s:1:2", updatedAt = 20, metaId = "series")
+        val movie = progress(id = "mov", updatedAt = 5, metaId = "movie")
+
+        val byMeta = ProgressRepository.latestByMetaKey(listOf(ep1, movie, ep2))
+
+        assertEquals(2, byMeta.size)
+        assertEquals("s:1:2", byMeta[ProgressRepository.metaKey("series", "series")]?.ref?.externalId)
+        assertEquals("mov", byMeta[ProgressRepository.metaKey("series", "movie")]?.ref?.externalId)
+    }
+
+    @Test
+    fun `metaKey separates the same id across types`() {
+        // Some addons reuse ids between movie and series catalogs; the tile
+        // must only light up for its own type.
+        assertTrue(ProgressRepository.metaKey("movie", "tt1") != ProgressRepository.metaKey("series", "tt1"))
+    }
+
     // --- persistence roundtrip via the DAO contract ---
 
     @Test

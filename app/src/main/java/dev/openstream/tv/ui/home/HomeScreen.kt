@@ -48,8 +48,11 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.openstream.tv.BuildConfig
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.WatchProgress
+import androidx.compose.foundation.layout.size
 import dev.openstream.tv.ui.components.ContinueWatchingCard
+import dev.openstream.tv.ui.components.GearIcon
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
@@ -73,26 +76,32 @@ private const val RESTORE_FOCUS_FRAMES = 12
 /**
  * Which LazyColumn item holds [targetRowKey], or -1 when it isn't on screen.
  *
- * The column is header, then an optional hero, then an optional Continue
- * Watching row, then the catalog rows — so a catalog's index depends on which
- * of the optional rows exist. Pure so the arithmetic is unit-testable.
+ * The column is header, then an optional hero, then the pinned recommendation
+ * rows (round 14 #14 — the first [pinnedRowCount] entries of the row list),
+ * then an optional Continue Watching row, then the remaining catalog rows —
+ * so a catalog's index depends on which of the optional rows exist and which
+ * side of Continue Watching it sits on. Pure so the arithmetic is unit-testable.
  */
 internal fun homeRestoreIndex(
     rowKeys: List<String>,
     hasFeatured: Boolean,
     hasContinueWatching: Boolean,
     targetRowKey: String,
+    pinnedRowCount: Int = 0,
 ): Int {
     val featuredIndex = 1 // item 0 is always the header
     if (targetRowKey == HOME_FEATURED_KEY) return if (hasFeatured) featuredIndex else -1
-    val continueWatchingIndex = if (hasFeatured) featuredIndex + 1 else featuredIndex
+    val firstPinnedIndex = if (hasFeatured) featuredIndex + 1 else featuredIndex
+    val continueWatchingIndex = firstPinnedIndex + pinnedRowCount
     if (targetRowKey == HOME_CONTINUE_WATCHING_KEY) {
         return if (hasContinueWatching) continueWatchingIndex else -1
     }
-    val firstCatalogIndex =
-        if (hasContinueWatching) continueWatchingIndex + 1 else continueWatchingIndex
     val offset = rowKeys.indexOf(targetRowKey)
-    return if (offset < 0) -1 else firstCatalogIndex + offset
+    if (offset < 0) return -1
+    if (offset < pinnedRowCount) return firstPinnedIndex + offset
+    val firstUnpinnedIndex =
+        if (hasContinueWatching) continueWatchingIndex + 1 else continueWatchingIndex
+    return firstUnpinnedIndex + (offset - pinnedRowCount)
 }
 
 /**
@@ -188,6 +197,7 @@ fun HomeScreen(
                             hasFeatured = featured != null,
                             hasContinueWatching = state.continueWatching.isNotEmpty(),
                             targetRowKey = it,
+                            pinnedRowCount = state.pinnedRowCount,
                         )
                     } ?: -1
                     if (index >= 0) {
@@ -231,6 +241,21 @@ fun HomeScreen(
                             )
                         }
                     }
+                    // Round 14 #14: the pinned recommendation rows render ABOVE
+                    // Continue Watching, everything else below — the ViewModel
+                    // sorted them to the front, this just splits the list.
+                    val pinnedRows = state.rows.take(state.pinnedRowCount)
+                    val unpinnedRows = state.rows.drop(state.pinnedRowCount)
+                    items(pinnedRows, key = { it.ref.key }) { row ->
+                        CatalogRow(
+                            row = row,
+                            columns = state.columns,
+                            progressByMeta = state.progressByMeta,
+                            onItemClick = { openItem(row.ref.key, it) },
+                            restoreItemId = openedItemId.takeIf { openedRowKey == row.ref.key },
+                            restoreFocus = restoreFocus,
+                        )
+                    }
                     if (state.continueWatching.isNotEmpty()) {
                         item(key = HOME_CONTINUE_WATCHING_KEY) {
                             ContinueWatchingRow(
@@ -242,10 +267,11 @@ fun HomeScreen(
                             )
                         }
                     }
-                    items(state.rows, key = { it.ref.key }) { row ->
+                    items(unpinnedRows, key = { it.ref.key }) { row ->
                         CatalogRow(
                             row = row,
                             columns = state.columns,
+                            progressByMeta = state.progressByMeta,
                             onItemClick = { openItem(row.ref.key, it) },
                             restoreItemId = openedItemId.takeIf { openedRowKey == row.ref.key },
                             restoreFocus = restoreFocus,
@@ -280,10 +306,25 @@ private fun HomeHeader(
             color = Color.White,
             modifier = Modifier.weight(1f),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             SurfacePill("Discover", onDiscover, Modifier.focusRequester(headerFocus))
             SurfacePill("Search", onSearch)
-            SurfacePill("Settings", onSettings)
+            // Round 14 #11: Settings reads apart from the browse pills — extra
+            // gap + the shared gear glyph instead of a third look-alike text
+            // pill. headerFocus stays on Discover (the #33 hold-UP anchor).
+            Spacer(Modifier.width(26.dp))
+            SurfacePill(onClick = onSettings) {
+                GearIcon(tint = MutedText, modifier = Modifier.size(18.dp))
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MutedText,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -469,6 +510,7 @@ private fun ContinueWatchingRow(
 private fun CatalogRow(
     row: RowState,
     columns: Int,
+    progressByMeta: Map<String, dev.openstream.tv.domain.WatchProgress>,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
     restoreItemId: String?,
     restoreFocus: FocusRequester,
@@ -525,6 +567,7 @@ private fun CatalogRow(
                                     .then(if (index == 0) Modifier.focusRequester(firstCardFocus) else Modifier)
                                     .then(if (index == restoreIndex) Modifier.focusRequester(restoreFocus) else Modifier),
                                 columns = columns,
+                                progress = progressByMeta[ProgressRepository.metaKey(item.type, item.id)],
                             )
                         }
                     }

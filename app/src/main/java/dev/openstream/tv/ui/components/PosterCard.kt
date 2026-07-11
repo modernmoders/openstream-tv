@@ -29,13 +29,42 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Card
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import coil3.compose.AsyncImage
 import dev.openstream.tv.addon.MetaItem
+import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import kotlinx.coroutines.delay
 
 /** How long focus must REST on a card before its title reveals (ms). */
 private const val TITLE_REVEAL_SETTLE_MS = 120L
+
+/** What a browse tile shows about the title's watch history (owner round 14 #5). */
+sealed interface PosterIndicator {
+    /** Latest watched episode/movie finished → ✓ badge. */
+    data object Watched : PosterIndicator
+
+    /** Partway through → the Continue Watching bar, at this fraction. */
+    data class InProgress(val fraction: Float) : PosterIndicator
+}
+
+/**
+ * Maps a title's latest progress row to a tile indicator. Uses the Continue
+ * Watching floor (60s), not the resume floor (15s), so an accidental click
+ * doesn't stamp a bar on a poster; past 95% shows the ✓ instead. Pure for
+ * unit tests — the thresholds already carry owner-tuned meaning.
+ */
+internal fun posterIndicatorFor(progress: WatchProgress?): PosterIndicator? = when {
+    progress == null -> null
+    ProgressRepository.isWatched(progress) -> PosterIndicator.Watched
+    ProgressRepository.isResumable(progress, ProgressRepository.MIN_CONTINUE_WATCHING_MS) ->
+        PosterIndicator.InProgress(progress.fractionWatched)
+    else -> null
+}
 
 /**
  * The one poster card used by every browse surface (home rows, discover
@@ -61,6 +90,7 @@ fun PosterCard(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     columns: Int = CardSizeTokens.DEFAULT_COLUMNS,
+    progress: WatchProgress? = null,
 ) {
     val width = CardSizeTokens.posterWidth(columns)
     val height = CardSizeTokens.posterHeight(columns)
@@ -122,6 +152,40 @@ fun PosterCard(
                         .align(Alignment.BottomStart)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 )
+            }
+            // Watch-history indicator (owner round 14 #5), same visual language
+            // as ContinueWatchingCard so the two rows read as one system:
+            // in-progress = the 7dp accent bar; watched = a ✓ badge. Static
+            // boxes, no animation — free on the 32-bit boxes.
+            when (val indicator = posterIndicatorFor(progress)) {
+                is PosterIndicator.InProgress -> Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(7.dp)
+                        .background(Color(0xCC000000)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(indicator.fraction)
+                            .height(7.dp)
+                            .background(Accent),
+                    )
+                }
+                is PosterIndicator.Watched -> Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xE6101018)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // "✓" is a plain text glyph the boxes render fine (it
+                    // already ships in Details/OptionRow) — not an emoji.
+                    Text("✓", style = MaterialTheme.typography.labelLarge, color = Accent)
+                }
+                null -> Unit
             }
         }
     }

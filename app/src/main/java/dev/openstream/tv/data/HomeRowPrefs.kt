@@ -56,6 +56,24 @@ fun HomeRowPrefs.applyTo(refs: List<CatalogRef>): List<HomeRow> {
     }
 }
 
+/**
+ * Default Home order (owner round 14 #14): personalized recommendation rows
+ * ("Trakt Recommendations" and kin) jump to the very top, above the other
+ * catalogs — but ONLY while the user hasn't pinned an order of their own in
+ * the row manager; an explicit order is exactly the tool for overriding this.
+ * Matched on the displayed title: the row's identity ([CatalogRef.key]) is an
+ * opaque addon/catalog id, while every recommendations catalog the family's
+ * addons declare says "recommend" in its name.
+ */
+fun List<HomeRow>.withRecommendationsFirst(hasUserOrder: Boolean): List<HomeRow> {
+    if (hasUserOrder) return this
+    val (recs, rest) = partition { it.isRecommendations() }
+    return recs + rest
+}
+
+/** The pin test behind [withRecommendationsFirst]; Home also counts these. */
+fun HomeRow.isRecommendations(): Boolean = title.contains("recommend", ignoreCase = true)
+
 /** Interface so ViewModels stay JVM-testable with an in-memory fake. */
 interface HomeRowPrefsStore {
     val prefs: Flow<HomeRowPrefs>

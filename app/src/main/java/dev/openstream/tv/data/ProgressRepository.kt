@@ -41,6 +41,16 @@ class ProgressRepository @Inject constructor(
             entities.associate { it.externalId to it.toDomain() }
         }
 
+    /**
+     * Latest progress per TITLE, keyed "metaType/metaId" — for the poster
+     * watched/progress indicators on browse tiles (owner round 14 #5). A
+     * series has one row per episode; the tile can only carry one signal, so
+     * the most recently watched row speaks for the whole show. Re-emits live,
+     * so backing out of the player updates the tiles without a reload.
+     */
+    fun observeProgressByMetaKey(): Flow<Map<String, WatchProgress>> =
+        dao.observeAll().map { entities -> latestByMetaKey(entities.map { it.toDomain() }) }
+
     suspend fun get(ref: MediaRef): WatchProgress? =
         dao.get(ref.sourceKind, ref.externalId)?.toDomain()
 
@@ -105,6 +115,14 @@ class ProgressRepository @Inject constructor(
          */
         fun isWatched(p: WatchProgress): Boolean =
             p.durationMs > 0 && p.positionMs >= p.durationMs * WATCHED_FRACTION
+
+        /** Key a browse tile can compute from its MetaItem: "metaType/metaId". */
+        fun metaKey(metaType: String, metaId: String): String = "$metaType/$metaId"
+
+        /** Latest row per title — the reduction behind [observeProgressByMetaKey]. */
+        fun latestByMetaKey(all: List<WatchProgress>): Map<String, WatchProgress> =
+            all.groupBy { metaKey(it.metaType, it.metaId) }
+                .mapValues { (_, rows) -> rows.maxBy { it.updatedAt } }
 
         fun continueWatching(all: List<WatchProgress>): List<WatchProgress> =
             all.filter { isResumable(it, MIN_CONTINUE_WATCHING_MS) }

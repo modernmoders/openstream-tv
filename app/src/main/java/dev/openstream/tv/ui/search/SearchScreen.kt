@@ -146,7 +146,7 @@ fun SearchScreen(
             ),
         ) {
             items(state.rows, key = { it.ref.key }) { row ->
-                SearchRow(row, state.columns, onItemClick)
+                SearchRow(row, state.columns, state.progressByMeta, onItemClick)
             }
         }
     }
@@ -158,6 +158,7 @@ fun SearchScreen(
 private fun SearchRow(
     row: RowState,
     columns: Int,
+    progressByMeta: Map<String, dev.openstream.tv.domain.WatchProgress>,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
 ) {
     Column {
@@ -205,6 +206,9 @@ private fun SearchRow(
                                 modifier = if (index == 0) Modifier.focusRequester(firstCardFocus)
                                 else Modifier,
                                 columns = columns,
+                                progress = progressByMeta[
+                                    dev.openstream.tv.data.ProgressRepository.metaKey(item.type, item.id),
+                                ],
                             )
                         }
                     }
