@@ -1,4 +1,4 @@
-# STATE — updated 2026-07-11 by session 24 cont. 3
+# STATE — updated 2026-07-11 by session 24 cont. 4
 
 ## ⚠️ OWNER ROUND 14 (2026-07-11, session 24 cont. 2) — FULL LIST, logged before building
 🚨 Log first, build second (usage-cutoff lesson). Config notes: **keep "Skip filler" +
@@ -36,11 +36,55 @@
 18. **Move "Connect this TV" + "Prefer software video decoder" under Expert mode.**
 Priorities this session: #15 (broken now) → #1/#2/#17/#18 (contained) → TorrentsDB config →
 then the hard clusters #7/#8/#9 (focus+perf) and #3/#4 (anime numbering) as budget allows.
-✅ **#15, #1, #2, #17, #18 all BUILT in alpha.44** (cont. 3, below). STILL OPEN in Round 14:
-#3/#4 (anime IMDb→MAL + numbering), #5 (poster progress indicators), #6 (re-enable TorrentsDB —
-config, not app), #7/#8/#9 (Home focus drift + hold-UP + scroll perf — need the owner's remote),
-#10/#11/#12/#13 (Discover/Home top-bar + filter + play-pause redesign), #14 (Trakt Recs / Continue
-Watching to top of Home), #16 (user skins, future).
+✅ **#15, #1, #2, #17, #18 all BUILT in alpha.44** (cont. 3, below) — owner CONFIRMED GREEN
+2026-07-11 ("all is green on my end"). ✅ **#5, #10, #11, #12, #13, #14 all BUILT + DEPLOYED
+in alpha.45** (cont. 4, below). STILL OPEN in Round 14: #3/#4 (anime IMDb→MAL + numbering),
+#6 (re-enable TorrentsDB — config, not app), #7/#8/#9 (Home focus drift + hold-UP + scroll
+perf — need the owner's remote), #16 (user skins, future).
+
+## ⚠️ READ FIRST (session 24 cont. 4 — 2026-07-11 — alpha.45 DEPLOYED to .117: Round-14 polish batch — pinned recs, poster indicators, drawn glyphs, filter pills)
+**alpha.45 (versionCode 45) BUILT — assembleDebug + testDebugUnitTest GREEN (332
+tests, 12 new; the known HomeViewModelTest real-threads prefetch test flaked
+once and cleared on rerun) + assembleRelease clean. DEPLOYED to .117 +
+smoke-launched (versionCode 45 confirmed; MainActivity resumed, no FATAL).
+NOT visually verified — needs owner eyes.** DECISIONS #54. Commit `ca7bd6e`.
+Six Round-14 items in one commit:
+- **#14 Trakt Recs to top of Home.** `withRecommendationsFirst` (HomeRowPrefs.kt)
+  pins rows whose TITLE contains "recommend" first; Home renders header → hero →
+  pinned recs → Continue Watching → rest. Suppressed the moment the user sets a
+  row-manager order (that IS the override tool). `homeRestoreIndex` grew a
+  `pinnedRowCount` param (back-from-Details restore still lands right).
+- **#5 Poster watch indicators** on Home/Discover/Search tiles: CW-style 7dp
+  accent bar for in-progress, ✓ badge for watched. `posterIndicatorFor` uses the
+  60s CW floor (not the 15s resume floor) so accidental clicks don't stamp Home;
+  a series tile speaks with its latest-watched episode
+  (`ProgressRepository.latestByMetaKey`, keyed "metaType/metaId").
+- **#13 Play/pause redesign.** Root cause: ⏸/▶/⏮/⏭ were FONT glyphs — the box's
+  emoji fallback rendered the pause "out of the ballpark". New `DrawnIcons.kt`
+  (Canvas geometry: PlayerGlyph, GearIcon, CaretDownIcon). Play/pause is a
+  38dp circular chip that flips solid-Accent while paused; prev/next pills draw
+  their glyphs. Rule extended: no font symbols in controls, ever ("✓" is fine —
+  it already ships in Details and renders properly).
+- **#10** One shared GearIcon for NavRail Settings, Discover's View pill and
+  Home's Settings pill; Discover's View pill is now "View ⚙" (cog AFTER, drawn).
+- **#11** Home header: Discover+Search grouped; Settings 26dp apart with gear +
+  muted text. headerFocus anchor (the #33 hold-UP fix) untouched, still on
+  Discover.
+- **#12** Discover pickers are now `FilterPill`s: muted dimension label ("Type")
+  + current value + drawn ▾ — they read as openable filters.
+⚠️ Commit hygiene: `git add -A` initially swept in `.claude/` + the owner's
+"SStreams Loader.dc_files/" page — amended out before push, both now in
+.gitignore.
+⏳ **NEXT ACTION:** (a) **.196 still offline** — install alpha.45 when it pings:
+`adb connect 192.168.1.196:5555 && adb -s 192.168.1.196:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+(then leanback relaunch). (b) **Owner to eyeball alpha.45 on .117:** Trakt Recs
+row first + CW right under it; progress bars/✓ on tiles he's watched; the new
+round play/pause chip (accent when paused); prev/next glyphs; Discover filter
+pills + "View ⚙"; Home's Settings pill moved apart with the gear. (c) Then the
+remaining Round-14 backlog in order: **#6 TorrentsDB re-enable** (config push,
+primary+backup AIOStreams — needs owner-gated live push), **#3/#4 anime
+IMDb→MAL bridge + numbering** (app build, big), **#7/#8/#9 Home focus/perf**
+(need the owner's remote at the TV — adb can't fake key-repeat, DECISIONS #33).
 
 ## ⚠️ READ FIRST (session 24 cont. 3 — 2026-07-11 — alpha.44 DEPLOYED to .117: return-to-your-place + NavRail glitch + Round 14 batch)
 **alpha.44 (versionCode 44) BUILT — assembleDebug + testDebugUnitTest GREEN (320
