@@ -1502,3 +1502,20 @@ refresh, minor diffs only. Backups: StremioSurfer/stremio-addons-backup-*.json.
 alpha.42 (versionCode 42) DEPLOYED to .117, box-proven: profile GET hits the
 server on every due sync now, all 7 profile addons installed, Home shows only
 auto-filling rows. .196 offline — install alpha.42 when it pings.
+
+## 52. 2026-07-11 (session 24) — The loader is the owner's own wave-dots design (alpha.43)
+
+The player's load-phase spinner (alpha.30 arc) is replaced with the owner's
+"SStreams Loader" Claude Design export (saved page in the repo root): five
+round dots that rise 14dp and brighten 0.45→1.0 in a travelling wave — 2.2s
+ease-in-out cycle, 0.16s stagger. Non-obvious choices:
+- Keyframe math is a pure file (`ui/components/WaveLoader.kt`, no Compose
+  imports) so the timing is JVM-unit-tested (5 tests); the composable only
+  maps poses to circles.
+- Same two box lessons re-applied: frame-clock time (animator scale 0 froze
+  infinite transitions, R13-8) and the per-frame state read only inside the
+  Canvas draw block (redraw, never recompose — #22).
+- Dot color is the design's #A8CBE8 brand periwinkle, deliberately NOT the
+  UI accent blue (#4DA3FF): the loader is brand art, and the owner picked
+  that value in his design's props.
+Deployed to .117 (smoke-launched). Visual eyeball = owner's next stream load.
