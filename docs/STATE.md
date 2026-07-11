@@ -1,4 +1,37 @@
-# STATE — updated 2026-07-10 by session 22
+# STATE — updated 2026-07-10 by session 23
+
+## ⚠️ READ FIRST (session 23 — 2026-07-10 — alpha.40: player picks its decoder PER STREAM; fluid scrubbing)
+🚨 **BOXES STILL ON alpha.30.** alpha.31–.40 are ALL undeployed. Deploy before triaging any owner
+bug report. 🚨 **DO NOT EDIT RACHAEL'S ACCOUNTS** without explicit per-request permission.
+
+**alpha.40 (versionCode 40) BUILT — assembleDebug + testDebugUnitTest GREEN; emulator smoke passed
+(install, MainActivity resumed, PlaybackService built the new engine + MediaSession, no crash).
+NOT deployed.** Owner ask this session: "main player is kinda trash — rainbow artifacts on some
+streams; premium, responsive but fluid feel." DECISIONS #49; design note in
+docs/superpowers/specs/2026-07-10-player-quality-design.md.
+- **Rainbow artifacts (silent hw macroblocking, R11 N1) now handled AUTOMATICALLY.** The engine
+  decides software-vs-hardware PER STREAM at play(): session toggle > Settings pref > automatic
+  (software when the label codec — `PlayableSource.videoCodec`, stamped in StreamMapping — is not in
+  `DecoderCapabilities.hardwareVideoCodecs`). Mechanism = a DELEGATING `MediaCodecSelector`
+  (PREFER_SOFTWARE vs DEFAULT off a var, consulted at every codec init) — no engine rebuild.
+  play() stop()s first so codec REUSE can't carry a garbage decoder across streams.
+  `VideoCodec` moved `StreamCascade` → `domain` (layering; StreamCascade re-exports the heuristics).
+- **Decode-error safety net:** decoder-class errors (`isDecodeErrorCode`, pure) get ONE same-stream
+  software retry at the same position before the try-another-stream walk.
+- **"Software video" toggle applies IN PLACE now** (session override + replay at position; still
+  persists the box pref) — no more stream-list bounce. Its ON/OFF mirrors the engine's per-stream
+  truth (`usingSoftwareDecoder`), so auto-engaged software honestly reads ON.
+- **Fluid controls:** d-pad scrubbing moves a PREVIEW target instantly (accelerating 10s→30s→60s→120s
+  with press streak, pure `Scrubbing` helpers) and commits ONE real seek 350ms after the last press;
+  "+2:30" delta chip during the gesture; OK mid-scrub commits; `SeekParameters.CLOSEST_SYNC`.
+  Control bar fades/slides (degrades to instant pop when the box zeroes animator scale); paused
+  keeps the bar up; a >400ms mid-playback rebuffer shows a small NO-SCRIM ring (keys keep working).
+- 4 new test files: VideoCodecTest, ScrubbingTest, DecodeErrorTest, + codec-stamp in StreamMappingTest.
+⚠️ Emulator playback was deliberately NOT exercised — starting a stream fires the alpha.35 Trakt
+check-in ping on the owner's account. **Box verification = the real test:** play the anime/HEVC titles
+that macroblocked; they should now open clean with "Software video: ON" showing automatically.
+⏳ Deploy target **alpha.40**. Everything still open from session 22 (R13-1 drift, B2 hold-UP, Home's
+redundant pills, NavRail focus verify, S3 Trakt scrobble, S4 profile builder) is unchanged below.
 
 ## ⚠️ READ FIRST (session 22 cont. 6 — 2026-07-10 — alpha.39: R13-4 + R13-5 FIXED *and emulator-proven*)
 🚨 **BOXES STILL ON alpha.30.** alpha.31–.39 are ALL undeployed. **Deploy before triaging any owner bug
@@ -1264,7 +1297,21 @@ main @ origin (https://github.com/modernmoders/openstream-tv)
 
 ## NEXT ACTION (start here)
 
-### ⭐ START HERE (session 22 cont. 6 — 2026-07-10)
+### ⭐ START HERE (session 23 — 2026-07-10)
+Z0. ⏳ **DEPLOY alpha.40 to BOTH boxes** (supersedes A0's alpha.39 — same commands, same warning:
+   ask the owner first, someone may be watching). Build `assembleRelease` first.
+Z1. ⏳ **Owner verifies the player on a box** (the point of alpha.40):
+   (a) play an anime/HEVC title that used to rainbow-macroblock — it should open CLEAN with
+   "Having trouble? → Software video: ON" showing automatically (no toggle trip);
+   (b) hold RIGHT on the scrub bar — the preview should fly with accelerating steps and the video
+   should jump ONCE on release (no per-press grind), with a small ring while it rebuffers;
+   (c) pause → the control bar must STAY up; (d) flip "Software video" — the video should reload
+   in place at the same position, not bounce through the stream list.
+   If a title still macroblocks WITHOUT the toggle reading ON, the box's decoder is lying about
+   that codec's profile — read the App log, then widen the label heuristics or trust-list that codec.
+A0–A4 (session 22) continue below — R13-1/B2 still need the owner's remote.
+
+### ⭐ (prior) START HERE (session 22 cont. 6 — 2026-07-10)
 A0. ⏳ **DEPLOY alpha.39 to BOTH boxes.** This is the single highest-value action left — the boxes are
    still on alpha.30, so nine releases of fixes (.31–.39) have never been seen by the family, and every
    owner bug report is being made against alpha.30. Build the release APK, then:
