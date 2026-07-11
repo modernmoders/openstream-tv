@@ -40,6 +40,29 @@ class MetaRepositoryTest {
         MetaRepository(client, addonRepository, cinemetaBase)
 
     @Test
+    fun `duplicate episode ids are dropped — Details keys its lazy rows by video id`() =
+        runTest(timeout = 60.seconds) {
+            server.route("/manifest.json", Fixtures.load("manifest_full"))
+            server.route(
+                "/meta/series/fix:series:1.json",
+                """
+                {"meta":{"id":"fix:series:1","type":"series","name":"Dup Episodes",
+                  "videos":[
+                    {"id":"fix:series:1:1:1","title":"Ep 1","season":1,"episode":1},
+                    {"id":"fix:series:1:1:2","title":"Ep 2","season":1,"episode":2},
+                    {"id":"fix:series:1:1:1","title":"Ep 1 again","season":1,"episode":1}
+                ]}}
+                """.trimIndent(),
+            )
+            server.start()
+            addonRepository.install(server.url("/manifest.json")).getOrThrow()
+
+            val meta = repo().resolveMeta("series", "fix:series:1").getOrThrow()
+
+            assertEquals(listOf("fix:series:1:1:1", "fix:series:1:1:2"), meta.videos.map { it.id })
+        }
+
+    @Test
     fun `uses a declaring addon before any fallback`() = runTest(timeout = 60.seconds) {
         server.route("/manifest.json", Fixtures.load("manifest_full"))
         // manifest_full: meta declared for series/channel with prefix "fix"

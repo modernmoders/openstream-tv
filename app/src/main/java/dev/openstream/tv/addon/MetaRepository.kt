@@ -29,14 +29,14 @@ class MetaRepository @Inject constructor(
         for (addon in addons) {
             if (!addon.manifest.declares("meta", type, id)) continue
             client.meta(addon.baseUrl, type, id)
-                .onSuccess { return Result.success(it) }
+                .onSuccess { return Result.success(it.dedupedVideos()) }
                 .onFailure { lastError = it }
         }
 
         // Cinemeta knows every IMDb id; its manifest declares idPrefixes=["tt"].
         if (id.startsWith("tt")) {
             client.meta(cinemetaBaseUrl, type, id)
-                .onSuccess { return Result.success(it) }
+                .onSuccess { return Result.success(it.dedupedVideos()) }
                 .onFailure { lastError = it }
         }
 
@@ -49,4 +49,10 @@ class MetaRepository @Inject constructor(
         diagnostics.record("meta", "couldn't describe $type $id: ${error.toDiagnosticDetail()}")
         return Result.failure(error)
     }
+
+    /** Same trust boundary as CatalogRepository's distinctBy: addons DO repeat
+     *  ids (owner crash 2026-07-10), and Details keys episode rows by video id
+     *  — duplicate lazy keys are fatal. */
+    private fun MetaItem.dedupedVideos(): MetaItem =
+        if (videos.isEmpty()) this else copy(videos = videos.distinctBy { it.id })
 }

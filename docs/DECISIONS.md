@@ -1423,3 +1423,35 @@ alpha.35 Trakt check-in ping on the owner's account.
 alpha.40 (versionCode 40). Gates green: assembleDebug + testDebugUnitTest
 (4 new test classes: VideoCodecTest, ScrubbingTest, DecodeErrorTest, and a
 codec-stamp case in StreamMappingTest).
+
+## 50. 2026-07-10 (session 23) — Duplicate catalog ids crashed Home; dedupe at the addon trust boundary (alpha.41)
+
+Owner (minutes after installing alpha.40): "It crashes when I go down quickly."
+Pulled the crash off the box over adb:
+`IllegalArgumentException: Key "tt33332385" was already used` — a LazyColumn/Row
+duplicate-key abort, thrown while Home's fast vertical scroll composed a row.
+
+Root cause (NOT the alpha.40 player work): a live catalog response contains the
+same meta id twice, `HomeViewModel` puts the response into the row RAW, and
+`HomeScreen` keys the row's lazy items by `it.id`. The keys date to alpha.19 —
+alpha.30 crashes on this data too; what changed is the DATA (the 5-instance
+AIOMetadata stack went live 2026-07-10 and one of its catalogs now serves a
+duplicate). Discover already carried the exact guard, with a comment naming
+this failure mode — Home and Search never got it.
+
+Fix at the shared boundary, not per-screen: `CatalogRepository.fetch` now
+`.distinctBy { it.id }` after the usability filter — one line covers Home,
+Discover (double-dedupe, harmless) and Search. Same trust principle applied to
+`MetaRepository.resolveMeta` (`videos.distinctBy { it.id }`): Details keys its
+episode rows by video id, so a meta with a repeated episode id was the same
+latent crash one screen deeper.
+
+TDD: failing test first (catalog with "tt33332385" twice → fetch returns it
+once), then the fix, then a matching episode-dedupe test. **Box-proven
+before/after on .117**: alpha.40 + 14 rapid DOWNs → same FATAL on demand;
+alpha.41 + 38 rapid DOWN/UP presses → zero crashes, MainActivity resumed.
+
+alpha.41 (versionCode 41) DEPLOYED to .117 (verified 0.3.0-alpha.41). .196 was
+unreachable (offline) — deploy when it pings. Gates green: assembleDebug +
+testDebugUnitTest (313; the known HomeViewModelTest dispatcher flake cleared on
+rerun).

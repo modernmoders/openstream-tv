@@ -74,7 +74,10 @@ class CatalogRepository @Inject constructor(
         extra: Map<String, String> = emptyMap(),
     ): Result<List<MetaItem>> =
         client.catalog(ref.addon.baseUrl, ref.catalog.type, ref.catalog.id, extra)
-            .map { metas -> metas.filter { it.isUsable } }
+            // distinctBy: live catalogs DO repeat an id within one response
+            // (owner crash 2026-07-10, "tt33332385" twice) and the row/grid
+            // screens key their lazy items by id — duplicate keys are fatal.
+            .map { metas -> metas.filter { it.isUsable }.distinctBy { it.id } }
             .onFailure {
                 // The screen shows a friendly chip; the detail goes here (§10).
                 diagnostics.record(

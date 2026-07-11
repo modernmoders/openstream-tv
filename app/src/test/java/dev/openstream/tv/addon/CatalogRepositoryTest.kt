@@ -89,6 +89,30 @@ class CatalogRepositoryTest {
     }
 
     @Test
+    fun `fetch drops duplicate ids — addons repeat items and duplicate keys crash lazy lists`() =
+        runTest(timeout = 60.seconds) {
+            // Owner crash 2026-07-10: a live catalog served "tt33332385" twice;
+            // Home's LazyRow keys rows by id, so composing the row killed the app.
+            server.route(
+                "/catalog/movie/top.json",
+                """
+                {"metas":[
+                    {"id":"tt33332385","type":"movie","name":"Dup Movie"},
+                    {"id":"tt0000001","type":"movie","name":"Other Movie"},
+                    {"id":"tt33332385","type":"movie","name":"Dup Movie again"}
+                ]}
+                """.trimIndent(),
+            )
+            server.start()
+            val addon = installed(server.url("/manifest.json"))
+            val ref = CatalogRepository.CatalogRef(addon, addon.manifest.catalogs.first())
+
+            val items = repository.fetch(ref).getOrThrow()
+
+            assertEquals(listOf("tt33332385", "tt0000001"), items.map { it.id })
+        }
+
+    @Test
     fun `fetch failure surfaces as Result failure for the row chip`() = runTest(timeout = 60.seconds) {
         server.start() // 404 everywhere
         val addon = installed(server.url("/manifest.json"))
