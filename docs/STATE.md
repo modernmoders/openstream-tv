@@ -42,10 +42,12 @@ config, not app), #7/#8/#9 (Home focus drift + hold-UP + scroll perf — need th
 #10/#11/#12/#13 (Discover/Home top-bar + filter + play-pause redesign), #14 (Trakt Recs / Continue
 Watching to top of Home), #16 (user skins, future).
 
-## ⚠️ READ FIRST (session 24 cont. 3 — 2026-07-11 — alpha.44 BUILT: return-to-your-place + NavRail glitch + Round 14 batch)
+## ⚠️ READ FIRST (session 24 cont. 3 — 2026-07-11 — alpha.44 DEPLOYED to .117: return-to-your-place + NavRail glitch + Round 14 batch)
 **alpha.44 (versionCode 44) BUILT — assembleDebug + testDebugUnitTest GREEN (320
 tests; known HomeViewModelTest Main-dispatcher flake cleared on rerun) +
-assembleRelease clean. NOT deployed, NOT device-verified.** DECISIONS #53.
+assembleRelease clean. DEPLOYED to .117 + smoke-launched (versionCode 44
+confirmed installed; MainActivity resumed, no FATAL). NOT visually/interaction-
+verified (needs a human at the TV).** DECISIONS #53.
 Five Round-14 items landed in one commit (818b377):
 - **#15 NavRail glitch (was LIVE on .117) — FIXED.** `restoreState = route !=
   Routes.HOME` (HOME is the popUpTo anchor, so its saved segment was whatever
@@ -68,10 +70,10 @@ Five Round-14 items landed in one commit (818b377):
 real box** — #1 requires forcing process death mid-playback, #15 needs genuine
 d-pad section switching. Both were reasoned from the alpha.38 back-stack model
 and the SavedStateHandle lifecycle, not measured.
-⏳ **NEXT ACTION (owner or next session):** deploy alpha.44 to .117 (and .196
-when it pings) →
-`adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
-then relaunch. **Verify on the box:** (a) NavRail — from Search, click Home →
+⏳ **NEXT ACTION:** .117 is done. **.196 still pending** — install alpha.44 when
+it pings →
+`adb connect 192.168.1.196:5555 && adb -s 192.168.1.196:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+then relaunch (leanback launcher). **Owner to verify on .117:** (a) NavRail — from Search, click Home →
 lands on Home (not Discover); Home click when already on Home does nothing bad;
 (b) start a show, HOME key out, reopen the app → back in the video, paused, at
 your spot; (c) the hovered rail item is the bright accent pill; (d) Settings →
