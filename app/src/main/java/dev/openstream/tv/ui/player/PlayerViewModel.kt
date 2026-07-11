@@ -178,12 +178,16 @@ class PlayerViewModel @Inject constructor(
             viewModelScope.launch {
                 autoAdvanceOnError = playbackPrefs.autoPlayFirstStream.first()
                 skipEnabled = playbackPrefs.skipIntrosEnabled.first()
-                // Reflect the decoder this session was built with, so the
-                // "Having trouble?" toggle shows the right ON/OFF.
-                _uiState.value = _uiState.value.copy(
-                    softwareDecoderOn = playbackPrefs.preferSoftwareDecoder.first(),
-                )
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
+                launch {
+                    // The engine decides software-vs-hardware PER STREAM now
+                    // (auto for codecs the box mangles) — the "Software video"
+                    // toggle mirrors what this playback actually uses, not a
+                    // stored setting.
+                    engine.usingSoftwareDecoder.collect { on ->
+                        _uiState.value = _uiState.value.copy(softwareDecoderOn = on)
+                    }
+                }
                 // Remembered languages (DECISIONS #19) go on BEFORE play so the
                 // first track selection already honors them. Parameters stick
                 // to the player instance, so autoplay episode swaps keep them.
@@ -260,6 +264,11 @@ class PlayerViewModel @Inject constructor(
                         // While autoplay is attempting, an open failure is its
                         // fallthrough signal (§7.1 step 5), not an error panel.
                         autoplay.onPlaybackError(viewModelScope) -> Unit
+                        // A decoder-class failure on a hardware session gets ONE
+                        // same-stream retry in software (same position) before
+                        // any stream-walking — the stream is usually fine, the
+                        // box's decoder is what broke (MX-parity logic).
+                        event.isDecodeError && retryCurrentInSoftware(engine) -> Unit
                         // Auto-skip a broken stream to the next server (owner
                         // request 2026-07-06) — quietly, like a human would.
                         autoAdvanceOnError && errorSkips < MAX_ERROR_SKIPS && tryNextStream() ->
@@ -601,19 +610,54 @@ class PlayerViewModel @Inject constructor(
         _openStreams.tryEmit(OpenStreams(req.metaType, videoId, req.source.title, req.metaId, req.poster))
     }
 
+    /** The one stream URL already retried in software — a decode retry that
+     *  fails again must fall through to try-another-stream, not loop. */
+    private var softwareRetriedUrl: String? = null
+
     /**
-     * "Having trouble?" software-decoder toggle. The decoder is chosen when the
-     * engine is built, so we can't flip it live — persist the flipped setting
-     * (awaited so the next engine reads it, not a race) then re-open this
-     * video's stream list; the fresh playback session builds an engine with the
-     * new decoder and its toggle shows the new ON/OFF state.
+     * Decode-class failure: replay the SAME stream from the same position with
+     * software decoders. Once per stream URL; false = let the caller fall
+     * through to the auto-skip / error panel.
+     */
+    private fun retryCurrentInSoftware(engine: ExoPlayerEngine): Boolean {
+        val req = request ?: return false
+        if (engine.usingSoftwareDecoder.value) return false // already software
+        if (softwareRetriedUrl == req.source.url) return false
+        softwareRetriedUrl = req.source.url
+        diagnostics.record("player", "decode failure — retrying \"${req.source.title}\" with software decoders")
+        engine.setSoftwareOverride(true)
+        replayCurrent(engine)
+        return true
+    }
+
+    /** Re-open the current source in place, keeping the playback position. */
+    private fun replayCurrent(engine: ExoPlayerEngine) {
+        val req = request ?: return
+        val position = engine.exoPlayer.currentPosition.takeIf { it > 0 }
+            ?: req.source.startPositionMs
+        val newRequest = req.copy(source = req.source.copy(startPositionMs = position))
+        request = newRequest
+        currentPlayback.request = newRequest
+        _uiState.value = _uiState.value.copy(error = null, ended = false, switching = true)
+        engine.play(newRequest.source)
+        // Mid-resume-prompt: keep the reloaded stream held paused so the
+        // prompt still governs where playback starts.
+        if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
+    }
+
+    /**
+     * "Having trouble?" software-decoder toggle — now applies IN PLACE: set the
+     * session override and replay this stream at the current position (the
+     * engine's decoder selector is consulted per playback, alpha.40). The
+     * box-level setting is still persisted so the choice outlives the session,
+     * matching the old semantics.
      */
     fun toggleSoftwareDecoder() {
-        viewModelScope.launch {
-            val current = playbackPrefs.preferSoftwareDecoder.first()
-            playbackPrefs.setPreferSoftwareDecoder(!current)
-            openCurrentStreamList()
-        }
+        val engine = engine.value ?: return
+        val turnOn = !engine.usingSoftwareDecoder.value
+        engine.setSoftwareOverride(turnOn)
+        replayCurrent(engine)
+        viewModelScope.launch { playbackPrefs.setPreferSoftwareDecoder(turnOn) }
     }
 
     fun retry() {

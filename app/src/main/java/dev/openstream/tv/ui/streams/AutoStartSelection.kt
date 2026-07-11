@@ -3,6 +3,7 @@ package dev.openstream.tv.ui.streams
 import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.autoplay.StreamCascade
+import dev.openstream.tv.domain.VideoCodec
 import dev.openstream.tv.player.StreamAlternatives
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 
@@ -39,7 +40,7 @@ private fun loadedAsAddonStreams(groups: List<GroupState>): List<StreamCascade.A
 fun bestPlayableWhenSettled(
     initializing: Boolean,
     groups: List<GroupState>,
-    hardwareCodecs: Set<StreamCascade.VideoCodec> = emptySet(),
+    hardwareCodecs: Set<VideoCodec> = emptySet(),
 ): AutoStartResult {
     if (initializing) return AutoStartResult.Waiting
     // The best stream can come from ANY source, so wait until they've all
@@ -62,7 +63,7 @@ fun bestPlayableWhenSettled(
  */
 fun orderedAlternatives(
     groups: List<GroupState>,
-    hardwareCodecs: Set<StreamCascade.VideoCodec> = emptySet(),
+    hardwareCodecs: Set<VideoCodec> = emptySet(),
 ): List<StreamAlternatives.Alternative> =
     StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs)
         .map { StreamAlternatives.Alternative(it.addonUrl, it.stream) }

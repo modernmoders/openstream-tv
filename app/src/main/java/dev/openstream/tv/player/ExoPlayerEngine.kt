@@ -11,11 +11,16 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import dev.openstream.tv.domain.PlayableSource
+import dev.openstream.tv.domain.VideoCodec
+import dev.openstream.tv.domain.hardwareDecodable
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 
 /**
@@ -30,33 +35,55 @@ import kotlinx.coroutines.flow.callbackFlow
  * owning ViewModel. MediaSessionService integration is the next Phase 2 unit.
  *
  * @param preferSoftwareDecoder when true, software video decoders are tried
- *   first (Settings toggle). The 32-bit onn boxes' vendor hardware decoders
- *   emit macroblocked garbage on some encodes — anime especially (owner
- *   screenshot 2026-07-08) — that MX Player, which software-decodes, renders
- *   clean. See [DefaultRenderersFactory] setup below (MASTER_PLAN §10 R11 N1).
+ *   first for EVERY stream (Settings toggle / box-level default). The 32-bit
+ *   onn boxes' vendor hardware decoders emit macroblocked "rainbow" garbage on
+ *   some encodes — anime especially (owner screenshot 2026-07-08) — that MX
+ *   Player, which software-decodes, renders clean (MASTER_PLAN §10 R11 N1).
+ * @param hardwareCodecs what this box can genuinely hardware-decode
+ *   ([DecoderCapabilities]). A stream whose [PlayableSource.videoCodec] is NOT
+ *   in here is software-decoded automatically — no viewer toggle needed.
  */
 class ExoPlayerEngine(
     context: Context,
-    preferSoftwareDecoder: Boolean = false,
+    private val preferSoftwareDecoder: Boolean = false,
+    private val hardwareCodecs: Set<VideoCodec> = emptySet(),
 ) : PlayerEngine {
 
     private val httpFactory = DefaultHttpDataSource.Factory()
         .setUserAgent("OpenStreamTV")
         .setAllowCrossProtocolRedirects(true)
 
+    /**
+     * Whether the CURRENT playback tries software decoders first. Decided per
+     * [play]; the "Software video" toggle flips [sessionSoftwareOverride] on
+     * top. The UI shows this truth (auto-engaged software reads ON).
+     */
+    val usingSoftwareDecoder: StateFlow<Boolean> get() = _usingSoftwareDecoder
+    private val _usingSoftwareDecoder = MutableStateFlow(preferSoftwareDecoder)
+
+    /** Viewer's in-player "Software video" choice for THIS watch session; null
+     *  = no choice made, the automatic per-stream decision applies. */
+    private var sessionSoftwareOverride: Boolean? = null
+
+    // The selector is consulted at every codec initialization (each prepare),
+    // so delegating on a var switches decoders PER STREAM without rebuilding
+    // the engine — the manual toggle used to bounce through the stream list
+    // just to get a fresh engine.
+    //
+    // Fallback (setEnableDecoderFallback) only catches decoders that ERROR.
+    // The macroblocking the owner sees is silent — the hw decoder "succeeds"
+    // and emits garbage frames — so PREFER_SOFTWARE (robust software decoders
+    // first, hardware still a last resort) is the only cure, matching how MX
+    // Player stays clean on the same box.
     private val renderersFactory = DefaultRenderersFactory(context)
-        // Drop to the next (usually software) decoder when the preferred one
-        // fails to initialize or throws mid-stream — the boxes' hw decoders do
-        // both on odd profiles. Cheap safety net; always on.
         .setEnableDecoderFallback(true)
-        .apply {
-            // Fallback only catches decoders that ERROR. The macroblocking the
-            // owner sees is silent — the hw decoder "succeeds" and emits garbage
-            // frames — so nothing throws for fallback to catch. The only cure is
-            // to not use that decoder: PREFER_SOFTWARE tries the robust software
-            // decoders first (hardware still there as a last resort), matching
-            // how MX Player stays clean on the same box.
-            if (preferSoftwareDecoder) setMediaCodecSelector(MediaCodecSelector.PREFER_SOFTWARE)
+        .setMediaCodecSelector { mimeType, requiresSecure, requiresTunneling ->
+            val base = if (_usingSoftwareDecoder.value) {
+                MediaCodecSelector.PREFER_SOFTWARE
+            } else {
+                MediaCodecSelector.DEFAULT
+            }
+            base.getDecoderInfos(mimeType, requiresSecure, requiresTunneling)
         }
 
     /** Exposed for PlayerView binding; UI must not manage its lifecycle. */
@@ -76,8 +103,33 @@ class ExoPlayerEngine(
                 .build()
         )
         .build()
+        .apply {
+            // Land seeks on the nearest keyframe instead of decoding forward
+            // from the previous one — scrubbing snaps instead of grinding.
+            setSeekParameters(SeekParameters.CLOSEST_SYNC)
+        }
+
+    /**
+     * The viewer's "Software video" flip. Takes effect on the next [play] —
+     * callers replay the current source at its current position to apply it
+     * in place (no more stream-list round trip).
+     */
+    fun setSoftwareOverride(on: Boolean) {
+        sessionSoftwareOverride = on
+    }
 
     override fun play(source: PlayableSource) {
+        // Per-stream decoder decision: viewer's session choice > box-level
+        // setting > automatic (software when the label says this codec is one
+        // the box's hardware provably can't decode — HEVC 10-bit on the onn
+        // boxes being THE rainbow-artifact case).
+        _usingSoftwareDecoder.value = sessionSoftwareOverride
+            ?: (preferSoftwareDecoder || !source.videoCodec.hardwareDecodable(hardwareCodecs))
+        // A fresh item on a live player can seamlessly hand the old codec to
+        // the new stream (codec reuse) — stop() forces re-selection, so a
+        // flipped decoder choice genuinely applies. No-op when already idle.
+        if (exoPlayer.playbackState != Player.STATE_IDLE) exoPlayer.stop()
+
         // Headers are a factory property, not per-item; one engine plays one
         // source at a time so setting them before prepare() is safe.
         httpFactory.setDefaultRequestProperties(source.headers)
@@ -115,7 +167,13 @@ class ExoPlayerEngine(
                 // detail = the raw story for the diagnostics log (codec names
                 // are exactly what the 32-bit boxes' failures need diagnosed).
                 val cause = error.cause?.let { " — ${it::class.simpleName}: ${it.message}" }.orEmpty()
-                trySend(PlayerEvent.Error(error.toPlainLanguage(), "${error.errorCodeName}$cause"))
+                trySend(
+                    PlayerEvent.Error(
+                        error.toPlainLanguage(),
+                        "${error.errorCodeName}$cause",
+                        isDecodeError = isDecodeErrorCode(error.errorCode),
+                    )
+                )
             }
         }
         exoPlayer.addListener(listener)

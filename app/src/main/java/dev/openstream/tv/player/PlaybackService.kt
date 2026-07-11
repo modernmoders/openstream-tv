@@ -22,6 +22,7 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var playerHolder: PlayerHolder
     @Inject lateinit var playbackPrefs: PlaybackPrefs
+    @Inject lateinit var decoderCapabilities: DecoderCapabilities
 
     private var engine: ExoPlayerEngine? = null
     private var mediaSession: MediaSession? = null
@@ -32,7 +33,9 @@ class PlaybackService : MediaSessionService() {
         // once per watch session, not per frame): pick up the "prefer software
         // decoder" setting so a box that glitches can be switched to software.
         val preferSoftware = runBlocking { playbackPrefs.preferSoftwareDecoder.first() }
-        val newEngine = ExoPlayerEngine(this, preferSoftware)
+        // The box's true hardware codecs let the engine software-decode ONLY
+        // the streams that need it (per-play decision), instead of all-or-nothing.
+        val newEngine = ExoPlayerEngine(this, preferSoftware, decoderCapabilities.hardwareVideoCodecs)
         engine = newEngine
         mediaSession = MediaSession.Builder(this, newEngine.exoPlayer).build()
         playerHolder.attach(newEngine)

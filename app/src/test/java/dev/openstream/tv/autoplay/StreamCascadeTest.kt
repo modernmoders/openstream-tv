@@ -4,7 +4,7 @@ import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.addon.StreamBehaviorHints
 import dev.openstream.tv.autoplay.StreamCascade.AddonStreams
 import dev.openstream.tv.autoplay.StreamCascade.CurrentStream
-import dev.openstream.tv.autoplay.StreamCascade.VideoCodec
+import dev.openstream.tv.domain.VideoCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

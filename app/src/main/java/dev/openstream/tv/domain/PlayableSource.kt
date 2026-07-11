@@ -17,6 +17,13 @@ data class PlayableSource(
     /** From stream behaviorHints; used by autoplay (§7). */
     val bingeGroup: String? = null,
     val startPositionMs: Long = 0,
+    /**
+     * Best-effort codec (from the release label for addon streams; a live
+     * channel may declare its own later). Null = unknown. The player uses it
+     * to pick software decoding up front when the box's hardware decoder is
+     * known to mangle this codec — the "rainbow macroblocking" fix.
+     */
+    val videoCodec: VideoCodec? = null,
 )
 
 data class SubtitleTrack(

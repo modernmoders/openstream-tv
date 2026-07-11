@@ -1,6 +1,8 @@
 package dev.openstream.tv.autoplay
 
 import dev.openstream.tv.addon.Stream
+import dev.openstream.tv.domain.VideoCodec
+import dev.openstream.tv.domain.hardwareDecodable
 
 /**
  * Stream-selection cascade for the next episode (§7.1 step 3).
@@ -140,9 +142,6 @@ object StreamCascade {
         return !NON_ENGLISH_AUDIO.containsMatchIn(audio)
     }
 
-    /** Video codecs we can tell apart from a release label. */
-    enum class VideoCodec { H264, HEVC, HEVC_10BIT, AV1, VP9 }
-
     private val TEN_BIT = Regex("""10.?bit|hdr|dolby.?vision|\bdv\b|main.?10""", RegexOption.IGNORE_CASE)
 
     /** Best-effort codec from the release label; null when it can't be told. */
@@ -164,11 +163,8 @@ object StreamCascade {
      * capabilities ([hardwareCodecs] empty), returns true — we never demote a
      * stream we can't reason about, only ones we KNOW the box can't decode.
      */
-    fun canHardwareDecode(stream: Stream, hardwareCodecs: Set<VideoCodec>): Boolean {
-        if (hardwareCodecs.isEmpty()) return true
-        val codec = videoCodecOf(stream) ?: return true
-        return codec in hardwareCodecs
-    }
+    fun canHardwareDecode(stream: Stream, hardwareCodecs: Set<VideoCodec>): Boolean =
+        videoCodecOf(stream).hardwareDecodable(hardwareCodecs)
 
     /** Same release across sources → same key. Torrent infoHash is authoritative;
      *  otherwise the exact release filename, else the whole label. */

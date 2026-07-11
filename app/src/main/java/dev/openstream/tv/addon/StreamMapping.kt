@@ -1,5 +1,6 @@
 package dev.openstream.tv.addon
 
+import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.domain.PlayableSource
 import dev.openstream.tv.domain.SubtitleTrack
 
@@ -18,5 +19,9 @@ fun Stream.toPlayableSource(title: String): PlayableSource? {
             .filter { it.url.isNotBlank() }
             .map { SubtitleTrack(it.url, it.lang) },
         bingeGroup = behaviorHints.bingeGroup,
+        // StreamCascade's label heuristics are pure — reaching into autoplay
+        // here is a convenience import, not a flow dependency (§8.2 intact:
+        // PlayableSource itself stays addon-agnostic).
+        videoCodec = StreamCascade.videoCodecOf(this),
     )
 }

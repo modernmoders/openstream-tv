@@ -3,7 +3,7 @@ package dev.openstream.tv.player
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.os.Build
-import dev.openstream.tv.autoplay.StreamCascade.VideoCodec
+import dev.openstream.tv.domain.VideoCodec
 import javax.inject.Inject
 import javax.inject.Singleton
 

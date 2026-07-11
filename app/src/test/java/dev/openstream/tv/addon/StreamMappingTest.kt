@@ -1,6 +1,7 @@
 package dev.openstream.tv.addon
 
 import dev.openstream.tv.addon.fixtures.Fixtures
+import dev.openstream.tv.domain.VideoCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -30,6 +31,18 @@ class StreamMappingTest {
         val source = streams[4].toPlayableSource("Bare")!!
         assertEquals(emptyMap<String, String>(), source.headers)
         assertNull(source.bingeGroup)
+    }
+
+    @Test
+    fun `codec is stamped from the release label`() {
+        val hevc10 = Stream(
+            url = "https://cdn.example.com/anime.mkv",
+            name = "Fixture HEVC",
+            description = "Show S01E01 1080p HEVC 10bit",
+        )
+        assertEquals(VideoCodec.HEVC_10BIT, hevc10.toPlayableSource("Show")!!.videoCodec)
+        // Fixture labels carry no codec words → null (unknown, trusted to hardware).
+        assertNull(streams[0].toPlayableSource("Friends S01E01")!!.videoCodec)
     }
 
     @Test

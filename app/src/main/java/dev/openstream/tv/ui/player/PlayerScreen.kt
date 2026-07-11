@@ -4,6 +4,12 @@ import android.view.KeyEvent as AndroidKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -26,6 +32,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,7 +74,11 @@ import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
 
 private const val OVERLAY_TIMEOUT_MS = 5_000L
-private const val SEEK_STEP_MS = 10_000L
+
+/** How long a mid-playback rebuffer must persist before the small ring shows —
+ *  keeps ordinary sub-frame stalls invisible (no spinner flashes, owner
+ *  2026-07-09). */
+private const val REBUFFER_RING_DELAY_MS = 400L
 
 /**
  * Internal player (§6.1): Media3 PlayerView (SurfaceView) under a Compose
@@ -183,16 +194,48 @@ fun PlayerScreen(
         overlayVisible = true
     }
 
-    // Position ticker + auto-hide (only while the bar is up).
+    // Position ticker + auto-hide (only while the bar is up). Paused video
+    // keeps its bar: hiding the controls on a paused frame left no clue the
+    // video was paused at all — auto-hide is for WATCHING, not for pausing.
     LaunchedEffect(overlayVisible, lastInteractionMs) {
         while (overlayVisible) {
             val p = engine.exoPlayer
             positionMs = p.currentPosition
             durationMs = p.duration
             playing = p.isPlaying
-            if (System.currentTimeMillis() - lastInteractionMs > OVERLAY_TIMEOUT_MS) overlayVisible = false
+            if (playing && System.currentTimeMillis() - lastInteractionMs > OVERLAY_TIMEOUT_MS) {
+                overlayVisible = false
+            }
             delay(300)
         }
+    }
+
+    // --- d-pad scrubbing (Scrubbing.kt): move a preview target instantly,
+    // commit ONE real seek after a quiet period. ---
+    var scrubTargetMs by remember(engine) { mutableStateOf<Long?>(null) }
+    var scrubStreak by remember { mutableIntStateOf(0) }
+    var lastScrubPressMs by remember { mutableLongStateOf(0L) }
+    fun scrubBy(direction: Int) {
+        val now = System.currentTimeMillis()
+        scrubStreak = if (now - lastScrubPressMs < Scrubbing.STREAK_WINDOW_MS) scrubStreak + 1 else 1
+        lastScrubPressMs = now
+        scrubTargetMs = Scrubbing.nextTarget(
+            currentTargetMs = scrubTargetMs,
+            positionMs = engine.exoPlayer.currentPosition,
+            durationMs = engine.exoPlayer.duration,
+            direction = direction,
+            streak = scrubStreak,
+        )
+        wake()
+    }
+    fun commitScrub() {
+        scrubTargetMs?.let { engine.exoPlayer.seekTo(it) }
+        scrubTargetMs = null
+    }
+    LaunchedEffect(scrubTargetMs, lastScrubPressMs) {
+        if (scrubTargetMs == null) return@LaunchedEffect
+        delay(Scrubbing.COMMIT_DELAY_MS)
+        commitScrub()
     }
     // Has this video reached READY at least once? Reset when a new media item
     // prepares (ExoPlayer passes through IDLE), so the next stream / next
@@ -202,6 +245,18 @@ fun PlayerScreen(
         when (playbackState) {
             Player.STATE_IDLE -> startedOnce = false
             Player.STATE_READY -> startedOnce = true
+        }
+    }
+    // Mid-playback rebuffer (a committed seek, a network stall): a small
+    // non-blocking ring — no scrim, no focus change, keys keep working. Only
+    // after the stall persists, so brief hiccups stay invisible.
+    var showRebuffer by remember { mutableStateOf(false) }
+    LaunchedEffect(playbackState, startedOnce) {
+        if (playbackState == Player.STATE_BUFFERING && startedOnce) {
+            delay(REBUFFER_RING_DELAY_MS)
+            showRebuffer = true
+        } else {
+            showRebuffer = false
         }
     }
     // The load/test phase: spinner (and, if there's saved progress, the resume
@@ -219,14 +274,17 @@ fun PlayerScreen(
     // Focus follows the bar: on it when shown, back to the full-screen catcher
     // when hidden (so the next key wakes it rather than seeking blindly). While
     // loading the resume prompt (or nothing) owns focus, so don't grab the
-    // hidden scrub bar out from under it.
+    // hidden scrub bar out from under it. The bar now animates in, so its node
+    // may not be attached on the first frame — probe a few frames (same
+    // pattern as the alpha.39 Home focus restore).
     LaunchedEffect(overlayVisible, loading) {
-        runCatching {
-            when {
-                loading -> Unit
-                overlayVisible -> scrubFocus.requestFocus()
-                else -> outerFocus.requestFocus()
+        when {
+            loading -> Unit
+            overlayVisible -> repeat(10) {
+                if (runCatching { scrubFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                withFrameNanos { }
             }
+            else -> runCatching { outerFocus.requestFocus() }
         }
     }
 
@@ -311,10 +369,17 @@ fun PlayerScreen(
             }
         }
 
-        if (overlayVisible && !loading && state.error == null && !state.ended && autoplay == null) {
+        // Slide+fade keeps the wake/sleep feeling intentional rather than a
+        // pop. On boxes with animations off it degrades to today's instant
+        // show/hide — never worse, sometimes silkier.
+        AnimatedVisibility(
+            visible = overlayVisible && !loading && state.error == null && !state.ended && autoplay == null,
+            enter = fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 3 },
+            exit = fadeOut(tween(150)) + slideOutVertically(tween(180)) { it / 3 },
+            modifier = Modifier.align(Alignment.BottomStart),
+        ) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .background(Color(0xC0000000))
                     .padding(horizontal = 48.dp, vertical = 24.dp),
@@ -350,14 +415,18 @@ fun PlayerScreen(
                         positionMs = positionMs,
                         durationMs = durationMs,
                         playing = playing,
-                        onSeek = { delta ->
-                            val target = (engine.exoPlayer.currentPosition + delta)
-                                .coerceIn(0, engine.exoPlayer.duration.coerceAtLeast(0))
-                            engine.exoPlayer.seekTo(target)
-                            wake()
-                        },
+                        scrubTargetMs = scrubTargetMs,
+                        onScrub = ::scrubBy,
                         onTogglePlay = {
-                            if (engine.exoPlayer.isPlaying) engine.exoPlayer.pause() else engine.exoPlayer.play()
+                            // OK mid-scrub commits the pending jump right away;
+                            // otherwise it's plain play/pause.
+                            if (scrubTargetMs != null) {
+                                commitScrub()
+                            } else if (engine.exoPlayer.isPlaying) {
+                                engine.exoPlayer.pause()
+                            } else {
+                                engine.exoPlayer.play()
+                            }
                             wake()
                         },
                         focusRequester = scrubFocus,
@@ -430,13 +499,25 @@ fun PlayerScreen(
             }
         }
 
-        if (state.switching) {
+        // A stall that persists mid-playback: a small quiet ring, no scrim —
+        // keys keep working and the picture stays visible underneath.
+        if (showRebuffer && !loading && state.error == null && !state.ended && autoplay == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingAnimation(text = "")
+            }
+        }
+
+        AnimatedVisibility(
+            visible = state.switching,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(300)),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
             Text(
                 text = "Trying another stream…",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
                     .padding(top = 32.dp)
                     .background(Color(0xB0000000), RoundedCornerShape(24.dp))
                     .padding(horizontal = 24.dp, vertical = 10.dp),
@@ -509,19 +590,24 @@ fun PlayerScreen(
 
 /**
  * The scrub bar: a focusable progress track with play state + times. On focus,
- * ◀▶ seek ±10s and OK play/pauses; an accent ring shows it holds the cursor.
+ * ◀▶ move an instant preview target with accelerating steps (Scrubbing.kt) —
+ * the real seek commits after a quiet beat — and OK play/pauses (or commits a
+ * pending jump). While scrubbing, the bar shows the TARGET position plus a
+ * "+2:30"-style delta chip so a held key reads as controlled travel.
  */
 @Composable
 private fun ScrubBar(
     positionMs: Long,
     durationMs: Long,
     playing: Boolean,
-    onSeek: (Long) -> Unit,
+    scrubTargetMs: Long?,
+    onScrub: (direction: Int) -> Unit,
     onTogglePlay: () -> Unit,
     focusRequester: FocusRequester,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    val shownMs = scrubTargetMs ?: positionMs
+    val progress = if (durationMs > 0) (shownMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -540,10 +626,10 @@ private fun ScrubBar(
                 if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
                 when (e.key.nativeKeyCode) {
                     AndroidKeyEvent.KEYCODE_DPAD_LEFT, AndroidKeyEvent.KEYCODE_MEDIA_REWIND -> {
-                        onSeek(-SEEK_STEP_MS); true
+                        onScrub(-1); true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_RIGHT, AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                        onSeek(SEEK_STEP_MS); true
+                        onScrub(1); true
                     }
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                         onTogglePlay(); true
@@ -553,7 +639,7 @@ private fun ScrubBar(
             },
     ) {
         Text(if (playing) "⏸" else "▶", style = MaterialTheme.typography.titleLarge, color = Color.White)
-        Text(positionMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = Color.White)
+        Text(shownMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = Color.White)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -566,6 +652,17 @@ private fun ScrubBar(
                     .fillMaxWidth(progress)
                     .fillMaxHeight()
                     .background(Accent),
+            )
+        }
+        scrubTargetMs?.let { target ->
+            val delta = target - positionMs
+            Text(
+                text = (if (delta >= 0) "+" else "−") + kotlin.math.abs(delta).asClock(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Accent,
+                modifier = Modifier
+                    .background(Color(0xE0181822), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
         Text(durationMs.asClock(), style = MaterialTheme.typography.bodyMedium, color = MutedText)
@@ -641,7 +738,7 @@ private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) 
             if (hasExternalPlayers) {
                 HelpLine("Play in another app", "Hands the video to VLC or MX Player. Try this when the picture plays but there's no sound, or the audio is the wrong language.")
             }
-            HelpLine("Software video (ON/OFF)", "Turn ON when the picture looks blocky or scrambled (common on some anime); it reloads the video in software mode. Turn OFF to go back to the faster hardware video. It starts a touch slower when ON.")
+            HelpLine("Software video (ON/OFF)", "The app now picks this automatically for videos this TV can't show cleanly. If the picture still looks blocky or scrambled, turn it ON — the video reloads right where you are. Turn OFF to go back to the faster hardware video.")
             Button(onClick = onDismiss, modifier = Modifier.focusRequester(okFocus)) { Text("Got it") }
         }
     }

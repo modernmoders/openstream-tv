@@ -23,6 +23,28 @@ sealed interface PlayerEvent {
 
     /** Fatal player error, already mapped to a plain-language message (§6.1).
      *  [detail] carries the raw code/cause for the diagnostics log only —
-     *  it must never reach the screen. */
-    data class Error(val message: String, val detail: String = "") : PlayerEvent
+     *  it must never reach the screen. [isDecodeError] marks decoder-class
+     *  failures, which get one same-stream software-decoder retry before the
+     *  usual try-the-next-stream walk. */
+    data class Error(
+        val message: String,
+        val detail: String = "",
+        val isDecodeError: Boolean = false,
+    ) : PlayerEvent
+}
+
+/**
+ * Decoder-class error codes ([androidx.media3.common.PlaybackException]): the
+ * failures a software-decoder retry of the SAME stream can plausibly cure —
+ * as opposed to network/server/container failures, where only a different
+ * stream helps. Pure so it's table-testable without a device.
+ */
+fun isDecodeErrorCode(errorCode: Int): Boolean = when (errorCode) {
+    androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+    androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
+    androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED,
+    androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+    androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+    -> true
+    else -> false
 }

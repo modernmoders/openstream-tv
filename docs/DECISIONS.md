@@ -1357,3 +1357,69 @@ next touched.
 
 alpha.39 (versionCode 39). Gates green: assembleDebug + testDebugUnitTest. The
 `HomeViewModelTest` Main-dispatcher flake hit once and cleared on rerun (known).
+
+## 49. 2026-07-10 (session 23) — The player picks the decoder per stream; scrubbing previews then commits (alpha.40)
+
+Owner: "the main player is kinda trash — rainbow artifacts on some streams; I
+want a premium, responsive but fluid feel." The rainbow artifacts are the known
+silent hardware-decoder macroblocking (R11 N1). Design note:
+docs/superpowers/specs/2026-07-10-player-quality-design.md.
+
+### Automatic software decoding (no viewer toggle needed)
+
+The two halves built in alpha.28/.33 — a manual software-decoder toggle and
+label-based codec detection — are now wired together and made automatic:
+
+- `VideoCodec` moved from `StreamCascade` into `domain` (with
+  `hardwareDecodable(hw)`), so `PlayableSource` carries the stream's codec
+  without domain importing autoplay. `StreamMapping` stamps it at conversion.
+- `ExoPlayerEngine` now takes the box's `DecoderCapabilities` and decides PER
+  `play()`: session override (the in-player toggle) > box-level Settings pref >
+  automatic — software whenever the label says the codec is one the box's
+  hardware provably can't decode (HEVC 10-bit on the onn boxes being THE case).
+- The mechanism: `DefaultRenderersFactory.setMediaCodecSelector` gets a
+  DELEGATING selector (PREFER_SOFTWARE vs DEFAULT off a var). The selector is
+  consulted at every codec init, so the choice flips per stream with no engine
+  rebuild. `play()` calls `stop()` first when not idle — codec REUSE across
+  `setMediaItem` could otherwise carry a garbage decoder into the next stream.
+- **Decode-error safety net:** decoder-class error codes (pure
+  `isDecodeErrorCode`, table-tested) get ONE same-stream retry in software at
+  the same position, before the try-another-stream walk. Catches boxes that
+  CLAIM a profile and then fail loudly; the silent-garbage case is covered by
+  the label heuristic, and the toggle remains the last resort.
+- The "Software video" toggle now applies IN PLACE — session override + replay
+  at the current position — instead of persisting a pref and bouncing through
+  the stream list for a fresh engine. It still persists the box-level pref
+  (semantics preserved), and its ON/OFF now mirrors `usingSoftwareDecoder`,
+  the engine's per-stream truth: auto-engaged software honestly reads ON.
+
+### Fluid controls
+
+- **Scrubbing** (Scrubbing.kt, pure + table-tested): LEFT/RIGHT move a preview
+  target instantly; the REAL seek commits after 350 ms of quiet — one rebuffer
+  per gesture instead of per press (each seek rebuffers; that per-press grind
+  is why held scrubbing felt like a slideshow). Steps accelerate with the press
+  streak (10s→30s→60s→120s, window 600 ms — a held remote's key-repeat reaches
+  the big steps in about a second). A "+2:30" delta chip shows during the
+  gesture; OK mid-scrub commits immediately. `SeekParameters.CLOSEST_SYNC`
+  lands seeks on keyframes instead of decoding forward to the exact frame.
+- **Control bar animates** in/out (fade+slide, 150–220 ms). Boxes with
+  animator scale 0 degrade to today's instant pop (same reason the R13-8
+  spinner had to move to the frame clock). Because the bar now composes a
+  frame late, the scrub-bar focus request probes frames like the #48 restore.
+- **Paused keeps the bar** — auto-hide only runs while playing (a hidden bar
+  over a paused frame gave no clue the video was paused).
+- **Mid-playback rebuffer ring**: a committed seek or network stall that
+  persists >400 ms shows a small centred ring — NO scrim, no focus change (the
+  alpha.34 lesson: a blocking scrim swallowed keys and killed held scrubbing).
+
+Box-only verification remains: whether auto-software truly kills the rainbow
+artifacts is per-box codec truth (same as alpha.33). Emulator smoke passed:
+install, MainActivity resumed, PlaybackService started directly and built the
+engine + MediaSession with the injected DecoderCapabilities, no crash. Playback
+was deliberately NOT exercised on the emulator — starting a stream fires the
+alpha.35 Trakt check-in ping on the owner's account.
+
+alpha.40 (versionCode 40). Gates green: assembleDebug + testDebugUnitTest
+(4 new test classes: VideoCodecTest, ScrubbingTest, DecodeErrorTest, and a
+codec-stamp case in StreamMappingTest).

@@ -18,6 +18,7 @@ import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
+import dev.openstream.tv.domain.VideoCodec
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.player.DecoderCapabilities
@@ -68,7 +69,7 @@ class StreamListViewModel @Inject constructor(
 
     /** Codecs this box can hardware-decode — biases the picker/auto-play toward
      *  streams that play cleanly instead of forcing the software decoder. */
-    val hardwareCodecs: Set<StreamCascade.VideoCodec> = decoderCapabilities.hardwareVideoCodecs
+    val hardwareCodecs: Set<VideoCodec> = decoderCapabilities.hardwareVideoCodecs
 
     /** Meta id for progress rows; movies arrive without one — video id IS the meta id. */
     private val metaId: String = savedStateHandle.get<String>("metaId")?.ifBlank { null } ?: videoId
