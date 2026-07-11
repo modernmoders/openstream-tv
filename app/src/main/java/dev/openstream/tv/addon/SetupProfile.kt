@@ -6,6 +6,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -44,7 +45,15 @@ class SetupProfileClient @Inject constructor(
 ) {
     suspend fun fetch(url: String): Result<SetupProfile> = withContext(Dispatchers.IO) {
         val request = try {
-            Request.Builder().url(url).build()
+            // Never trust cache freshness here: the profile is the remote-
+            // management channel, and shared hosts stamp static JSON with a
+            // multi-day max-age (Dreamhost: 172800s) — box .117 served a
+            // 2-day-old profile from disk cache on every sync, zero network,
+            // until 2026-07-11. noCache = always revalidate; with the host's
+            // ETag an unchanged file still costs only a 304.
+            Request.Builder().url(url)
+                .cacheControl(CacheControl.Builder().noCache().build())
+                .build()
         } catch (e: IllegalArgumentException) {
             return@withContext Result.failure(
                 AddonRequestException(url, AddonRequestException.Reason.INVALID_URL, "not an http(s) URL", e)

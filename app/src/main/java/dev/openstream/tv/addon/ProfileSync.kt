@@ -16,6 +16,14 @@ data class SyncPlan(
     val install: List<String>,
     /** Manifest URLs to uninstall — always a subset of previously managed. */
     val remove: List<String>,
+    /**
+     * Already-installed profile addons whose manifest gets RE-FETCHED. The
+     * owner rebuilds an addon's config without its URL ever changing
+     * (AIOMetadata/AIOStreams edit in place), so "already installed" must not
+     * mean "never look at it again" — the box otherwise serves the old
+     * manifest's catalog rows forever (owner 2026-07-11: dead Trakt rows).
+     */
+    val refresh: List<String>,
     /** The new managed set to persist after applying. */
     val managed: Set<String>,
 )
@@ -37,6 +45,7 @@ fun planSync(
     return SyncPlan(
         install = wanted.filter { it !in installedUrls },
         remove = previouslyManaged.filter { it in installedUrls && it !in wantedSet },
+        refresh = wanted.filter { it in installedUrls },
         managed = wantedSet,
     )
 }
@@ -77,16 +86,28 @@ class ProfileSync @Inject constructor(
         }
         val wanted = profile.addons.mapNotNull { AddonUrls.normalizeManifestUrl(it.url) }
         if (wanted.isEmpty()) return // isUsable guarantees ≥1; belt and suspenders
-        val installed = repository.observeInstalled().first().mapTo(mutableSetOf()) { it.manifestUrl }
+        val installedAddons = repository.observeInstalled().first()
+        val installed = installedAddons.mapTo(mutableSetOf()) { it.manifestUrl }
         val plan = planSync(wanted, installed, link.managedUrls)
         var failed = 0
         // Sequential like the install-all flow: install order = profile order.
         plan.install.forEach { url -> repository.install(url).onFailure { failed++ } }
         plan.remove.forEach { repository.uninstall(it) }
-        if (plan.install.isNotEmpty() || plan.remove.isNotEmpty()) {
+        // Refresh = re-fetch the manifest of what's already installed
+        // (install() is an upsert that keeps the user's order + enabled
+        // choice). A refetch failure is silent by design: the box keeps the
+        // manifest it has, which still works. Logged only when a manifest
+        // actually CHANGED, so the App log isn't stamped every 15 minutes.
+        var changed = 0
+        plan.refresh.forEach { url ->
+            val before = installedAddons.firstOrNull { it.manifestUrl == url }?.manifest
+            repository.install(url).onSuccess { if (it.manifest != before) changed++ }
+        }
+        if (plan.install.isNotEmpty() || plan.remove.isNotEmpty() || changed > 0) {
             diagnostics.record(
                 "profile-sync",
-                "re-synced: ${plan.install.size - failed} installed ($failed failed), ${plan.remove.size} removed"
+                "re-synced: ${plan.install.size - failed} installed ($failed failed), " +
+                    "${plan.remove.size} removed, $changed refreshed"
             )
         }
         // Failed installs stay wanted-but-absent, so the next sync retries them.

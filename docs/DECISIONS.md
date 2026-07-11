@@ -1455,3 +1455,50 @@ alpha.41 (versionCode 41) DEPLOYED to .117 (verified 0.3.0-alpha.41). .196 was
 unreachable (offline) — deploy when it pings. Gates green: assembleDebug +
 testDebugUnitTest (313; the known HomeViewModelTest dispatcher flake cleared on
 rerun).
+
+## 51. 2026-07-11 (session 24) — Profile sync could never see a rebuilt config; two cache layers had to fall (alpha.42)
+
+Owner: "remove trakt collection … they won't add shows themselves." The
+manual-curation rows ("Trakt Collection/Watchlist/History · movie/series")
+turned out to come from TWO places, neither of them the live configs (those
+were already clean — their only Trakt rows auto-fill):
+
+1. **A hand-installed "Trakt Integration" addon on .117** (the official
+   strem.io Trakt addon; every catalog it serves is add-it-yourself). Not in
+   the hosted profile, so sync — by design — never touches it. Removed via the
+   box's own addon manager. planSync stays blind to hand-installed addons:
+   that's a feature (§ProfileSync doc), not the bug.
+2. **Two stale-cache layers between the box and the owner's edits:**
+   a. *Manifest staleness (the cut-off session's find):* "already installed"
+      meant "never re-fetched", so a rebuilt AIOMetadata/AIOStreams config —
+      same URL, new manifest — never reached an installed box. `SyncPlan` now
+      carries `refresh` (= wanted ∩ installed) and every due sync re-upserts
+      those manifests (install() keeps user order + enabled choice). Logged
+      only when a manifest actually changed, so the App log isn't stamped
+      every 15 minutes. Addon hosts send `no-cache` on manifests, so a
+      re-fetch is genuinely fresh.
+   b. *Profile staleness (this session's find, the deeper one):* Dreamhost
+      stamps static JSON with `Cache-Control: max-age=172800` (2 days!).
+      OkHttp's disk cache served the PROFILE itself from disk — .117 ran
+      every "successful" sync for 2 days without one network request, which
+      also silently advanced lastSyncMs and kept the box on a 3-addon profile
+      from before the 5-instance stack. `SetupProfileClient` now sends
+      `CacheControl.noCache()` (always revalidate; ETag makes an unchanged
+      file a 304), and `/setup/.htaccess` serves `no-cache, must-revalidate`
+      for `*.json` so pre-alpha.42 boxes can't poison their caches again.
+
+Diagnosis trick worth keeping: the Dreamhost access log is the ground truth
+for "did the box actually fetch?" — an empty App log plus zero server hits
+distinguishes "sync silently satisfied from cache" from "sync failed".
+
+Also this session (config, not code): both Stremio accounts' stored addon
+collections were re-synced to the live manifests via stremio_api.set_addons —
+Adam's elfhosted AIOMetadata snapshot was a whole config generation behind
+("AIO - Friends Anime", 66 cats) and his primary AIOStreams snapshot still
+declared 48 junk catalogs (Live TV/sports/Hindi) that the live config had
+dropped. Rachael's account (explicit owner permission this session): same
+refresh, minor diffs only. Backups: StremioSurfer/stremio-addons-backup-*.json.
+
+alpha.42 (versionCode 42) DEPLOYED to .117, box-proven: profile GET hits the
+server on every due sync now, all 7 profile addons installed, Home shows only
+auto-filling rows. .196 offline — install alpha.42 when it pings.

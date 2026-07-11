@@ -83,6 +83,20 @@ class ProfileSyncTest {
         assertTrue(plan.remove.isEmpty())
     }
 
+    @Test
+    fun `installed profile addons are refreshed — a rebuilt config keeps its manifest URL`() {
+        // Owner 2026-07-11: the box still showed "Trakt Watchlist/History" rows
+        // that the live AIOMetadata config had long dropped — same URL, new
+        // manifest, and sync never re-fetched what was already installed.
+        val plan = planSync(
+            profileUrls = listOf("new", "kept"),
+            installedUrls = setOf("kept", "hand-installed"),
+            previouslyManaged = setOf("kept"),
+        )
+        assertEquals(listOf("new"), plan.install)
+        assertEquals(listOf("kept"), plan.refresh)
+    }
+
     // ---- syncIfDue: the orchestrator ---------------------------------------
 
     private var server: MockAddonServer? = null
@@ -146,6 +160,36 @@ class ProfileSyncTest {
         assertTrue(manualUrl in installed) // manual install untouched
         assertEquals(setOf(newUrl), prefs.link!!.managedUrls)
         assertEquals(now, prefs.link!!.lastSyncMs)
+    }
+
+    @Test
+    fun `due sync re-fetches the manifest of an already-installed addon`() = runTest(timeout = 60.seconds) {
+        val (sync, prefs, dao) = harness()
+        val srv = MockAddonServer().also { server = it }
+        // The server now serves a DIFFERENT manifest at the same URL — the
+        // owner's "rebuilt the addon config, URL unchanged" case.
+        srv.route(
+            "/kept/manifest.json",
+            """{"id":"fix.kept","version":"2.0.0","name":"Rebuilt Addon",
+                "resources":["catalog"],"types":["movie"],
+                "catalogs":[{"type":"movie","id":"auto.trending","name":"Trending"}]}""",
+        )
+        srv.start()
+        val keptUrl = srv.url("/kept/manifest.json")
+        srv.route(
+            "/profile.json",
+            """{"openstream":1,"name":"Family","addons":[{"name":"Kept","url":"$keptUrl"}]}"""
+        )
+        seedInstalled(dao, keptUrl, sortOrder = 3) // stored manifest = manifest_full (old)
+        dao.setEnabled(keptUrl, false) // user's disable choice must survive the refresh
+        prefs.link = ProfileLink(srv.url("/profile.json"), managedUrls = setOf(keptUrl), lastSyncMs = 0)
+
+        sync.syncIfDue(nowMs = 10_000_000L)
+
+        val entity = dao.getAll().single()
+        assertTrue("stored manifest should be the rebuilt one", "Rebuilt Addon" in entity.manifestJson)
+        assertEquals(3, entity.sortOrder)     // refresh keeps the user's order
+        assertEquals(false, entity.enabled)   // ...and their enabled choice
     }
 
     @Test
