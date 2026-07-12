@@ -1,6 +1,52 @@
-# STATE — updated 2026-07-11 by session 24 cont. 6
+# STATE — updated 2026-07-11 by session 25
 
-## ⚠️ READ FIRST (session 24 cont. 6 — 2026-07-11 — alpha.49 BUILT: anime IMDb→MAL bridge — AniSkip now works for the owner's IMDb-keyed anime; ⚠️ NOT DEPLOYED — owner away from the boxes)
+## ⚠️ OWNER ROUND 15 (2026-07-11, session 25) — FULL LIST, logged before building
+🚨 Log first, build second. Owner is HOME (boxes reachable). **HARD DEADLINE:
+tonight is the last night with Rachael's box (.196) — she picks it up
+tomorrow. The OTA updater (#6) MUST be built + on her box tonight.**
+Owner confirmed alpha.49's Skip Intro GREEN on the box ("it's great!").
+1. **Skip button transparency** — make the button (or at least its background)
+   slightly see-through; "not too much, just enough to see a little through it."
+2. **Skip lands a few seconds LATE** — after pressing Skip Intro you land a few
+   seconds past the intro's actual end. Better to end a little EARLY than late;
+   bias the skip target earlier.
+3. **Credits should be "Next Episode", not "Skip Intro"** — the credits/outro
+   window must (a) be labeled "Next Episode", (b) jump to the next episode, and
+   (c) mark the current episode watched/finished first (credits are past 90% so
+   Trakt scrobble is already safe — the mark is for looks + safety).
+4. **Auto-skip toggles in Settings:** "Skip credits & continue to next episode
+   automatically" (leaning default ON) + "Skip intros automatically" (default
+   OFF until proven perfect). Auto-credits shows "Continuing to next episode
+   in 5…" countdown with a Cancel option — small, not covering the video.
+5. **Move skip/next-episode UI a little LOWER on screen**, same transparency
+   as #1; countdown prompt likewise small + low.
+6. 🚨 **OTA updater — TONIGHT.** A way to update Rachael's box (.196) over the
+   internet without her involvement once it leaves. Use whatever tools needed.
+7. **Anime settings section** — the skip features are anime-only; group them
+   under an "Anime" section with obvious plain-language explanations. Everyone
+   gets the section (the "no-anime" profiles still surface anime titles, so
+   non-anime users may still use skip if they wander into anime).
+8. **Naruto episode photos STILL blank past season 1** (Round-14 #4). Owner
+   toggled "Episode numbering" + fully closed the app — no change. Data-side
+   (meta addon artwork lookup); investigate for real this time.
+9. **Search: mic button moves to the LEFT of the text field.** Side-panel
+   magnifying glass should open Search AND activate the microphone in one
+   click (the Google voice overlay already reads "Speak now" — no extra label
+   needed). Add a Settings toggle for voice-first search.
+10. **Settings rework — sectioned but clear, visual-first:** UI/sound at top.
+    New "Views" category holding Home-view + Discover-view sub-sections (Home
+    gets its own "view ⚙" entry point like Discover's). No deep expanding —
+    easy to digest at a glance. Plain 8th-grade wording everywhere. Move
+    Player under Expert mode. REMOVE "Connect this TV" (superseded by "Reset
+    this TV"). Add "Reset settings to default" placed just BEFORE Expert mode
+    — resets app settings (posters per row etc.) WITHOUT signing out. Find a
+    non-intrusive way to hint what's changeable (e.g., search hinting
+    mic-vs-typing) for tech-illiterate users.
+Priorities: #6 tonight (deadline) → deploy alpha.49 to both boxes → skip
+cluster #1-#5+#7 (ships as the OTA updater's first over-the-air payload) →
+#9/#10 settings+search rework → #8 investigation.
+
+## ⚠️ READ FIRST (session 24 cont. 6 — 2026-07-11 — alpha.49 BUILT: anime IMDb→MAL bridge — AniSkip now works for the owner's IMDb-keyed anime; ✅ owner-confirmed GREEN on the box (session 25); deploy block below is now DONE)
 **alpha.49 (versionCode 49) BUILT — gates green (353 tests, 0 failures; 15 new)
 + assembleRelease clean + emulator smoke passed (installed, MainActivity
 resumed, crash buffer empty). ⚠️ NOT deployed to EITHER box — the owner is at
