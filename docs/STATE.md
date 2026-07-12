@@ -1,5 +1,58 @@
 # STATE — updated 2026-07-12 by session 27
 
+## ⚠️ READ FIRST (session 27 — 2026-07-12 — alpha.55 PUBLISHED OTA: Round 17 built — per-type skip bias, mockup skip/next UI, series amber, lit mic)
+**alpha.55 (versionCode 55) BUILT — gates green (assembleDebug +
+testDebugUnitTest: 369 tests, 0 failures; assembleRelease clean) — emulator
+smoke passed (installed, MainActivity RESUMED, crash buffer empty, Home
+renders) — and PUBLISHED to the update server (version.json readback
+verified). Neither box driven: BOTH self-offer alpha.55 on next app launch
+(one OK each — dialog focuses Cancel, Update is LEFT).** DECISIONS #63.
+Everything in Round 17 built:
+- **Q answered + fixed — intro vs next-episode bias:** the old 9s bias
+  trimmed every window's END; that's right for intros (skip seeks there) but
+  did NOTHING for the credits' early-appearance problem — the credits START
+  was raw community data. `withSkipBias` now: intro end −9s (unchanged),
+  credits start +10s (prompt may appear late, never early over the ending).
+- **Skip/next UI = the owner's mockup:** Skip Intro is a near-black capsule
+  with » that FADES after 20s (OK intercept stands down with it); credits
+  countdown is the shared NextEpisodeCard (thumbnail, "Up next"/episode
+  line, draining ring, accent "Play now [OK]" + see-through "Cancel [BACK]");
+  the autoplay Up Next countdown wears the same card. **The control bar now
+  PUSHES the skip/next corner above itself** (measured bar height, animated
+  padding) — no more covering the Next Episode button on DPAD-down.
+- **Series-level watched (amber):** poster tiles show a 3dp SeriesAmber
+  bottom bar + "N of M episodes" in the focus reveal — series completion in
+  a DIFFERENT color from the blue episode ring. Totals cache into a
+  DataStore when a series' Details opens (`SeriesEpisodeCounts`); watched
+  counts derive from progress rows. ⚠️ Not emulator-verifiable (no watch
+  history without firing the owner's Trakt check-in).
+- **Search mic (emulator-verified before/after):** voice entry now lands
+  focus ON the mic pill (was stuck on the rail); the pill fills solid accent
+  the instant listening starts and dims back when the recognizer returns.
+- **Passport audited read-only** (live :5000 users.json, 11 users) — clean
+  overall; findings for the owner: (1) Anna/Jay + Clarence share the same
+  email AND the same Real-Debrid key (both expired/free) — duplicate person
+  or needs its own creds; (2) every rd_checked_at is 2026-06-10 (stale a
+  month) and Mike Miller reads "active" but his RD expiration (2026-07-04)
+  has since passed — re-run check_subscriptions.py; (3) only adam + Rachael
+  have the new 2-instance AIOMetadata (discover+streaming) — the other 9
+  users' aiometadata is EMPTY, so per-person profile generation à la the
+  endgame plan can't run for them yet; (4) Rachael: subscription=null and 3
+  of 4 addon URL slots empty (aiolists only) — NO edits made (standing
+  rule); (5) Myles Mobile's RD is expired while Myles Manuel's is active
+  (same person? maybe reuse); shared Torbox key everywhere except Myles
+  personal — matches the known tier design.
+⏳ **NEXT ACTION:** (a) Boxes self-offer alpha.55 on next app open — owner
+presses Update. (b) Owner retests on alpha.55: next-episode prompt should no
+longer beat the credits (was ~10s early); Skip Intro pill (new look) fades
+~20s in; DPAD-down during credits lifts the Up next card above the control
+bar; Search mic lights while listening; posters of shows he's watched gain
+the amber series bar after opening their Details once. (c) Owner decides on
+the passport findings above (esp. Anna/Jay-vs-Clarence and the stale RD
+checker) before pushing profiles to other users' Stremio accounts. (d)
+Backlog: 9s intro-bias knob if it overshoots elsewhere, player UI beauty
+pass (partly delivered via mockup), #16 user skins (future).
+
 ## ⚠️ OWNER ROUND 17 (2026-07-12, session 27) — FULL LIST, logged before building
 🚨 Log first, build second. Owner supplied a player-UI mockup image (Skip Intro
 pill + "Up next" card) to match.
