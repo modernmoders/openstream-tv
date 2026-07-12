@@ -42,6 +42,7 @@ import dev.openstream.tv.data.MIN_POSTER_COLUMNS
 import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
+import dev.openstream.tv.ui.update.UpdateViewModel
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
@@ -67,7 +68,9 @@ fun SettingsScreen(
     onAppLog: () -> Unit,
     onReset: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
+    updateViewModel: UpdateViewModel = hiltViewModel(),
 ) {
+    val updateUi by updateViewModel.ui.collectAsStateWithLifecycle()
     val columns by viewModel.posterColumns.collectAsStateWithLifecycle()
     val playerPref by viewModel.playerPref.collectAsStateWithLifecycle()
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
@@ -177,6 +180,39 @@ fun SettingsScreen(
                     "Off — the interface stays silent"
                 },
                 onClick = { viewModel.setUiSounds(!sounds) },
+            )
+            // Self-update (owner 2026-07-11): boxes that leave the house
+            // update themselves. The row is its own tiny state machine —
+            // check on demand, then flip into an install button.
+            SettingEntry(
+                title = "App update",
+                description = when (val u = updateUi) {
+                    is UpdateViewModel.UpdateUi.Available ->
+                        "Version ${u.versionName} is ready — press OK to update"
+                    UpdateViewModel.UpdateUi.Checking -> "Checking…"
+                    UpdateViewModel.UpdateUi.Downloading -> "Getting the update…"
+                    UpdateViewModel.UpdateUi.InstallFailed ->
+                        "The update didn't finish — press OK to try again"
+                    UpdateViewModel.UpdateUi.UpToDate ->
+                        "Up to date — this TV runs the newest version " +
+                            "(${BuildConfig.VERSION_NAME})"
+                    UpdateViewModel.UpdateUi.CheckFailed ->
+                        "Couldn't check right now — press OK to try again"
+                    UpdateViewModel.UpdateUi.Hidden ->
+                        "You're on ${BuildConfig.VERSION_NAME} — press OK to " +
+                            "check for a newer version"
+                },
+                onClick = {
+                    when (updateUi) {
+                        is UpdateViewModel.UpdateUi.Available,
+                        UpdateViewModel.UpdateUi.InstallFailed,
+                        -> updateViewModel.install()
+                        UpdateViewModel.UpdateUi.Checking,
+                        UpdateViewModel.UpdateUi.Downloading,
+                        -> Unit // in flight — OK does nothing
+                        else -> updateViewModel.manualCheck()
+                    }
+                },
             )
             // Deliberately LAST (owner directive 2026-07-06): technical tools
             // stay out of sight unless whoever looks after the box opts in.

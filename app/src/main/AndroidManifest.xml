@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!-- Self-update (owner 2026-07-11): boxes leave the house, adb stops
+         being a deploy path. Android still shows its own install
+         confirmation; this only lets the app OFFER the update. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- TV-only app: leanback UI required, touchscreen explicitly not required
          so TV devices without touch can install it. -->
     <uses-feature
@@ -55,6 +60,19 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Self-update plumbing: installer status callback + post-update
+             relaunch (both internal, never exported). -->
+        <receiver
+            android:name=".update.UpdateStatusReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".update.RelaunchAfterUpdateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".player.PlaybackService"

@@ -74,7 +74,22 @@ object Routes {
 }
 
 @Composable
-fun AppNavHost(launchViewModel: LaunchViewModel = hiltViewModel()) {
+fun AppNavHost(
+    launchViewModel: LaunchViewModel = hiltViewModel(),
+    updateViewModel: dev.openstream.tv.ui.update.UpdateViewModel = hiltViewModel(),
+) {
+    // Self-update: one silent check per app launch; only ever surfaces UI
+    // when a newer build is actually waiting (owner 2026-07-11 — boxes that
+    // left the house update themselves, no adb).
+    androidx.compose.runtime.LaunchedEffect(Unit) { updateViewModel.autoCheckOnLaunch() }
+    val updateUi by updateViewModel.ui.collectAsStateWithLifecycle()
+    dev.openstream.tv.ui.update.UpdatePrompt(
+        ui = updateUi,
+        brand = updateViewModel.brand,
+        onInstall = updateViewModel::install,
+        onDismiss = updateViewModel::dismiss,
+    )
+
     // First launch with nothing installed → Welcome Guide; else Home.
     // null = Room read in flight (ms) — render nothing rather than flash Home.
     val startOnWelcome by launchViewModel.startOnWelcome.collectAsStateWithLifecycle()
