@@ -1,5 +1,35 @@
 # STATE — updated 2026-07-12 by session 27
 
+## ⚠️ OWNER ROUND 18 (2026-07-12, session 27 cont.) — PASSPORT ROUND, logged before building
+🚨 All passport/StremioSurfer work (~/Documents/Claude/StremioSurfer, live
+server :5000 authoritative). NO writes to Rachael's accounts/configs; her
+passport entry is the TEMPLATE, not a target. Owner's asks:
+1. Passport UI: remove the "Addon links" section EXCEPT the AIOLists link.
+2. Mike + Anna/Jay + Clarence share one RD key ("they barely ever use it") —
+   owner already set Mike's via the passport UI (screenshot); verify.
+3. Target setups: EVERYONE = Rachael's "Movies & TV SFW" bundle; Jacob =
+   Anime like Adam's. Generate a per-user list of missing components for the
+   7-addon bundle.
+4. Per-user CONFIG FILES with services + API keys already in place (for
+   Rachael the owner had to type keys in by hand after getting the config).
+5. Owner is getting Gemini APIs for everyone; AIOLists manifests already in
+   passport get reused. Owner just shared debridio + RD APIs with Jacob,
+   Toby, Clarence, Mike (via passport UI — screenshot).
+6. Passport shows DAYS LEFT on each RD subscription + a per-user "owe half
+   year" yes/no field (RD now only sells half-years; two half-years do NOT
+   stack — owner tested).
+7. Reminders: 1 week before + 1 day before an RD expiry (around 12–1pm), and
+   day-of ~3 pings; 1-week one may be turned off later.
+8. Duplicate values in the passport get highlighted with "shared with <name>"
+   above the field (sharing is fine, visibility is the point).
+9. Re-add "Myles Dad" to the passport (stub exists in
+   removed-users-2026-07-07.json, email mylesdad@savoy.solutions): honor his
+   contract; share Myles' torbox; owner supplied his RD API; needs gemini
+   later; Stremio-only for now. List what else he needs.
+10. Chrome CSVs (~/Documents/Chrome/): master CSV of everyone's
+    passport-related service logins; add to Adam anything he's missing that
+    others have.
+
 ## ⚠️ READ FIRST (session 27 — 2026-07-12 — alpha.55 PUBLISHED OTA: Round 17 built — per-type skip bias, mockup skip/next UI, series amber, lit mic)
 **alpha.55 (versionCode 55) BUILT — gates green (assembleDebug +
 testDebugUnitTest: 369 tests, 0 failures; assembleRelease clean) — emulator
