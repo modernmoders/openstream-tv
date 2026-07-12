@@ -1754,3 +1754,63 @@ mapping, not a live one:
    the meta addon's seasonal↔absolute art lookup, a data-side issue, not
    the skip path. The diagnostics line now logs season/absolute/result, so
    the box log will show exactly what an anime episode resolves to.
+
+## 59. 2026-07-11 (session 25) — In-app OTA updater: boxes update themselves from the setup site (alpha.50)
+
+Rachael's box left the house the next morning — adb stopped being a deploy
+path. Design choices that matter later:
+1. **The app checks `<setup-url>/app/version.json` once per app launch**
+   (silent unless newer) + a manual Settings "App update" row. FORCE_NETWORK
+   on the check — a cached "no update" defeats the point (DECISIONS #51's
+   cache lesson, applied in advance).
+2. **PackageInstaller session, NOT silent.** Android shows its own
+   "update this app?" confirmation — one remote-OK. Silent installs need
+   device-owner, which a Google-account'd box can't be. Both boxes got
+   `appops set … REQUEST_INSTALL_PACKAGES allow` while still on the LAN.
+3. **`tools/publish_update.sh`** reads versionCode/Name FROM the built APK
+   (aapt) — a stale build can't publish under a fresh number; version.json
+   swaps in atomically (upload .tmp → mv) so a mid-publish check never sees
+   a manifest pointing at a half-uploaded APK. chmod 644 explicitly (scp
+   preserves mktemp's 0600 → Apache 403, found the hard way).
+4. **Manifest hygiene:** only https APK URLs are accepted; only STRICTLY
+   newer versionCodes are offered (a server rollback must never offer a
+   downgrade Android would reject anyway).
+5. **SIGNING IS NOW LOAD-BEARING:** release builds sign with THIS Mac's
+   `~/.android/debug.keystore`. An OTA update must match the installed
+   signature — losing that file means every box needs a manual
+   uninstall/reinstall. Backed up to
+   `~/Documents/Claude/stremio-automation/debug.keystore.backup-2026-07-11`.
+6. Post-install the app does NOT auto-relaunch (background-activity-start
+   restriction eats MY_PACKAGE_REPLACED's startActivity on these boxes);
+   kept as best-effort. The person reopens the app — fine.
+7. **Driving the confirm dialog over adb** (for future me): focus starts on
+   **Cancel**, Update is to its **LEFT** → OK, wait for download, LEFT, OK.
+   A box with the display asleep eats the first key (wake first).
+Proven E2E on the emulator against the live server, then on BOTH real boxes:
+alpha.51 was delivered to .117 and .196 entirely over the internet.
+
+## 60. 2026-07-11 (session 25) — Skip cluster: early-end bias, credits = "Next Episode", auto-skip toggles (alpha.51)
+
+Owner confirmed the IMDb→MAL bridge GREEN on the box, then filed Round-15
+polish. The behavioral decisions:
+1. **Early-end bias (`SKIP_END_EARLY_MS = 2s`)**: community AniSkip times are
+   for SOMEONE's cut; his streams ran ahead, so skips landed seconds late.
+   Every window's end now pulls back 2s (floor: 1s window) — landing early
+   shows the opening's last beat; landing late eats dialogue. Applied in
+   SkipTimesRepository so the button window and the seek target agree.
+2. **A credits window is a "Next Episode" button, not "Skip Credits"** —
+   seeking past an ending lands on the last seconds + the ended panel;
+   nobody wants that. OK during credits marks the episode watched
+   (position=duration — the credits sit past the 95% line anyway, this makes
+   the ✓/Trakt state unambiguous) and rides the existing ⏭ path (resolves
+   the neighbour on demand; last episode → natural ended flow).
+3. **Auto-skip toggles** (PlaybackPrefs): `autoSkipIntros` default OFF (owner:
+   until timing is proven perfect), `autoSkipCredits` default ON with a
+   5-second "Next episode in N…" countdown — OK advances now, BACK keeps
+   watching. Windows are auto-handled ONCE per episode (`autoHandledSegments`)
+   or cancelling a countdown/scrubbing back into an opening would re-trigger
+   forever. Settings groups all three under an "ANIME — these only affect
+   anime episodes" caption, sub-toggles hidden when the master is off.
+4. Skip/countdown pills: background 0xF0→0xA8 alpha (owner: "see a little
+   through it") and moved lower (bottom 140→96dp). Countdown reuses the pill
+   style; the two never show together.

@@ -1,4 +1,42 @@
-# STATE — updated 2026-07-11 by session 25
+# STATE — updated 2026-07-11 by session 25 (cont.)
+
+## ⚠️ READ FIRST (session 25 — 2026-07-11 — alpha.50 OTA UPDATER + alpha.51 skip cluster: BOTH LIVE ON BOTH BOXES, alpha.51 delivered over the internet)
+**The two headline items are DONE and deployed:**
+- **alpha.50 — in-app OTA updater** (DECISIONS #59). The app checks
+  `savoy.click/setup/app/version.json` on every launch; newer build → "Streams
+  has an update → Update now" → Android's one-OK confirm. Publish a release:
+  `JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleRelease && tools/publish_update.sh`
+  ⚠️ **Signing = THIS Mac's `~/.android/debug.keystore`** (backed up to
+  `~/Documents/Claude/stremio-automation/debug.keystore.backup-2026-07-11`) —
+  OTA updates only install when signatures match; never build a release
+  elsewhere. Both boxes have the install-permission appops grant. Dreamhost
+  access log = ground truth for box checks/downloads.
+- **alpha.51 — Round-15 skip cluster** (DECISIONS #60): skip windows end 2s
+  early (his streams ran ahead of community timestamps); credits button =
+  **"Next Episode"** (marks episode watched, then the ⏭ path); auto-skip
+  toggles under a new Settings "ANIME" group — "Skip intros by themselves"
+  (default OFF), "Play the next episode by itself" (default ON, 5s countdown,
+  BACK cancels, OK advances now); pills translucent (0xA8) + lower (96dp).
+- **Deployment proof:** gates green (362 tests, 0 failures) + emulator smoke.
+  alpha.50 went to both boxes via adb (+ appops grant); **alpha.51 was then
+  delivered to BOTH boxes entirely over the internet through the new updater**
+  (publish → box prompt → confirm; .196 and .117 both verified running
+  0.3.0-alpha.51, crash buffers clean). Rachael's box is OTA-ready to leave.
+- adb-driving the confirm dialog: focus starts on **Cancel**, Update is
+  LEFT → OK · wait · DPAD_LEFT · OK. Asleep display eats the first key.
+⏳ **NEXT ACTION:** (a) **Owner eyeballs alpha.51 tonight** on an anime with
+a timed intro: intro button is translucent + lower; press OK → lands ~2s
+before the intro's true end (early, never late); at the ending the button
+says "Next Episode"; leave it alone → "Next episode in 5…" countdown → next
+episode plays + the finished one gets its ✓ (BACK during countdown keeps
+watching). Settings → ANIME group reads clearly. (b) **Round-15 still open:**
+#8 Naruto episode photos past S1 (data-side, investigate the meta addon's
+seasonal↔absolute artwork lookup), #9 search mic-left + voice-first search
+toggle, #10 the big Settings rework (Views category, Home view ⚙ like
+Discover, plain wording, Player→Expert, REMOVE "Connect this TV", add "Reset
+settings to default" before Expert that does NOT sign out, discoverability
+hints). (c) Future updates to Rachael's box: just publish — she gets the
+prompt on her next app open.
 
 ## ⚠️ OWNER ROUND 15 (2026-07-11, session 25) — FULL LIST, logged before building
 🚨 Log first, build second. Owner is HOME (boxes reachable). **HARD DEADLINE:
