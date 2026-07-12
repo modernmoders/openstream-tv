@@ -29,6 +29,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -60,7 +61,19 @@ fun SearchScreen(
     var query by rememberSaveable { mutableStateOf("") }
     val fieldFocus = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { fieldFocus.requestFocus() }
+    // Voice-first bookkeeping (owner 2026-07-12): every deliberate click into
+    // Search bumps the trigger; each unseen bump fires the mic ONCE. Saved so
+    // a BACK-return (same counter) never re-fires, and so the pending fire is
+    // known BEFORE the field grabs focus — focusing the field pops the
+    // on-screen keyboard, which then sat under/after the voice overlay.
+    val voiceRequests by viewModel.voiceSearchRequests.collectAsStateWithLifecycle()
+    var consumedVoiceRequest by rememberSaveable { mutableStateOf(0) }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        val voicePending = state.voiceFirst && voiceRequests > consumedVoiceRequest
+        if (!voicePending) fieldFocus.requestFocus()
+    }
 
     Column(
         modifier = Modifier
@@ -99,6 +112,9 @@ fun SearchScreen(
             val voiceLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartActivityForResult()
             ) { result ->
+                // Whether the mic answered or was backed out of, the on-screen
+                // keyboard must not be left standing (owner 2026-07-12).
+                keyboard?.hide()
                 result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                     ?.firstOrNull()
                     ?.let { spoken ->
@@ -107,19 +123,21 @@ fun SearchScreen(
                     }
             }
 
-            // Voice-first (owner Round-15 #9): arriving at Search fresh fires
-            // the mic straight away — say the title, no typing. Once per
-            // arrival (rememberSaveable survives the section's saved state,
-            // so BACK-and-return doesn't re-open the overlay), and only while
-            // the screen is empty — a return with results stays put. BACK out
-            // of the voice overlay just lands on the keyboard as before.
-            var micAutoFired by rememberSaveable { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                if (state.voiceFirst && voiceAvailable && !micAutoFired &&
-                    query.isEmpty() && !state.searched
+            // Voice-first (owner Round-15 #9 + Round-16): EVERY deliberate
+            // click into Search (rail/pill → VoiceSearchTrigger) fires the mic
+            // once — even over an old search. BACK-returns keep the counter,
+            // so they never re-fire. The keyboard is hidden first so it can't
+            // pop under the voice overlay and linger after the result.
+            LaunchedEffect(voiceRequests) {
+                if (state.voiceFirst && voiceAvailable &&
+                    voiceRequests > consumedVoiceRequest
                 ) {
-                    micAutoFired = true
+                    consumedVoiceRequest = voiceRequests
+                    keyboard?.hide()
                     runCatching { voiceLauncher.launch(voiceIntent) }
+                } else if (voiceRequests > consumedVoiceRequest) {
+                    // Voice off or no recognizer: consume quietly, type instead.
+                    consumedVoiceRequest = voiceRequests
                 }
             }
 

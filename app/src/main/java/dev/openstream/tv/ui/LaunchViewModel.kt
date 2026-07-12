@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.data.SetupConfig
 import dev.openstream.tv.data.ViewPrefs
+import dev.openstream.tv.ui.search.VoiceSearchTrigger
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,11 @@ class LaunchViewModel @Inject constructor(
     repository: AddonRepository,
     config: SetupConfig,
     viewPrefs: ViewPrefs,
+    private val voiceSearchTrigger: VoiceSearchTrigger,
 ) : ViewModel() {
+
+    /** Deliberate click into Search (rail/pill) → the mic may fire again. */
+    fun searchSectionClicked() = voiceSearchTrigger.request()
 
     /**
      * null while the Room read is in flight (skip a Home flash — same trick

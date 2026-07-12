@@ -40,6 +40,7 @@ class LaunchViewModelTest {
         AddonRepository(OkHttpAddonClient(OkHttpClient()), dao),
         SetupConfig(setupUrl, "TestBrand"),
         FakeViewPrefs(),
+        dev.openstream.tv.ui.search.VoiceSearchTrigger(),
     )
 
     private suspend fun LaunchViewModel.decision(): Boolean =

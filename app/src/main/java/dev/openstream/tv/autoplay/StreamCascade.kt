@@ -127,17 +127,52 @@ object StreamCascade {
     )
 
     /**
-     * Does this stream carry English audio? Read from the label's **Audio**
-     * section only — the release's overall language tag lies (owner 2026-07-10:
-     * "the app clearly labels them Italian and Japanese even if the stream's
-     * overall metadata says English").
+     * AIOStreams (2025+ label format) marks languages with a `⛿` pennant and
+     * Unicode SMALL-CAPS codes: `⛿ ᴇɴ · ᴊᴀ · sᴜʙ (ᴇɴ)`. Everything after
+     * "sub" is subtitles — English SUBS on Japanese AUDIO must not count
+     * (owner 2026-07-12: 1080p ᴊᴀ-only auto-picked over 720p ᴇɴ·ᴊᴀ, because
+     * the old "Audio:" regex matched nothing and everything ranked English).
+     */
+    private val SMALL_CAPS = mapOf(
+        'ᴀ' to 'a', 'ʙ' to 'b', 'ᴄ' to 'c', 'ᴅ' to 'd', 'ᴇ' to 'e', 'ꜰ' to 'f',
+        'ɢ' to 'g', 'ʜ' to 'h', 'ɪ' to 'i', 'ᴊ' to 'j', 'ᴋ' to 'k', 'ʟ' to 'l',
+        'ᴍ' to 'm', 'ɴ' to 'n', 'ᴏ' to 'o', 'ᴘ' to 'p', 'ʀ' to 'r', 'ꜱ' to 's',
+        'ᴛ' to 't', 'ᴜ' to 'u', 'ᴠ' to 'v', 'ᴡ' to 'w', 'ʏ' to 'y', 'ᴢ' to 'z',
+    )
+
+    private fun normalizeSmallCaps(text: String): String =
+        buildString(text.length) { text.forEach { append(SMALL_CAPS[it] ?: it) } }
+
+    /** The audio half of a `⛿` language pennant: codes before any "sub";
+     *  null when the label has no pennant at all. */
+    private fun pennantAudioCodes(label: String): List<String>? {
+        val start = label.indexOf('⛿')
+        if (start < 0) return null
+        // The pennant runs to the next section: a note marker or a pipe.
+        val section = normalizeSmallCaps(
+            label.substring(start + 1).substringBefore('»').substringBefore('|'),
+        )
+        val audioPart = section.substringBefore("sub")
+        return Regex("""\b[a-z]{2}\b""").findAll(audioPart).map { it.value }.toList()
+    }
+
+    /**
+     * Does this stream carry English audio? Read from the label's language
+     * pennant (`⛿ ᴇɴ · ᴊᴀ`) or, in older label formats, its **Audio**
+     * section — never the release's overall tag, which lies (owner
+     * 2026-07-10).
      *
-     * No Audio section, or one naming no language we recognise, returns true:
-     * we only ever DEMOTE streams we positively know are foreign-audio, never
-     * ones we can't reason about.
+     * No language info, or none we recognise, returns true: we only ever
+     * DEMOTE streams we positively know are foreign-audio, never ones we
+     * can't reason about.
      */
     fun hasEnglishAudio(stream: Stream): Boolean {
-        val audio = AUDIO_SECTION.find(labelText(stream))?.value ?: return true
+        val label = labelText(stream)
+        pennantAudioCodes(label)?.let { codes ->
+            if (codes.isEmpty()) return true // bare pennant: neutral
+            return "en" in codes
+        }
+        val audio = AUDIO_SECTION.find(label)?.value ?: return true
         if (ENGLISH_AUDIO.containsMatchIn(audio)) return true
         return !NON_ENGLISH_AUDIO.containsMatchIn(audio)
     }

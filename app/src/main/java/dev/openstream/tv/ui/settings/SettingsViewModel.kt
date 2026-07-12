@@ -81,9 +81,10 @@ class SettingsViewModel @Inject constructor(
     val autoSkipIntros: StateFlow<Boolean> = playbackPrefs.autoSkipIntros
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    /** Credits → 5s countdown → next episode (Round-15 #4). Default ON. */
+    /** Credits → delayed 8s countdown → next episode. Default OFF
+     *  (owner 2026-07-12: both auto-skips are opt-in). */
     val autoSkipCredits: StateFlow<Boolean> = playbackPrefs.autoSkipCredits
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds

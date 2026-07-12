@@ -141,6 +141,10 @@ fun AppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val goSection: (String) -> Unit = { route ->
+        // A deliberate click into Search may fire the voice-first mic again
+        // (owner 2026-07-12) — BACK-returns don't come through here, so they
+        // never re-trigger it.
+        if (route == Routes.SEARCH) launchViewModel.searchSectionClicked()
         if (route != currentRoute) {
             navController.navigate(route) {
                 popUpTo(Routes.HOME) { saveState = true }

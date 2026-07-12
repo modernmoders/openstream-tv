@@ -58,7 +58,7 @@ class SearchViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository(), VoiceSearchTrigger())
         viewModel.search("batman")
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
@@ -73,7 +73,7 @@ class SearchViewModelTest {
 
     @Test
     fun `blank query is ignored`() = runTest(timeout = 60.seconds) {
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository(), VoiceSearchTrigger())
         viewModel.search("   ")
         assertTrue(!viewModel.uiState.value.searched)
     }
@@ -86,7 +86,7 @@ class SearchViewModelTest {
         server.start()
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, FakeViewPrefs(), testProgressRepository(), VoiceSearchTrigger())
         viewModel.search("x")
         val state = viewModel.uiState.first {
             it.rows.isNotEmpty() && it.rows.all { r -> r !is RowState.Loading }
@@ -106,7 +106,7 @@ class SearchViewModelTest {
         addonRepository.install(server.url("/manifest.json")).getOrThrow()
         val viewPrefs = FakeViewPrefs()
 
-        val viewModel = SearchViewModel(addonRepository, catalogRepository, viewPrefs, testProgressRepository())
+        val viewModel = SearchViewModel(addonRepository, catalogRepository, viewPrefs, testProgressRepository(), VoiceSearchTrigger())
         viewPrefs.setPosterColumns(4)
         viewModel.uiState.first { it.columns == 4 }
 

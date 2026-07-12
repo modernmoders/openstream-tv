@@ -63,6 +63,11 @@ private const val SKIP_POLL_INTERVAL_MS = 500L
 /** Consecutive broken streams auto-skipped before giving up with the panel. */
 private const val MAX_ERROR_SKIPS = 3
 
+/** Auto-advance on credits: quiet grace before the countdown even appears,
+ *  then the countdown length (owner 2026-07-12: 10s later, count from 8). */
+private const val AUTO_ADVANCE_GRACE_MS = 10_000L
+private const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 8
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -466,13 +471,15 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** "Next episode in 5…" — one second per tick, then advance. BACK cancels
-     *  ([cancelNextEpisodeCountdown]); the window stays auto-handled so the
-     *  countdown doesn't respawn while still inside the credits. */
+    /** Auto-advance (owner 2026-07-12 timing): let the ending BREATHE for 10
+     *  seconds first, then "Next episode in 8…" one second per tick, then
+     *  advance. BACK cancels ([cancelNextEpisodeCountdown]); the window stays
+     *  auto-handled so the countdown doesn't respawn inside the credits. */
     private fun startNextEpisodeCountdown() {
         autoAdvanceJob?.cancel()
         autoAdvanceJob = viewModelScope.launch {
-            for (remaining in 5 downTo 1) {
+            delay(AUTO_ADVANCE_GRACE_MS)
+            for (remaining in AUTO_ADVANCE_COUNTDOWN_SECONDS downTo 1) {
                 _uiState.value = _uiState.value.copy(nextEpisodeCountdown = remaining)
                 delay(1_000)
             }

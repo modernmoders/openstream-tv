@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,6 +44,7 @@ import dev.openstream.tv.data.MIN_POSTER_COLUMNS
 import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
+import dev.openstream.tv.ui.components.CaretDownIcon
 import dev.openstream.tv.ui.update.UpdateViewModel
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
@@ -88,6 +91,8 @@ fun SettingsScreen(
     var pickingNumbering by remember { mutableStateOf(false) }
     var confirmingReset by remember { mutableStateOf(false) }
     var confirmingSettingsReset by remember { mutableStateOf(false) }
+    // Anime drawer state (Round-16 #1): collapsed on every fresh visit.
+    var animeExpanded by remember { mutableStateOf(false) }
 
     // Predictable entry point: land on the first setting, not Back.
     val firstFocus = remember { FocusRequester() }
@@ -178,53 +183,6 @@ fun SettingsScreen(
                 },
                 onClick = { viewModel.setVoiceFirstSearch(!voiceFirst) },
             )
-            // --- Anime (owner Round-15 #7): the skip features only ever fire
-            // on anime episodes the community has timed, so they live under
-            // their own plainly-labelled group. Every profile sees it — even
-            // "no-anime" accounts still surface anime titles, and skipping
-            // should just work if they wander into one.
-            SectionCaption("ANIME — these only affect anime episodes")
-            SettingEntry(
-                title = "Skip buttons on anime",
-                description = if (skipIntros) {
-                    "On — during an anime's opening, a “Skip Intro” button pops " +
-                        "up; during the ending it's “Next Episode”. One OK press. " +
-                        "Nothing appears on regular shows or movies"
-                } else {
-                    "Off — anime openings and endings play in full, no buttons"
-                },
-                onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
-            )
-            if (skipIntros) {
-                SettingEntry(
-                    title = "Skip intros by themselves",
-                    description = if (autoSkipIntros) {
-                        "On — the opening skips itself the moment it starts; " +
-                            "you never press anything"
-                    } else {
-                        "Off — the “Skip Intro” button waits for you to press OK"
-                    },
-                    onClick = { viewModel.setAutoSkipIntros(!autoSkipIntros) },
-                )
-                SettingEntry(
-                    title = "Play the next episode by itself",
-                    description = if (autoSkipCredits) {
-                        "On — when the ending song starts, a 5-second countdown " +
-                            "appears, then the next episode plays. Press BACK " +
-                            "during the countdown to keep watching"
-                    } else {
-                        "Off — the “Next Episode” button waits for you to press OK"
-                    },
-                    onClick = { viewModel.setAutoSkipCredits(!autoSkipCredits) },
-                )
-            }
-            SettingEntry(
-                title = "Episode numbers",
-                description = episodeNumberingLabel(numbering) +
-                    " — mostly matters for long anime, where seasons and " +
-                    "one big count disagree",
-                onClick = { pickingNumbering = true },
-            )
             SectionCaption("PLAYBACK")
             SettingEntry(
                 title = "Auto-play first stream",
@@ -236,6 +194,58 @@ fun SettingsScreen(
                 },
                 onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
             )
+            // --- Anime drawer (Round-16 #1): one collapsed group on a darker
+            // slab — OK opens it, the contents visibly belong together. Every
+            // profile sees it (the "no-anime" accounts still surface anime).
+            CollapsibleGroup(
+                title = "Anime",
+                summary = "Skip Intro and Next Episode buttons — they only " +
+                    "ever appear on anime episodes",
+                expanded = animeExpanded,
+                onToggle = { animeExpanded = !animeExpanded },
+            ) {
+                SettingEntry(
+                    title = "Skip buttons on anime",
+                    description = if (skipIntros) {
+                        "On — during an anime's opening, a “Skip Intro” button pops " +
+                            "up; during the ending it's “Next Episode”. One OK press. " +
+                            "Nothing appears on regular shows or movies"
+                    } else {
+                        "Off — anime openings and endings play in full, no buttons"
+                    },
+                    onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
+                )
+                if (skipIntros) {
+                    SettingEntry(
+                        title = "Skip intros by themselves",
+                        description = if (autoSkipIntros) {
+                            "On — the opening skips itself the moment it starts; " +
+                                "you never press anything"
+                        } else {
+                            "Off — the “Skip Intro” button waits for you to press OK"
+                        },
+                        onClick = { viewModel.setAutoSkipIntros(!autoSkipIntros) },
+                    )
+                    SettingEntry(
+                        title = "Play the next episode by itself",
+                        description = if (autoSkipCredits) {
+                            "On — a little after the ending song starts, a " +
+                                "countdown appears, then the next episode plays. " +
+                                "Press BACK during the countdown to keep watching"
+                        } else {
+                            "Off — the “Next Episode” button waits for you to press OK"
+                        },
+                        onClick = { viewModel.setAutoSkipCredits(!autoSkipCredits) },
+                    )
+                }
+                SettingEntry(
+                    title = "Episode numbers",
+                    description = episodeNumberingLabel(numbering) +
+                        " — mostly matters for long anime, where seasons and " +
+                        "one big count disagree",
+                    onClick = { pickingNumbering = true },
+                )
+            }
             SectionCaption("THIS TV")
             // Self-update (owner 2026-07-11): boxes that leave the house
             // update themselves. The row is its own tiny state machine —
@@ -458,10 +468,81 @@ private fun episodeNumberingLabel(mode: EpisodeNumbering): String =
 private fun SectionCaption(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelMedium,
+        // titleSmall, not a label size — the captions are the wayfinding
+        // layer, they must be readable from the couch (owner Round-16 #2).
+        style = MaterialTheme.typography.titleSmall,
         color = MutedText,
         modifier = Modifier.padding(start = 6.dp, top = 10.dp),
     )
+}
+
+/**
+ * A drawer-style settings group (owner Round-16 #1): one row on a DARKER
+ * slab; OK slides its contents open in place. The slab background is what
+ * says "these belong together" — the children keep the normal entry look
+ * but sit visibly inside it.
+ */
+@Composable
+private fun CollapsibleGroup(
+    title: String,
+    summary: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x59000000), RoundedCornerShape(18.dp))
+            .padding(8.dp),
+    ) {
+        val shape = RoundedCornerShape(14.dp)
+        Surface(
+            onClick = onToggle,
+            modifier = Modifier.fillMaxWidth(),
+            shape = ClickableSurfaceDefaults.shape(shape),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.015f),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = SurfaceCardFocused,
+                pressedContainerColor = SurfaceCardFocused,
+                contentColor = Color.White,
+                focusedContentColor = Color.White,
+                pressedContentColor = Color.White,
+            ),
+            border = ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, Color.Transparent), shape = shape),
+                focusedBorder = Border(BorderStroke(2.dp, Accent), shape = shape),
+            ),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 16.dp),
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(text = title, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                    Text(text = summary, style = MaterialTheme.typography.bodyMedium, color = MutedText)
+                }
+                // Drawn caret (no font glyphs in controls — DECISIONS #54);
+                // graphicsLayer flip = layer phase only, box-safe.
+                CaretDownIcon(
+                    tint = MutedText,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer { rotationZ = if (expanded) 180f else 0f },
+                )
+            }
+        }
+        if (expanded) {
+            content()
+        }
+    }
 }
 
 @Composable
@@ -500,8 +581,9 @@ private fun SettingEntry(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = MutedText)
+                // Bigger, couch-readable text (owner Round-16 #2).
+                Text(text = title, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Text(text = description, style = MaterialTheme.typography.bodyMedium, color = MutedText)
             }
             Text(
                 text = "›",

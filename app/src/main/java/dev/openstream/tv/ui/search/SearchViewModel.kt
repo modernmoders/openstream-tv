@@ -31,7 +31,11 @@ class SearchViewModel @Inject constructor(
     private val catalogRepository: CatalogRepository,
     viewPrefs: ViewPrefs,
     progressRepository: ProgressRepository,
+    voiceSearchTrigger: VoiceSearchTrigger,
 ) : ViewModel() {
+
+    /** Bumped on every deliberate click into Search — see VoiceSearchTrigger. */
+    val voiceSearchRequests = voiceSearchTrigger.requests
 
     sealed interface RowState {
         val ref: CatalogRef

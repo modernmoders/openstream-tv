@@ -70,9 +70,10 @@ interface PlaybackPrefs {
     val autoSkipIntros: Flow<Boolean>
 
     /**
-     * When an anime's ending starts, count down "Next episode in 5…" and roll
-     * into the next episode (owner Round-15 #4: "skip credits and continue").
-     * Default ON — BACK during the countdown cancels it.
+     * When an anime's ending starts, wait a beat, then count down "Next
+     * episode in 8…" and roll into the next episode (owner Round-15 #4).
+     * Default OFF (owner 2026-07-12: both auto-skips opt-in until the
+     * timing is proven) — BACK during the countdown cancels it.
      */
     val autoSkipCredits: Flow<Boolean>
     suspend fun setAudioLanguage(languageTag: String)
@@ -153,7 +154,7 @@ class DataStorePlaybackPrefs @Inject constructor(
     }
 
     override val autoSkipCredits: Flow<Boolean> =
-        context.playbackPrefsStore.data.map { it[AUTO_SKIP_CREDITS] ?: true }
+        context.playbackPrefsStore.data.map { it[AUTO_SKIP_CREDITS] ?: false }
 
     override suspend fun setAutoSkipCredits(enabled: Boolean) {
         context.playbackPrefsStore.edit { it[AUTO_SKIP_CREDITS] = enabled }

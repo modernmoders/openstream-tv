@@ -12,7 +12,7 @@ class FakePlaybackPrefs : PlaybackPrefs {
     val softwareDecoderState = MutableStateFlow(false)
     val skipIntrosState = MutableStateFlow(true)
     val autoSkipIntrosState = MutableStateFlow(false)
-    val autoSkipCreditsState = MutableStateFlow(true)
+    val autoSkipCreditsState = MutableStateFlow(false)
 
     override val languages: Flow<LanguagePrefs> = languagesState
     override val preferredPlayer: Flow<String> = playerState
@@ -61,6 +61,6 @@ class FakePlaybackPrefs : PlaybackPrefs {
         softwareDecoderState.value = false
         skipIntrosState.value = true
         autoSkipIntrosState.value = false
-        autoSkipCreditsState.value = true
+        autoSkipCreditsState.value = false
     }
 }

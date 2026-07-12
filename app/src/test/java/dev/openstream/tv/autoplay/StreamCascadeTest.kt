@@ -287,6 +287,46 @@ class StreamCascadeTest {
     }
 
     @Test
+    fun `hasEnglishAudio reads AIOStreams' small-caps language pennant`() {
+        // Real labels from the owner's instances (Naruto S1E12, 2026-07-12):
+        // ⛿ marks languages in Unicode SMALL CAPS; "sᴜʙ (…)" is subtitles,
+        // which must never count as audio.
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(description = "☁︎  Naruto   ᴇ₁₂ | ▣  AVC  | ⛿  ᴇɴ · ᴊᴀ  · sᴜʙ (ᴇɴ)   »   ʙᴇsᴛ ʀᴇʟᴇᴀsᴇ ₂₀₀₀")
+        ))
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(description = "✎  Naruto  s₀₁·ᴇ₁₂ | ▣  AVC   ♬  FLAC   | ⛉  [TB] Sootio | ⛿  ᴊᴀ  ")
+        ))
+        // Japanese audio with ENGLISH SUBS is still not English audio.
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(description = "✎  Naruto  s₀₁·ᴇ₁₂ | ⛿  ᴊᴀ  · sᴜʙ (ᴇɴ)")
+        ))
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(description = "☁︎  Naruto   s₀₁·ᴇ₁₂ | ▣  HEVC | ⛿  ᴇɴ · ᴊᴀ  ")
+        ))
+        // A pennant with no recognisable codes stays neutral.
+        assertTrue(StreamCascade.hasEnglishAudio(stream(description = "Movie | ⛿   ")))
+    }
+
+    @Test
+    fun `english dual audio outranks higher-resolution japanese-only`() {
+        // The owner's actual complaint: 1080p ᴊᴀ-only auto-picked over the
+        // 720p ᴇɴ·ᴊᴀ dual release. English audio must beat resolution.
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "1080P ʙʟᴜʀᴀʏ", filename = "a.1080p.mkv",
+                        description = "✎  Naruto  s₀₁·ᴇ₁₂ | ⛿  ᴊᴀ  "),
+                    stream(name = "720P ʙʟᴜʀᴀʏ", filename = "b.720p.mkv",
+                        description = "☁︎  Naruto   s₀₁·ᴇ₁₂ | ⛿  ᴇɴ · ᴊᴀ  "),
+                )),
+            ),
+            hardwareCodecs = emptySet(),
+        )
+        assertEquals("720P ʙʟᴜʀᴀʏ", merged.first().stream.name)
+    }
+
+    @Test
     fun `mergeForDisplay floats English audio above foreign audio`() {
         val merged = StreamCascade.mergeForDisplay(
             listOf(

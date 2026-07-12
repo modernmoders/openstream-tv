@@ -332,9 +332,12 @@ fun PlayerScreen(
                     viewModel.cancelNextEpisodeCountdown()
                 ) return@onPreviewKeyEvent true
                 // Anime intro/credits: while the Skip/Next Episode button is
-                // up, OK acts on it (takes priority over waking/pausing) — a
-                // one-press skip whether or not the control bar is showing.
-                if (state.skipSegment != null &&
+                // up AND the control bar is asleep, OK acts on it — a
+                // one-press skip. With the bar AWAKE the keys belong to the
+                // focused control (owner 2026-07-12: the skip button was
+                // hijacking every OK for the whole 90s window — pause,
+                // scrubbing, everything).
+                if (state.skipSegment != null && !overlayVisible &&
                     (code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
                         code == AndroidKeyEvent.KEYCODE_ENTER ||
                         code == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER)
@@ -492,26 +495,29 @@ fun PlayerScreen(
                     }
                     SurfacePill("Audio & subtitles", onClick = { showTracks = true; wake() })
                     TroubleGroup {
-                        // Always shown (owner report): walks to the next
-                        // candidate if one remains, else opens the full stream
-                        // list — never a dead button. Holds the DOWN default.
+                        // First and accent-titled (owner 2026-07-12: it should
+                        // READ as the thing to try first, without saying so).
+                        // Always shown: walks to the next candidate if one
+                        // remains, else opens the full stream list — never a
+                        // dead button. Holds the DOWN default.
                         SurfacePill(
-                            "Try a different stream",
                             onClick = { viewModel.tryAnotherStream(); wake() },
                             modifier = Modifier.focusRequester(tryStreamFocus),
-                        )
+                        ) {
+                            Text(
+                                text = "Try a different stream",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Accent,
+                                maxLines = 1,
+                            )
+                        }
                         if (viewModel.externalPlayers.isNotEmpty()) {
                             SurfacePill("Play in another app", onClick = { onPlayInAnotherApp(); wake() })
                         }
-                        // Software-decoder toggle for a blocky/scrambled picture.
-                        // Shows its ON/OFF state (owner 2026-07-08) and flips it,
-                        // reloading this video to apply (decoder is fixed at
-                        // engine build). `selected` tints it when ON.
-                        SurfacePill(
-                            "Software video: " + if (state.softwareDecoderOn) "ON" else "OFF",
-                            onClick = { viewModel.toggleSoftwareDecoder() },
-                            selected = state.softwareDecoderOn,
-                        )
+                        // The "Software video" toggle pill is GONE (owner
+                        // 2026-07-12): the engine already picks the decoder
+                        // per stream automatically (alpha.40), and the expert
+                        // Settings toggle covers the manual case.
                         SurfacePill("Learn more", onClick = { showLearnMore = true; wake() })
                     }
                 }

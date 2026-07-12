@@ -42,12 +42,12 @@ fun activeSegmentAt(positionMs: Long, segments: List<SkipSegment>): SkipSegment?
 
 /**
  * Community timestamps are timed against SOMEONE's release; the owner's
- * stream may be cut slightly differently, and his skips were landing a few
- * seconds past the intro (2026-07-11). Landing early is invisible — you see
- * the last beat of the opening; landing late eats dialogue. So every window's
- * end pulls back by this bias.
+ * streams run well ahead of them, and his skips kept landing past the intro.
+ * Landing early is invisible — you see the last beat of the opening; landing
+ * late eats dialogue. 2s (2026-07-11) was still "a few seconds late";
+ * owner asked for 7 more (2026-07-12) → 9s total.
  */
-const val SKIP_END_EARLY_MS = 2_000L
+const val SKIP_END_EARLY_MS = 9_000L
 
 /** Apply the early-end bias, never shrinking a window below one second. */
 fun withEarlyEndBias(segments: List<SkipSegment>): List<SkipSegment> =
