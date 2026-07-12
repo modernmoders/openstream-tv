@@ -61,6 +61,20 @@ interface PlaybackPrefs {
      * nothing to detect, nothing to misfire. Default ON.
      */
     val skipIntrosEnabled: Flow<Boolean>
+
+    /**
+     * Auto-skip an anime intro the moment its window opens — no button press
+     * (owner Round-15 #4). Default OFF until the timing is proven perfect;
+     * the button stays the safe default.
+     */
+    val autoSkipIntros: Flow<Boolean>
+
+    /**
+     * When an anime's ending starts, count down "Next episode in 5…" and roll
+     * into the next episode (owner Round-15 #4: "skip credits and continue").
+     * Default ON — BACK during the countdown cancels it.
+     */
+    val autoSkipCredits: Flow<Boolean>
     suspend fun setAudioLanguage(languageTag: String)
 
     /** A real language tag, or [SUBTITLES_OFF]. */
@@ -69,6 +83,8 @@ interface PlaybackPrefs {
     suspend fun setAutoPlayFirstStream(enabled: Boolean)
     suspend fun setPreferSoftwareDecoder(enabled: Boolean)
     suspend fun setSkipIntrosEnabled(enabled: Boolean)
+    suspend fun setAutoSkipIntros(enabled: Boolean)
+    suspend fun setAutoSkipCredits(enabled: Boolean)
 }
 
 private val Context.playbackPrefsStore by preferencesDataStore("playback_prefs")
@@ -126,6 +142,20 @@ class DataStorePlaybackPrefs @Inject constructor(
         context.playbackPrefsStore.edit { it[SKIP_INTROS] = enabled }
     }
 
+    override val autoSkipIntros: Flow<Boolean> =
+        context.playbackPrefsStore.data.map { it[AUTO_SKIP_INTROS] ?: false }
+
+    override suspend fun setAutoSkipIntros(enabled: Boolean) {
+        context.playbackPrefsStore.edit { it[AUTO_SKIP_INTROS] = enabled }
+    }
+
+    override val autoSkipCredits: Flow<Boolean> =
+        context.playbackPrefsStore.data.map { it[AUTO_SKIP_CREDITS] ?: true }
+
+    override suspend fun setAutoSkipCredits(enabled: Boolean) {
+        context.playbackPrefsStore.edit { it[AUTO_SKIP_CREDITS] = enabled }
+    }
+
     private companion object {
         val AUDIO_LANG = stringPreferencesKey("audio_language")
         val SUBTITLE_LANG = stringPreferencesKey("subtitle_language")
@@ -133,5 +163,7 @@ class DataStorePlaybackPrefs @Inject constructor(
         val AUTO_PLAY_FIRST = booleanPreferencesKey("auto_play_first_stream")
         val PREFER_SW_DECODER = booleanPreferencesKey("prefer_software_decoder")
         val SKIP_INTROS = booleanPreferencesKey("skip_intros_enabled")
+        val AUTO_SKIP_INTROS = booleanPreferencesKey("auto_skip_intros")
+        val AUTO_SKIP_CREDITS = booleanPreferencesKey("auto_skip_credits")
     }
 }

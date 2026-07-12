@@ -35,12 +35,16 @@ import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
 import dev.openstream.tv.player.rememberedLanguage
+import dev.openstream.tv.player.skip.AutoSkipAction
 import dev.openstream.tv.player.skip.SkipSegment
 import dev.openstream.tv.player.skip.SkipTimesRepository
+import dev.openstream.tv.player.skip.SkipType
 import dev.openstream.tv.player.skip.absoluteEpisodeNumber
 import dev.openstream.tv.player.skip.activeSegmentAt
+import dev.openstream.tv.player.skip.autoSkipActionFor
 import dev.openstream.tv.ui.sound.UiSounds
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -120,6 +124,9 @@ class PlayerViewModel @Inject constructor(
         /** Active anime intro/credits window — the "Skip Intro/Credits" button;
          *  null when not inside one (AniSkip, owner 2026-07-08). */
         val skipSegment: SkipSegment? = null,
+        /** Seconds left on the "Next episode in N…" auto-advance countdown
+         *  (auto-skip credits, owner Round-15); null = no countdown running. */
+        val nextEpisodeCountdown: Int? = null,
         /** Whether the CURRENT playback is using software decoding — the
          *  "Having trouble?" toggle reflects this ON/OFF (owner 2026-07-08). */
         val softwareDecoderOn: Boolean = false,
@@ -168,6 +175,17 @@ class PlayerViewModel @Inject constructor(
     private var skipSegments: List<SkipSegment> = emptyList()
     private var skipEnabled = false
 
+    /** Auto-skip toggles (owner Round-15 #4), read once at playback start. */
+    private var autoSkipIntros = false
+    private var autoSkipCredits = false
+
+    /** The countdown job + the windows already auto-handled for THIS video —
+     *  cancelling a countdown must not respawn it on the next position poll,
+     *  and a re-entered intro window must not re-auto-seek (you'd never be
+     *  able to scrub back into an opening). */
+    private var autoAdvanceJob: Job? = null
+    private var autoHandledSegments = mutableSetOf<SkipSegment>()
+
     init {
         // No UI ticks over playing video (owner round 10 "subtle" — a held
         // seek would rattle constantly). Lifecycle-matched to this ViewModel.
@@ -212,6 +230,8 @@ class PlayerViewModel @Inject constructor(
             viewModelScope.launch {
                 autoAdvanceOnError = playbackPrefs.autoPlayFirstStream.first()
                 skipEnabled = playbackPrefs.skipIntrosEnabled.first()
+                autoSkipIntros = playbackPrefs.autoSkipIntros.first()
+                autoSkipCredits = playbackPrefs.autoSkipCredits.first()
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
                 launch {
                     // The engine decides software-vs-hardware PER STREAM now
@@ -387,6 +407,8 @@ class PlayerViewModel @Inject constructor(
     private fun loadSkipSegments() {
         val req = request ?: return
         skipSegments = emptyList()
+        autoHandledSegments = mutableSetOf() // fresh episode, fresh auto-skips
+        cancelAutoAdvance()
         _uiState.value = _uiState.value.copy(skipSegment = null)
         if (!skipEnabled || req.metaType != "series") return
         val videoId = req.mediaRef?.externalId ?: return
@@ -420,14 +442,67 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** Main-thread position poll → the active skip window (or null). */
+    /** Main-thread position poll → the active skip window (or null). Also the
+     *  trigger for the auto-skip actions (owner Round-15 #4). */
     private fun updateSkipSegment(engine: ExoPlayerEngine) {
         if (skipSegments.isEmpty()) return
         if (_uiState.value.ended) return
         val active = activeSegmentAt(engine.exoPlayer.currentPosition, skipSegments)
         if (active != _uiState.value.skipSegment) {
             _uiState.value = _uiState.value.copy(skipSegment = active)
+            // Leaving a credits window (scrub, or the trim ending it) takes
+            // its countdown with it.
+            if (active?.type != SkipType.CREDITS) cancelAutoAdvance()
+            if (active != null && autoHandledSegments.add(active)) {
+                when (autoSkipActionFor(active.type, autoSkipIntros, autoSkipCredits)) {
+                    AutoSkipAction.SEEK_PAST -> {
+                        engine.exoPlayer.seekTo(active.endMs)
+                        _uiState.value = _uiState.value.copy(skipSegment = null)
+                    }
+                    AutoSkipAction.COUNTDOWN_TO_NEXT -> startNextEpisodeCountdown()
+                    AutoSkipAction.NONE -> Unit
+                }
+            }
         }
+    }
+
+    /** "Next episode in 5…" — one second per tick, then advance. BACK cancels
+     *  ([cancelNextEpisodeCountdown]); the window stays auto-handled so the
+     *  countdown doesn't respawn while still inside the credits. */
+    private fun startNextEpisodeCountdown() {
+        autoAdvanceJob?.cancel()
+        autoAdvanceJob = viewModelScope.launch {
+            for (remaining in 5 downTo 1) {
+                _uiState.value = _uiState.value.copy(nextEpisodeCountdown = remaining)
+                delay(1_000)
+            }
+            _uiState.value = _uiState.value.copy(nextEpisodeCountdown = null)
+            advanceToNextEpisode()
+        }
+    }
+
+    private fun cancelAutoAdvance() {
+        autoAdvanceJob?.cancel()
+        autoAdvanceJob = null
+        if (_uiState.value.nextEpisodeCountdown != null) {
+            _uiState.value = _uiState.value.copy(nextEpisodeCountdown = null)
+        }
+    }
+
+    /** BACK during the countdown: keep watching the credits. */
+    fun cancelNextEpisodeCountdown(): Boolean {
+        if (_uiState.value.nextEpisodeCountdown == null) return false
+        cancelAutoAdvance()
+        return true
+    }
+
+    /** Credits exit (button or countdown): stamp the episode watched — the
+     *  credits sit past the 95% line anyway, this just makes the ✓ and Trakt
+     *  state unambiguous — then ride the existing ⏭ path. */
+    private fun advanceToNextEpisode() {
+        engine.value?.let { eng -> request?.let { req -> markWatched(eng, req) } }
+        _uiState.value = _uiState.value.copy(skipSegment = null)
+        goToNextEpisode()
     }
 
     /** Resume prompt → "Resume": drop the prompt and let the (already prepared
@@ -450,11 +525,19 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** OK on the Skip button: jump past the intro/credits and drop the button. */
+    /** OK on the Skip button. Intro: jump past the window. Credits: this is
+     *  the "Next Episode" button now (owner Round-15 #3) — mark watched and
+     *  advance instead of seeking into the last seconds of the episode. */
     fun skipCurrentSegment() {
         val segment = _uiState.value.skipSegment ?: return
-        engine.value?.exoPlayer?.seekTo(segment.endMs)
-        _uiState.value = _uiState.value.copy(skipSegment = null)
+        cancelAutoAdvance()
+        when (segment.type) {
+            SkipType.INTRO -> {
+                engine.value?.exoPlayer?.seekTo(segment.endMs)
+                _uiState.value = _uiState.value.copy(skipSegment = null)
+            }
+            SkipType.CREDITS -> advanceToNextEpisode()
+        }
     }
 
     private fun updateEpisodeNav() {

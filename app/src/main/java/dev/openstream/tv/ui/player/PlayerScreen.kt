@@ -74,6 +74,7 @@ import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.UpNextOverlay
 import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.theme.Accent
+import dev.openstream.tv.player.skip.SkipType
 import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
 
@@ -325,8 +326,13 @@ fun PlayerScreen(
                 if (state.ended || state.error != null || autoplay != null) {
                     return@onPreviewKeyEvent false
                 }
-                // Anime intro/credits: while the Skip button is up, OK jumps
-                // past the window (takes priority over waking/pausing) — a
+                // Auto-advance countdown: BACK keeps watching the credits
+                // (cancels the countdown, swallowed); OK below advances now.
+                if (code == AndroidKeyEvent.KEYCODE_BACK &&
+                    viewModel.cancelNextEpisodeCountdown()
+                ) return@onPreviewKeyEvent true
+                // Anime intro/credits: while the Skip/Next Episode button is
+                // up, OK acts on it (takes priority over waking/pausing) — a
                 // one-press skip whether or not the control bar is showing.
                 if (state.skipSegment != null &&
                     (code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
@@ -513,16 +519,23 @@ fun PlayerScreen(
         }
 
         // Anime intro/credits skip: floats bottom-right during the window,
-        // above the control bar, shown even when the bar is asleep. Not
-        // focusable — OK is intercepted globally (above) so there's no TV focus
-        // to juggle. Hidden while a panel is up.
+        // shown even when the bar is asleep. Not focusable — OK is intercepted
+        // globally (above) so there's no TV focus to juggle. Hidden while a
+        // panel is up. Round-15: sits lower + see-through; a credits window is
+        // a "Next Episode" button now, and while the auto-advance countdown
+        // runs it becomes the countdown pill (BACK cancels).
         if (state.skipSegment != null && state.error == null && !state.ended && autoplay == null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 48.dp, bottom = 140.dp),
+                    .padding(end = 48.dp, bottom = 96.dp),
             ) {
-                SkipHint(state.skipSegment!!.type.label)
+                val countdown = state.nextEpisodeCountdown
+                when {
+                    countdown != null -> CountdownHint(countdown)
+                    state.skipSegment!!.type == SkipType.CREDITS -> SkipHint("Next Episode")
+                    else -> SkipHint(state.skipSegment!!.type.label)
+                }
             }
         }
 
@@ -724,7 +737,9 @@ private fun SkipHint(label: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
-            .background(Color(0xF0181822), RoundedCornerShape(28.dp))
+            // Round-15: see-through enough that the video reads underneath,
+            // opaque enough that the label stays legible over bright frames.
+            .background(Color(0xA8181822), RoundedCornerShape(28.dp))
             .border(2.dp, Accent, RoundedCornerShape(28.dp))
             .padding(horizontal = 22.dp, vertical = 12.dp),
     ) {
@@ -736,6 +751,33 @@ private fun SkipHint(label: String) {
             modifier = Modifier
                 .border(1.dp, Accent, RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/**
+ * The auto-advance countdown (owner Round-15 #4): small, low, translucent —
+ * "Next episode in 4…". OK goes now (global intercept), BACK keeps watching.
+ */
+@Composable
+private fun CountdownHint(secondsLeft: Int) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .background(Color(0xA8181822), RoundedCornerShape(28.dp))
+            .border(2.dp, Accent, RoundedCornerShape(28.dp))
+            .padding(horizontal = 22.dp, vertical = 12.dp),
+    ) {
+        Text(
+            "Next episode in $secondsLeft…",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+        )
+        Text(
+            "OK now · BACK to keep watching",
+            style = MaterialTheme.typography.labelSmall,
+            color = MutedText,
         )
     }
 }

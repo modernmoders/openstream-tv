@@ -76,6 +76,14 @@ class SettingsViewModel @Inject constructor(
     val skipIntrosEnabled: StateFlow<Boolean> = playbackPrefs.skipIntrosEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    /** Auto-skip anime intros, no button press (Round-15 #4). Default OFF. */
+    val autoSkipIntros: StateFlow<Boolean> = playbackPrefs.autoSkipIntros
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Credits → 5s countdown → next episode (Round-15 #4). Default ON. */
+    val autoSkipCredits: StateFlow<Boolean> = playbackPrefs.autoSkipCredits
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
@@ -105,6 +113,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setSkipIntrosEnabled(enabled: Boolean) {
         viewModelScope.launch { playbackPrefs.setSkipIntrosEnabled(enabled) }
+    }
+
+    fun setAutoSkipIntros(enabled: Boolean) {
+        viewModelScope.launch { playbackPrefs.setAutoSkipIntros(enabled) }
+    }
+
+    fun setAutoSkipCredits(enabled: Boolean) {
+        viewModelScope.launch { playbackPrefs.setAutoSkipCredits(enabled) }
     }
 
     fun setExpertMode(enabled: Boolean) {

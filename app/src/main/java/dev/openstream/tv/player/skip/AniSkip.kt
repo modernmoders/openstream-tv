@@ -41,6 +41,43 @@ fun activeSegmentAt(positionMs: Long, segments: List<SkipSegment>): SkipSegment?
         .minByOrNull { it.startMs }
 
 /**
+ * Community timestamps are timed against SOMEONE's release; the owner's
+ * stream may be cut slightly differently, and his skips were landing a few
+ * seconds past the intro (2026-07-11). Landing early is invisible — you see
+ * the last beat of the opening; landing late eats dialogue. So every window's
+ * end pulls back by this bias.
+ */
+const val SKIP_END_EARLY_MS = 2_000L
+
+/** Apply the early-end bias, never shrinking a window below one second. */
+fun withEarlyEndBias(segments: List<SkipSegment>): List<SkipSegment> =
+    segments.map { s ->
+        s.copy(endMs = (s.endMs - SKIP_END_EARLY_MS).coerceAtLeast(s.startMs + 1_000))
+    }
+
+/** What the player does BY ITSELF when a skip window opens (owner Round-15). */
+enum class AutoSkipAction {
+    /** Show the button, wait for OK — the default. */
+    NONE,
+
+    /** Intro with auto-skip on: jump past it the moment it starts. */
+    SEEK_PAST,
+
+    /** Credits with auto-advance on: run the "Next episode in 5…" countdown. */
+    COUNTDOWN_TO_NEXT,
+}
+
+/** Pure toggle→action decision, one place, so the tests pin the matrix. */
+fun autoSkipActionFor(
+    type: SkipType,
+    autoSkipIntros: Boolean,
+    autoSkipCredits: Boolean,
+): AutoSkipAction = when (type) {
+    SkipType.INTRO -> if (autoSkipIntros) AutoSkipAction.SEEK_PAST else AutoSkipAction.NONE
+    SkipType.CREDITS -> if (autoSkipCredits) AutoSkipAction.COUNTDOWN_TO_NEXT else AutoSkipAction.NONE
+}
+
+/**
  * AniSkip client: skip windows for one (malId, episode). Returns an empty list
  * for "nothing timed" AND for any failure — a skip feature must never break
  * playback, so a network error just means "no button" (elder rule).

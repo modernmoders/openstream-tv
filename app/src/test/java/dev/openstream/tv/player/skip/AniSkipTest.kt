@@ -105,7 +105,8 @@ class AniSkipTest {
             client = { mal, ep, _ -> if (mal == 20L && ep == 3) listOf(intro, credits) else emptyList() },
         )
         assertEquals(
-            listOf(intro, credits),
+            // The repository applies the early-end bias on the way through.
+            withEarlyEndBias(listOf(intro, credits)),
             r.segmentsFor("mal:20", season = null, episode = 3, absoluteEpisode = null, durationMs = 0),
         )
     }
@@ -120,7 +121,7 @@ class AniSkipTest {
             client = { mal, ep, _ -> if (mal == 20L && ep == 40) listOf(intro) else emptyList() },
         )
         assertEquals(
-            listOf(intro),
+            withEarlyEndBias(listOf(intro)),
             r.segmentsFor("tt0409591", season = 2, episode = 5, absoluteEpisode = 40, durationMs = 0),
         )
     }
@@ -132,5 +133,44 @@ class AniSkipTest {
             client = { _, _, _ -> listOf(intro) },
         )
         assertTrue(r.segmentsFor("mal:20", season = null, episode = 0, absoluteEpisode = null, durationMs = 0).isEmpty())
+    }
+}
+
+/** Round-15 additions: early-end bias + the auto-skip decision. */
+class SkipBehaviorTest {
+
+    @Test
+    fun `segment ends are trimmed so a skip lands early, never late`() {
+        val trimmed = withEarlyEndBias(
+            listOf(SkipSegment(SkipType.INTRO, 40_000, 130_000)),
+        )
+        assertEquals(130_000 - SKIP_END_EARLY_MS, trimmed.single().endMs)
+        assertEquals(40_000, trimmed.single().startMs)
+    }
+
+    @Test
+    fun `a window too short to trim keeps at least one second`() {
+        val tiny = withEarlyEndBias(listOf(SkipSegment(SkipType.CREDITS, 10_000, 11_500)))
+        assertEquals(11_000, tiny.single().endMs) // floor: start + 1s
+    }
+
+    @Test
+    fun `auto-skip decision follows the two toggles by segment type`() {
+        assertEquals(
+            AutoSkipAction.SEEK_PAST,
+            autoSkipActionFor(SkipType.INTRO, autoSkipIntros = true, autoSkipCredits = false),
+        )
+        assertEquals(
+            AutoSkipAction.NONE,
+            autoSkipActionFor(SkipType.INTRO, autoSkipIntros = false, autoSkipCredits = true),
+        )
+        assertEquals(
+            AutoSkipAction.COUNTDOWN_TO_NEXT,
+            autoSkipActionFor(SkipType.CREDITS, autoSkipIntros = true, autoSkipCredits = true),
+        )
+        assertEquals(
+            AutoSkipAction.NONE,
+            autoSkipActionFor(SkipType.CREDITS, autoSkipIntros = true, autoSkipCredits = false),
+        )
     }
 }

@@ -76,6 +76,8 @@ fun SettingsScreen(
     val autoPlay by viewModel.autoPlayFirstStream.collectAsStateWithLifecycle()
     val softwareDecoder by viewModel.preferSoftwareDecoder.collectAsStateWithLifecycle()
     val skipIntros by viewModel.skipIntrosEnabled.collectAsStateWithLifecycle()
+    val autoSkipIntros by viewModel.autoSkipIntros.collectAsStateWithLifecycle()
+    val autoSkipCredits by viewModel.autoSkipCredits.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
@@ -160,17 +162,46 @@ fun SettingsScreen(
                 },
                 onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
             )
-            // OK toggles directly, same as autoplay above.
+            // --- Anime (owner Round-15 #7): the skip features only ever fire
+            // on anime episodes the community has timed, so they live under
+            // their own plainly-labelled group. Every profile sees it — even
+            // "no-anime" accounts still surface anime titles, and skipping
+            // should just work if they wander into one.
+            SectionCaption("ANIME — these only affect anime episodes")
             SettingEntry(
-                title = "Skip anime intros & credits",
+                title = "Skip buttons on anime",
                 description = if (skipIntros) {
-                    "On — a “Skip Intro” button pops up during an anime's opening " +
-                        "or ending; press OK to jump past it. Only shows on anime"
+                    "On — during an anime's opening, a “Skip Intro” button pops " +
+                        "up; during the ending it's “Next Episode”. One OK press. " +
+                        "Nothing appears on regular shows or movies"
                 } else {
-                    "Off — play anime openings and endings in full"
+                    "Off — anime openings and endings play in full, no buttons"
                 },
                 onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
             )
+            if (skipIntros) {
+                SettingEntry(
+                    title = "Skip intros by themselves",
+                    description = if (autoSkipIntros) {
+                        "On — the opening skips itself the moment it starts; " +
+                            "you never press anything"
+                    } else {
+                        "Off — the “Skip Intro” button waits for you to press OK"
+                    },
+                    onClick = { viewModel.setAutoSkipIntros(!autoSkipIntros) },
+                )
+                SettingEntry(
+                    title = "Play the next episode by itself",
+                    description = if (autoSkipCredits) {
+                        "On — when the ending song starts, a 5-second countdown " +
+                            "appears, then the next episode plays. Press BACK " +
+                            "during the countdown to keep watching"
+                    } else {
+                        "Off — the “Next Episode” button waits for you to press OK"
+                    },
+                    onClick = { viewModel.setAutoSkipCredits(!autoSkipCredits) },
+                )
+            }
             // OK toggles directly, same as autoplay above.
             SettingEntry(
                 title = "Interface sounds",
@@ -338,6 +369,16 @@ private fun episodeNumberingLabel(mode: EpisodeNumbering): String =
  * with TV Material's built-in (non-stuttering) scale. No white invert — the
  * description stays readable in both states. Trailing chevron cues "opens".
  */
+@Composable
+private fun SectionCaption(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MutedText,
+        modifier = Modifier.padding(start = 6.dp, top = 10.dp),
+    )
+}
+
 @Composable
 private fun SettingEntry(
     title: String,
