@@ -42,17 +42,37 @@ fun activeSegmentAt(positionMs: Long, segments: List<SkipSegment>): SkipSegment?
 
 /**
  * Community timestamps are timed against SOMEONE's release; the owner's
- * streams run well ahead of them, and his skips kept landing past the intro.
- * Landing early is invisible — you see the last beat of the opening; landing
- * late eats dialogue. 2s (2026-07-11) was still "a few seconds late";
+ * streams drift from them, and each window has a direction that's invisible
+ * to the viewer and a direction that hurts:
+ *
+ * INTRO — the skip seeks to the window's END. Landing early is invisible
+ * (you see the last beat of the opening); landing late eats dialogue. So the
+ * end is pulled EARLIER. 2s (2026-07-11) was still "a few seconds late";
  * owner asked for 7 more (2026-07-12) → 9s total.
+ *
+ * CREDITS — nothing ever seeks to this end; what matters is when the
+ * "Up next" prompt APPEARS (the window's START). Appearing late is invisible
+ * (credits run ~90s); appearing early covers the ending — owner 2026-07-12:
+ * "the next episode came about 10 seconds early". So the start is pushed
+ * LATER.
  */
 const val SKIP_END_EARLY_MS = 9_000L
+const val CREDITS_START_LATE_MS = 10_000L
 
-/** Apply the early-end bias, never shrinking a window below one second. */
-fun withEarlyEndBias(segments: List<SkipSegment>): List<SkipSegment> =
+/** Apply the per-type bias, never shrinking a window below one second. */
+fun withSkipBias(segments: List<SkipSegment>): List<SkipSegment> =
     segments.map { s ->
-        s.copy(endMs = (s.endMs - SKIP_END_EARLY_MS).coerceAtLeast(s.startMs + 1_000))
+        when (s.type) {
+            SkipType.INTRO ->
+                s.copy(endMs = (s.endMs - SKIP_END_EARLY_MS).coerceAtLeast(s.startMs + 1_000))
+            SkipType.CREDITS ->
+                // Floor mirrors the intro's: keep at least a second of window,
+                // and never move a start EARLIER than the data said.
+                s.copy(
+                    startMs = (s.startMs + CREDITS_START_LATE_MS)
+                        .coerceAtMost((s.endMs - 1_000).coerceAtLeast(s.startMs)),
+                )
+        }
     }
 
 /** What the player does BY ITSELF when a skip window opens (owner Round-15). */

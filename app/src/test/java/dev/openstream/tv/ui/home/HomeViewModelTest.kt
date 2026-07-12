@@ -12,6 +12,7 @@ import dev.openstream.tv.data.FakeHomeRowPrefsStore
 import dev.openstream.tv.data.FakeViewPrefs
 import dev.openstream.tv.data.HomeRowPrefs
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.testSeriesWatchRepository
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.home.HomeViewModel.RowState
@@ -77,6 +78,7 @@ class HomeViewModelTest {
         MetaRepository(client, addonRepository, cinemetaBase),
         rowPrefs,
         viewPrefs,
+        testSeriesWatchRepository(),
     ).also { viewModels += it }
 
     @After

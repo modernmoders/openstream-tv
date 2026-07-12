@@ -27,9 +27,10 @@ class SkipTimesRepository @Inject constructor(
         val mal = resolver.resolve(seriesMetaId, season, episode, absoluteEpisode)
             ?: return emptyList()
         val lengthSec = (durationMs / 1000).takeIf { it > 0 }
-        // Early-end bias (owner 2026-07-11): land a beat before the window's
-        // stated end — his streams run ahead of the community timestamps.
-        val segments = withEarlyEndBias(client.skipTimes(mal.malId, mal.episode, lengthSec))
+        // Per-type bias (owner 2026-07-11/12): intro skips land a beat early,
+        // the credits "Up next" prompt shows a beat late — both directions
+        // absorb the drift between his releases and community timestamps.
+        val segments = withSkipBias(client.skipTimes(mal.malId, mal.episode, lengthSec))
         if (segments.isNotEmpty()) {
             diagnostics.record(
                 "skip",

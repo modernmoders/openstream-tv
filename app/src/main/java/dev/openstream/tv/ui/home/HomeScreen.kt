@@ -276,6 +276,7 @@ fun HomeScreen(
                             row = row,
                             columns = state.columns,
                             progressByMeta = state.progressByMeta,
+                            seriesWatchByMeta = state.seriesWatchByMeta,
                             onItemClick = { openItem(row.ref.key, it) },
                             restoreItemId = openedItemId
                                 .takeIf { restorePending && openedRowKey == row.ref.key },
@@ -299,6 +300,7 @@ fun HomeScreen(
                             row = row,
                             columns = state.columns,
                             progressByMeta = state.progressByMeta,
+                            seriesWatchByMeta = state.seriesWatchByMeta,
                             onItemClick = { openItem(row.ref.key, it) },
                             restoreItemId = openedItemId
                                 .takeIf { restorePending && openedRowKey == row.ref.key },
@@ -618,6 +620,7 @@ private fun CatalogRow(
     row: RowState,
     columns: Int,
     progressByMeta: Map<String, dev.openstream.tv.domain.WatchProgress>,
+    seriesWatchByMeta: Map<String, dev.openstream.tv.domain.SeriesWatch>,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
     restoreItemId: String?,
     restoreFocus: FocusRequester,
@@ -682,6 +685,7 @@ private fun CatalogRow(
                                     .then(if (index == restoreIndex) Modifier.focusRequester(restoreFocus) else Modifier),
                                 columns = columns,
                                 progress = progressByMeta[ProgressRepository.metaKey(item.type, item.id)],
+                                seriesWatch = seriesWatchByMeta[ProgressRepository.metaKey(item.type, item.id)],
                             )
                         }
                     }

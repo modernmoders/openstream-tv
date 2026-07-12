@@ -11,6 +11,7 @@ import dev.openstream.tv.addon.absoluteEpisodeNumbers
 import dev.openstream.tv.autoplay.NextEpisode
 import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.SeriesWatchRepository
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.domain.ContentType
 import dev.openstream.tv.domain.WatchProgress
@@ -28,6 +29,7 @@ class DetailsViewModel @Inject constructor(
     private val metaRepository: MetaRepository,
     private val viewPrefs: ViewPrefs,
     progressRepository: ProgressRepository,
+    private val seriesWatchRepository: SeriesWatchRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -80,6 +82,12 @@ class DetailsViewModel @Inject constructor(
             val progress = progressRepository.observeProgressByExternalId().first()
             metaRepository.resolveMeta(type, id).fold(
                 onSuccess = { meta ->
+                    // Feed the browse tiles' "N of M episodes" display: this
+                    // is the one place the full episode list is guaranteed to
+                    // pass through (Round 17 series-watch cache).
+                    if (meta.videos.isNotEmpty()) {
+                        seriesWatchRepository.recordEpisodeCount(type, id, meta.videos.size)
+                    }
                     val seasons = meta.videos
                         .mapNotNull { it.season }
                         .distinct()

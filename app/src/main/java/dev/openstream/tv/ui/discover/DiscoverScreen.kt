@@ -257,6 +257,7 @@ fun DiscoverScreen(
                             ),
                         columns = state.view.columns,
                         progress = state.progressByMeta[ProgressRepository.metaKey(item.type, item.id)],
+                        seriesWatch = state.seriesWatchByMeta[ProgressRepository.metaKey(item.type, item.id)],
                     )
                 }
                 if (state.loading) {

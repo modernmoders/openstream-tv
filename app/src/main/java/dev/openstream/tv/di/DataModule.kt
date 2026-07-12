@@ -77,6 +77,12 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun seriesEpisodeCounts(
+        impl: dev.openstream.tv.data.DataStoreSeriesEpisodeCounts,
+    ): dev.openstream.tv.data.SeriesEpisodeCounts = impl
+
+    @Provides
+    @Singleton
     fun playbackPrefs(
         impl: dev.openstream.tv.data.DataStorePlaybackPrefs,
     ): dev.openstream.tv.data.PlaybackPrefs = impl

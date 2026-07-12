@@ -58,6 +58,24 @@ fun CaretDownIcon(tint: Color, modifier: Modifier = Modifier) {
     }
 }
 
+/** A » double chevron — the "this jumps forward" mark on the Skip pill
+ *  (owner's player mockup, Round 17). */
+@Composable
+fun ChevronsRightIcon(tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val stroke = Stroke(width = w * 0.13f, cap = StrokeCap.Round)
+        listOf(0.16f, 0.50f).forEach { x ->
+            val path = Path().apply {
+                moveTo(w * x, w * 0.22f)
+                lineTo(w * (x + 0.32f), w * 0.50f)
+                lineTo(w * x, w * 0.78f)
+            }
+            drawPath(path, tint, style = stroke)
+        }
+    }
+}
+
 /** Transport glyphs for the player's control bar. */
 enum class PlayerGlyphKind { PLAY, PAUSE, PREVIOUS, NEXT }
 

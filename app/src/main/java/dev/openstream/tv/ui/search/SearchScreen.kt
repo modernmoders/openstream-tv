@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,9 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.openstream.tv.ui.components.MicIconImage
+import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SkeletonPosterRow
@@ -69,10 +70,26 @@ fun SearchScreen(
     val voiceRequests by viewModel.voiceSearchRequests.collectAsStateWithLifecycle()
     var consumedVoiceRequest by rememberSaveable { mutableStateOf(0) }
     val keyboard = LocalSoftwareKeyboardController.current
+    val micFocus = remember { FocusRequester() }
+    // True from the instant the mic is (auto-)fired until the recognizer
+    // returns — the mic button fills solid accent for exactly that span, so
+    // "the TV is listening" is visible from the couch (owner 2026-07-12:
+    // "light up instantly and darken back to normal when it's done").
+    var listening by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val voicePending = state.voiceFirst && voiceRequests > consumedVoiceRequest
-        if (!voicePending) fieldFocus.requestFocus()
+        if (!voicePending) {
+            fieldFocus.requestFocus()
+        } else {
+            // Voice entry: selection lands on the MIC, not back on the rail
+            // (owner 2026-07-12: "the selection stays in the sidebar over the
+            // magnifying glass"). Probe a few frames — the pill composes late.
+            repeat(10) {
+                if (runCatching { micFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                withFrameNanos { }
+            }
+        }
     }
 
     Column(
@@ -112,8 +129,10 @@ fun SearchScreen(
             val voiceLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartActivityForResult()
             ) { result ->
-                // Whether the mic answered or was backed out of, the on-screen
-                // keyboard must not be left standing (owner 2026-07-12).
+                // Done listening — answered or backed out — the mic dims back
+                // to normal and the on-screen keyboard must not be left
+                // standing (owner 2026-07-12).
+                listening = false
                 keyboard?.hide()
                 result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                     ?.firstOrNull()
@@ -121,6 +140,16 @@ fun SearchScreen(
                         query = spoken
                         viewModel.search(spoken)
                     }
+            }
+            // One path for every mic fire (click or voice-first auto): light
+            // the button BEFORE the recognizer overlay opens; a launch failure
+            // (recognizer vanished mid-session) dims it right back.
+            fun startListening() {
+                keyboard?.hide()
+                listening = true
+                if (runCatching { voiceLauncher.launch(voiceIntent) }.isFailure) {
+                    listening = false
+                }
             }
 
             // Voice-first (owner Round-15 #9 + Round-16): EVERY deliberate
@@ -133,8 +162,8 @@ fun SearchScreen(
                     voiceRequests > consumedVoiceRequest
                 ) {
                     consumedVoiceRequest = voiceRequests
-                    keyboard?.hide()
-                    runCatching { voiceLauncher.launch(voiceIntent) }
+                    runCatching { micFocus.requestFocus() }
+                    startListening()
                 } else if (voiceRequests > consumedVoiceRequest) {
                     // Voice off or no recognizer: consume quietly, type instead.
                     consumedVoiceRequest = voiceRequests
@@ -146,17 +175,21 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Mic on the LEFT of the field (owner Round-15 #9): speaking
-                // is the first-class way in, typing the fallback.
+                // is the first-class way in, typing the fallback. `selected`
+                // rides the listening state — the shared pill's solid accent
+                // fill IS the "I'm listening" light.
                 if (voiceAvailable) {
-                    OutlinedButton(onClick = {
-                        // Recognizer can vanish between resolve and click
-                        // (app updates) — a dead mic must not crash Search.
-                        runCatching { voiceLauncher.launch(voiceIntent) }
-                    }) {
-                        // Crisp vector glyph, tinted to the theme accent —
-                        // replaces the "🎤" emoji (owner: "swap that
-                        // microphone for a better, clearer icon").
-                        MicIconImage(tint = Accent, modifier = Modifier.size(20.dp))
+                    SurfacePill(
+                        onClick = ::startListening,
+                        selected = listening,
+                        modifier = Modifier.focusRequester(micFocus),
+                    ) {
+                        // Crisp vector glyph (no emoji, house rule); dark ink
+                        // over the lit accent fill, accent over the quiet one.
+                        MicIconImage(
+                            tint = if (listening) Color(0xFF0E0E16) else Accent,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                 }
                 Box(Modifier.weight(1f)) {
@@ -184,7 +217,7 @@ fun SearchScreen(
             ),
         ) {
             items(state.rows, key = { it.ref.key }) { row ->
-                SearchRow(row, state.columns, state.progressByMeta, onItemClick)
+                SearchRow(row, state.columns, state.progressByMeta, state.seriesWatchByMeta, onItemClick)
             }
         }
     }
@@ -195,6 +228,7 @@ private fun SearchRow(
     row: RowState,
     columns: Int,
     progressByMeta: Map<String, dev.openstream.tv.domain.WatchProgress>,
+    seriesWatchByMeta: Map<String, dev.openstream.tv.domain.SeriesWatch>,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
 ) {
     Column {
@@ -253,6 +287,9 @@ private fun SearchRow(
                                     ),
                                 columns = columns,
                                 progress = progressByMeta[
+                                    dev.openstream.tv.data.ProgressRepository.metaKey(item.type, item.id),
+                                ],
+                                seriesWatch = seriesWatchByMeta[
                                     dev.openstream.tv.data.ProgressRepository.metaKey(item.type, item.id),
                                 ],
                             )

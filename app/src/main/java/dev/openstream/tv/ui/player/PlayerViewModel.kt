@@ -64,9 +64,10 @@ private const val SKIP_POLL_INTERVAL_MS = 500L
 private const val MAX_ERROR_SKIPS = 3
 
 /** Auto-advance on credits: quiet grace before the countdown even appears,
- *  then the countdown length (owner 2026-07-12: 10s later, count from 8). */
+ *  then the countdown length (owner 2026-07-12: 10s later, count from 8).
+ *  The countdown total is internal — the Up next card's ring drains against it. */
 private const val AUTO_ADVANCE_GRACE_MS = 10_000L
-private const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 8
+internal const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 8
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -145,8 +146,15 @@ class PlayerViewModel @Inject constructor(
         val resumePromptMs: Long? = null,
     )
 
-    /** A neighbouring episode the player's prev/next buttons can open. */
-    data class EpisodeTarget(val videoId: String, val title: String)
+    /** A neighbouring episode the player's prev/next buttons can open.
+     *  [episode]/[name]/[thumbnail] feed the "Up next" card (Round 17). */
+    data class EpisodeTarget(
+        val videoId: String,
+        val title: String,
+        val episode: Int? = null,
+        val name: String? = null,
+        val thumbnail: String? = null,
+    )
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
@@ -553,8 +561,8 @@ class PlayerViewModel @Inject constructor(
         val prev = NextEpisode.previousBefore(episodeVideos, currentId)
         val next = NextEpisode.nextAfter(episodeVideos, currentId)
         _uiState.value = _uiState.value.copy(
-            previousEpisode = prev?.let { EpisodeTarget(it.id, episodeTitle(it)) },
-            nextEpisode = next?.let { EpisodeTarget(it.id, episodeTitle(it)) },
+            previousEpisode = prev?.let { it.toEpisodeTarget() },
+            nextEpisode = next?.let { it.toEpisodeTarget() },
         )
     }
 
@@ -652,6 +660,14 @@ class PlayerViewModel @Inject constructor(
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { request?.source?.title.orEmpty() }
     }
+
+    private fun Video.toEpisodeTarget() = EpisodeTarget(
+        videoId = id,
+        title = episodeTitle(this),
+        episode = episode,
+        name = displayTitle.takeIf { it.isNotBlank() && it != id },
+        thumbnail = thumbnail,
+    )
 
     /**
      * Remember a track pick as the preferred language (DECISIONS #19).

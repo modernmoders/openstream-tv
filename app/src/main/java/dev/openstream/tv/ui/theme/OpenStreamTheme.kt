@@ -20,6 +20,15 @@ val MutedText = Color(0xFFB0B0C0)
 /** The single interaction accent — focus rings, selection ticks. */
 val Accent = Color(0xFF4DA3FF)
 
+/**
+ * Series-completion display (owner Round 17: "a different colored display for
+ * how much the user has watched out of ALL of the series"). Deliberately NOT
+ * the accent — warm amber so "how far through the SHOW" never gets read as
+ * the blue "how far through the EPISODE" ring. The one sanctioned second hue;
+ * anything else stays on [Accent].
+ */
+val SeriesAmber = Color(0xFFE2B457)
+
 /** Resting surface for a list row / card, just above the page background. */
 val SurfaceCard = Color(0xFF17171F)
 

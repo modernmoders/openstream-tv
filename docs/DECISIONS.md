@@ -1890,3 +1890,54 @@ polish. The behavioral decisions:
 6. Deploy discipline: alpha.53 went OTA to **.196 only** — .117 was showing
    a movie (owner rule this session); it will offer the update itself on its
    next app launch.
+
+## 63. 2026-07-12 (session 27) — Round 17: per-type skip bias, mockup skip/next UI, series-level amber, lit mic (alpha.55)
+
+Owner supplied a player-UI mockup (Skip Intro pill + "Up next" card) and four
+asks; the non-obvious choices:
+
+1. **Skip bias is now PER-TYPE, by failure direction** (`withSkipBias`
+   replaces `withEarlyEndBias`). INTRO keeps the 9s early END trim (a skip
+   seeks to the end; early = you see a beat of opening, late = eats
+   dialogue). CREDITS instead pushes its START 10s LATER and leaves its end
+   alone — nothing ever seeks to a credits end; what matters is when the
+   "Up next" prompt APPEARS, and appearing early covers the ending (owner:
+   "the next episode came about 10 seconds early") while appearing late is
+   invisible inside a ~90s credits roll. The old code trimmed BOTH ends,
+   which did nothing for the credits' early-start problem.
+2. **Skip/next UI = the owner's mockup.** Intro: near-black capsule, hairline
+   white border, bold label + drawn » (ChevronsRightIcon), and it FADES after
+   20s (SKIP_INTRO_HINT_MS) — while faded the global OK intercept stands
+   down too, so an invisible button can never swallow a key. Credits without
+   countdown: same pill saying "Next Episode" (stays for the whole window —
+   it must remain actionable). Countdown: shared `NextEpisodeCard`
+   (components) — thumbnail, "Up next"/episode line, draining ProgressRing,
+   solid-accent "Play now [OK]" + see-through "Cancel [BACK]" pills that are
+   NOT focusable (global OK/BACK still drive it; the tiny key hints replace
+   the old text line). The autoplay UpNextOverlay's Countdown state wears the
+   same card, so "Up next" always looks like itself.
+3. **The control bar PUSHES the skip/next UI up** instead of covering it
+   (owner hit this: pressed DOWN during credits, the bar hid the Next
+   Episode button). The bar's Column reports its height via
+   onGloballyPositioned; the hint corner's bottom padding animates between
+   96dp (bar asleep) and barHeight+20dp (bar awake). Measured, not
+   hardcoded — the bar's height varies with the trouble group's caption.
+4. **Series-level watched display = the ONE sanctioned second hue.**
+   `SeriesAmber` (#E2B457) — a thin 3dp bar along the poster's bottom edge +
+   "12 of 220 episodes" in the focus reveal — so "how far through the SHOW"
+   can never be misread as the blue "how far through the EPISODE" ring.
+   Watched counts come from progress rows (`watchedCountByMetaKey`, ≥95%
+   line); totals are cached per series in a DataStore
+   (`series_episode_counts`) written by DetailsViewModel when a full episode
+   list passes through. DataStore, NOT a Room table, on purpose: totals are
+   a rebuildable cache of addon data — zero-migration-risk for a cosmetic
+   display. A series with no cached total shows nothing until its Details is
+   opened once. Interface `SeriesEpisodeCounts` so ViewModel tests stay JVM.
+5. **The mic lights while listening.** The Search mic button is a
+   `SurfacePill` whose `selected` rides a `listening` flag (set before the
+   recognizer launches, cleared in the ActivityResult callback) — SELECTED's
+   solid accent fill IS the "I'm listening" light, no new visual language.
+   On a voice-first entry, focus goes to the MIC (not the text field — that
+   pops the keyboard; not the rail — that's where it used to stick).
+   Emulator-verified before/after: lit accent pill while the Google speech
+   activity is on top, quiet pill + focus ring after BACK.

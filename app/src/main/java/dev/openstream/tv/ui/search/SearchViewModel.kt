@@ -9,7 +9,9 @@ import dev.openstream.tv.addon.CatalogRepository.CatalogRef
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.SeriesWatchRepository
 import dev.openstream.tv.data.ViewPrefs
+import dev.openstream.tv.domain.SeriesWatch
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
@@ -31,6 +33,7 @@ class SearchViewModel @Inject constructor(
     private val catalogRepository: CatalogRepository,
     viewPrefs: ViewPrefs,
     progressRepository: ProgressRepository,
+    seriesWatchRepository: SeriesWatchRepository,
     voiceSearchTrigger: VoiceSearchTrigger,
 ) : ViewModel() {
 
@@ -53,6 +56,8 @@ class SearchViewModel @Inject constructor(
         val columns: Int = DEFAULT_POSTER_COLUMNS,
         /** Latest watch progress per "metaType/metaId" for tile indicators (#5). */
         val progressByMeta: Map<String, WatchProgress> = emptyMap(),
+        /** Series completion ("12 of 220") per "metaType/metaId" (Round 17). */
+        val seriesWatchByMeta: Map<String, SeriesWatch> = emptyMap(),
         /** Voice-first search (Round-15 #9): opening Search fires the mic. */
         val voiceFirst: Boolean = true,
     )
@@ -71,6 +76,11 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             progressRepository.observeProgressByMetaKey().collect { byMeta ->
                 _uiState.update { it.copy(progressByMeta = byMeta) }
+            }
+        }
+        viewModelScope.launch {
+            seriesWatchRepository.observeSeriesWatchByMetaKey().collect { byMeta ->
+                _uiState.update { it.copy(seriesWatchByMeta = byMeta) }
             }
         }
         viewModelScope.launch {

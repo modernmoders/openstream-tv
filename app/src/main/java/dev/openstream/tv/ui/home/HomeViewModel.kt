@@ -11,10 +11,12 @@ import dev.openstream.tv.addon.MetaRepository
 import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
 import dev.openstream.tv.data.HomeRowPrefsStore
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.SeriesWatchRepository
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.data.applyTo
 import dev.openstream.tv.data.isRecommendations
 import dev.openstream.tv.data.withRecommendationsFirst
+import dev.openstream.tv.domain.SeriesWatch
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
@@ -40,6 +42,7 @@ class HomeViewModel @Inject constructor(
     private val metaRepository: MetaRepository,
     private val rowPrefs: HomeRowPrefsStore,
     private val viewPrefs: ViewPrefs,
+    seriesWatchRepository: SeriesWatchRepository,
 ) : ViewModel() {
 
     companion object {
@@ -91,6 +94,8 @@ class HomeViewModel @Inject constructor(
         val columns: Int = DEFAULT_POSTER_COLUMNS,
         /** Latest watch progress per "metaType/metaId" for tile indicators (#5). */
         val progressByMeta: Map<String, WatchProgress> = emptyMap(),
+        /** Series completion ("12 of 220") per "metaType/metaId" (Round 17). */
+        val seriesWatchByMeta: Map<String, SeriesWatch> = emptyMap(),
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -111,6 +116,11 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             progressRepository.observeProgressByMetaKey().collect { byMeta ->
                 _uiState.update { it.copy(progressByMeta = byMeta) }
+            }
+        }
+        viewModelScope.launch {
+            seriesWatchRepository.observeSeriesWatchByMetaKey().collect { byMeta ->
+                _uiState.update { it.copy(seriesWatchByMeta = byMeta) }
             }
         }
         viewModelScope.launch {

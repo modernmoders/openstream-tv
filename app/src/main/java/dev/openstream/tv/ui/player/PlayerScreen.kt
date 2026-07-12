@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,6 +48,9 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -67,7 +71,9 @@ import dev.openstream.tv.player.disableSubtitles
 import dev.openstream.tv.player.toTrackMenu
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import dev.openstream.tv.ui.components.ChevronsRightIcon
 import dev.openstream.tv.ui.components.LoadingAnimation
+import dev.openstream.tv.ui.components.NextEpisodeCard
 import dev.openstream.tv.ui.components.PlayerGlyph
 import dev.openstream.tv.ui.components.PlayerGlyphKind
 import dev.openstream.tv.ui.components.SurfacePill
@@ -79,6 +85,11 @@ import dev.openstream.tv.ui.theme.MutedText
 import kotlinx.coroutines.delay
 
 private const val OVERLAY_TIMEOUT_MS = 5_000L
+
+/** The Skip Intro pill quietly fades away after this long on screen (owner's
+ *  mockup, Round 17: "fades after 20s, no cancel needed") — someone who wants
+ *  the opening shouldn't stare at a button for the whole 90s window. */
+private const val SKIP_INTRO_HINT_MS = 20_000L
 
 /** How long a mid-playback rebuffer must persist before the small ring shows —
  *  keeps ordinary sub-frame stalls invisible (no spinner flashes, owner
@@ -287,6 +298,23 @@ fun PlayerScreen(
     val loading = state.error == null && !state.ended && autoplay == null &&
         (state.resumePromptMs != null || (!startedOnce && playbackState != Player.STATE_READY))
 
+    // The Skip Intro pill's 20s fade (owner mockup): expiry is per-window —
+    // a new segment (or re-entering one by scrubbing) restarts the clock.
+    // While expired, the pill hides AND the global OK intercept stands down,
+    // so an invisible button can never swallow a key.
+    var introHintExpired by remember { mutableStateOf(false) }
+    LaunchedEffect(state.skipSegment) {
+        introHintExpired = false
+        if (state.skipSegment?.type == SkipType.INTRO) {
+            delay(SKIP_INTRO_HINT_MS)
+            introHintExpired = true
+        }
+    }
+    fun skipHintActive(): Boolean {
+        val seg = state.skipSegment ?: return false
+        return !(seg.type == SkipType.INTRO && introHintExpired)
+    }
+
     // Focus follows the bar: on it when shown, back to the full-screen catcher
     // when hidden (so the next key wakes it rather than seeking blindly). While
     // loading the resume prompt (or nothing) owns focus, so don't grab the
@@ -337,7 +365,7 @@ fun PlayerScreen(
                 // focused control (owner 2026-07-12: the skip button was
                 // hijacking every OK for the whole 90s window — pause,
                 // scrubbing, everything).
-                if (state.skipSegment != null && !overlayVisible &&
+                if (skipHintActive() && !overlayVisible &&
                     (code == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
                         code == AndroidKeyEvent.KEYCODE_ENTER ||
                         code == AndroidKeyEvent.KEYCODE_NUMPAD_ENTER)
@@ -393,6 +421,11 @@ fun PlayerScreen(
             }
         }
 
+        // The control bar's measured height: the skip/next UI pads itself by
+        // this when the bar wakes, riding ABOVE it instead of being covered
+        // (owner Round 17 — "the scrobble ui covered the next episode button").
+        var barHeightPx by remember { mutableIntStateOf(0) }
+
         // Slide+fade keeps the wake/sleep feeling intentional rather than a
         // pop. On boxes with animations off it degrades to today's instant
         // show/hide — never worse, sometimes silkier.
@@ -405,6 +438,7 @@ fun PlayerScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onGloballyPositioned { barHeightPx = it.size.height }
                     .background(Color(0xC0000000))
                     .padding(horizontal = 48.dp, vertical = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -527,20 +561,39 @@ fun PlayerScreen(
         // Anime intro/credits skip: floats bottom-right during the window,
         // shown even when the bar is asleep. Not focusable — OK is intercepted
         // globally (above) so there's no TV focus to juggle. Hidden while a
-        // panel is up. Round-15: sits lower + see-through; a credits window is
-        // a "Next Episode" button now, and while the auto-advance countdown
-        // runs it becomes the countdown pill (BACK cancels).
-        if (state.skipSegment != null && state.error == null && !state.ended && autoplay == null) {
+        // panel is up. Round 17 (owner mockup): the intro is a » pill that
+        // fades after 20s; credits are the "Up next" card; and when the
+        // control bar wakes, this whole corner lifts to sit ABOVE the bar
+        // instead of disappearing under it.
+        val skipSeg = state.skipSegment
+        if (skipSeg != null && state.error == null && !state.ended && autoplay == null) {
+            val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
+            val hintLift by animateDpAsState(
+                targetValue = if (overlayVisible && !loading) barHeight + 20.dp else 96.dp,
+                animationSpec = tween(220),
+                label = "skip-hint-lift",
+            )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 48.dp, bottom = 96.dp),
+                    .padding(end = 48.dp, bottom = hintLift),
             ) {
                 val countdown = state.nextEpisodeCountdown
                 when {
-                    countdown != null -> CountdownHint(countdown)
-                    state.skipSegment!!.type == SkipType.CREDITS -> SkipHint("Next Episode")
-                    else -> SkipHint(state.skipSegment!!.type.label)
+                    countdown != null -> NextEpisodeCard(
+                        episodeLabel = upNextLabel(state.nextEpisode),
+                        thumbnail = state.nextEpisode?.thumbnail,
+                        secondsLeft = countdown,
+                        totalSeconds = AUTO_ADVANCE_COUNTDOWN_SECONDS,
+                    )
+                    skipSeg.type == SkipType.CREDITS -> SkipPill("Next Episode")
+                    else -> AnimatedVisibility(
+                        visible = !introHintExpired,
+                        enter = fadeIn(tween(180)),
+                        exit = fadeOut(tween(700)),
+                    ) {
+                        SkipPill(skipSeg.type.label)
+                    }
                 }
             }
         }
@@ -733,59 +786,44 @@ private fun ScrubBar(
 }
 
 /**
- * The "Skip Intro"/"Skip Credits" hint (AniSkip). A styled pill, not a
- * focusable — OK is intercepted globally to fire the skip, so no focus tug on
- * the video. The [OK] chip tells the viewer which button does it.
+ * The Skip Intro / Next Episode pill (owner's mockup, Round 17): a quiet
+ * near-black capsule with a hairline light border, bold white label and a
+ * drawn » — reads like the streaming-app standard. Not focusable — OK is
+ * intercepted globally to fire the skip, so no focus tug on the video.
  */
 @Composable
-private fun SkipHint(label: String) {
+private fun SkipPill(label: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
-            // Round-15: see-through enough that the video reads underneath,
-            // opaque enough that the label stays legible over bright frames.
-            .background(Color(0xA8181822), RoundedCornerShape(28.dp))
-            .border(2.dp, Accent, RoundedCornerShape(28.dp))
-            .padding(horizontal = 22.dp, vertical = 12.dp),
+            // See-through enough that the video reads underneath, opaque
+            // enough that the label stays legible over bright frames.
+            .background(Color(0xB80D1015), RoundedCornerShape(999.dp))
+            .border(1.5.dp, Color(0x59FFFFFF), RoundedCornerShape(999.dp))
+            .padding(horizontal = 24.dp, vertical = 13.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.titleMedium, color = Color.White)
         Text(
-            "OK",
-            style = MaterialTheme.typography.labelLarge,
-            color = Accent,
-            modifier = Modifier
-                .border(1.dp, Accent, RoundedCornerShape(6.dp))
-                .padding(horizontal = 8.dp, vertical = 2.dp),
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
         )
+        ChevronsRightIcon(tint = Color.White, modifier = Modifier.size(16.dp))
     }
 }
 
 /**
- * The auto-advance countdown (owner Round-15 #4): small, low, translucent —
- * "Next episode in 4…". OK goes now (global intercept), BACK keeps watching.
+ * The Up next card's episode line: "Episode 5 · The Long Blade" when we know
+ * the pieces (mockup wording, spelled out — house rule: no "S1E5"), the full
+ * navigation title otherwise, and a plain fallback while the episode list is
+ * still resolving.
  */
-@Composable
-private fun CountdownHint(secondsLeft: Int) {
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier
-            .background(Color(0xA8181822), RoundedCornerShape(28.dp))
-            .border(2.dp, Accent, RoundedCornerShape(28.dp))
-            .padding(horizontal = 22.dp, vertical = 12.dp),
-    ) {
-        Text(
-            "Next episode in $secondsLeft…",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-        )
-        Text(
-            "OK now · BACK to keep watching",
-            style = MaterialTheme.typography.labelSmall,
-            color = MutedText,
-        )
-    }
+private fun upNextLabel(target: PlayerViewModel.EpisodeTarget?): String {
+    if (target == null) return "Next episode"
+    return listOfNotNull(target.episode?.let { "Episode $it" }, target.name)
+        .joinToString(" · ")
+        .ifBlank { target.title }
 }
 
 /**

@@ -105,8 +105,8 @@ class AniSkipTest {
             client = { mal, ep, _ -> if (mal == 20L && ep == 3) listOf(intro, credits) else emptyList() },
         )
         assertEquals(
-            // The repository applies the early-end bias on the way through.
-            withEarlyEndBias(listOf(intro, credits)),
+            // The repository applies the per-type bias on the way through.
+            withSkipBias(listOf(intro, credits)),
             r.segmentsFor("mal:20", season = null, episode = 3, absoluteEpisode = null, durationMs = 0),
         )
     }
@@ -121,7 +121,7 @@ class AniSkipTest {
             client = { mal, ep, _ -> if (mal == 20L && ep == 40) listOf(intro) else emptyList() },
         )
         assertEquals(
-            withEarlyEndBias(listOf(intro)),
+            withSkipBias(listOf(intro)),
             r.segmentsFor("tt0409591", season = 2, episode = 5, absoluteEpisode = 40, durationMs = 0),
         )
     }
@@ -136,12 +136,12 @@ class AniSkipTest {
     }
 }
 
-/** Round-15 additions: early-end bias + the auto-skip decision. */
+/** Round-15/17 additions: per-type bias + the auto-skip decision. */
 class SkipBehaviorTest {
 
     @Test
-    fun `segment ends are trimmed so a skip lands early, never late`() {
-        val trimmed = withEarlyEndBias(
+    fun `intro ends are trimmed so a skip lands early, never late`() {
+        val trimmed = withSkipBias(
             listOf(SkipSegment(SkipType.INTRO, 40_000, 130_000)),
         )
         assertEquals(130_000 - SKIP_END_EARLY_MS, trimmed.single().endMs)
@@ -149,9 +149,26 @@ class SkipBehaviorTest {
     }
 
     @Test
-    fun `a window too short to trim keeps at least one second`() {
-        val tiny = withEarlyEndBias(listOf(SkipSegment(SkipType.CREDITS, 10_000, 11_500)))
+    fun `an intro too short to trim keeps at least one second`() {
+        val tiny = withSkipBias(listOf(SkipSegment(SkipType.INTRO, 10_000, 11_500)))
         assertEquals(11_000, tiny.single().endMs) // floor: start + 1s
+        assertEquals(10_000, tiny.single().startMs)
+    }
+
+    @Test
+    fun `credits start late so the Up next prompt never beats the credits`() {
+        val biased = withSkipBias(
+            listOf(SkipSegment(SkipType.CREDITS, 1_360_000, 1_440_000)),
+        )
+        assertEquals(1_360_000 + CREDITS_START_LATE_MS, biased.single().startMs)
+        assertEquals(1_440_000, biased.single().endMs) // end untouched — nothing seeks there
+    }
+
+    @Test
+    fun `credits too short to delay keep at least one second of window`() {
+        val tiny = withSkipBias(listOf(SkipSegment(SkipType.CREDITS, 10_000, 11_500)))
+        assertEquals(10_500, tiny.single().startMs) // ceiling: end - 1s
+        assertEquals(11_500, tiny.single().endMs)
     }
 
     @Test

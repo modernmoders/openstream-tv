@@ -34,9 +34,11 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import dev.openstream.tv.addon.MetaItem
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.domain.SeriesWatch
 import dev.openstream.tv.domain.WatchProgress
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.CardSizeTokens
+import dev.openstream.tv.ui.theme.SeriesAmber
 import kotlinx.coroutines.delay
 
 /** How long focus must REST on a card before its title reveals (ms). */
@@ -90,6 +92,7 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     columns: Int = CardSizeTokens.DEFAULT_COLUMNS,
     progress: WatchProgress? = null,
+    seriesWatch: SeriesWatch? = null,
 ) {
     val width = CardSizeTokens.posterWidth(columns)
     val height = CardSizeTokens.posterHeight(columns)
@@ -158,6 +161,16 @@ fun PosterCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 10.dp),
                 )
+                // Series-level completion in the focus reveal (Round 17):
+                // amber, so it never reads as the episode's blue progress.
+                if (seriesWatch != null) {
+                    Text(
+                        text = "${seriesWatch.watched} of ${seriesWatch.total} episodes",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SeriesAmber,
+                        modifier = Modifier.padding(start = 10.dp),
+                    )
+                }
                 // The focus reveal completes the in-progress story: a thin
                 // progress bar + "N min left" under the title (handoff 1a).
                 if (indicator is PosterIndicator.InProgress) {
@@ -183,6 +196,26 @@ fun PosterCard(
                     )
                 }
                 Box(Modifier.height(4.dp))
+            }
+            // Series completion bar (Round 17): a thin amber fill along the
+            // poster's bottom edge — how much of the WHOLE show is watched,
+            // in a different color from the episode ring. Only appears once
+            // something's been finished, so untouched artwork stays pristine.
+            if (seriesWatch != null) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(Color(0x8004080E)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(seriesWatch.fraction)
+                            .height(3.dp)
+                            .background(SeriesAmber),
+                    )
+                }
             }
             // Corner indicator (watched system): in-progress = progress ring
             // with the percent inside; watched = solid accent check disc.

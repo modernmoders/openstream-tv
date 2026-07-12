@@ -27,10 +27,19 @@ import dev.openstream.tv.ui.theme.MutedText
 @Composable
 fun UpNextOverlay(state: AutoplayStateMachine.State?) {
     when (state) {
-        is AutoplayStateMachine.State.Countdown -> UpNextCard(
-            headline = "Up next: ${state.next.upNextLabel()}",
-            detail = "Playing in ${state.secondsLeft}s   (OK play now · Back cancel)",
-        )
+        // The countdown wears the Round-17 mockup card — same face as the
+        // in-player credits countdown, so "Up next" always looks like itself.
+        is AutoplayStateMachine.State.Countdown -> Box(
+            Modifier.fillMaxSize().padding(48.dp),
+            contentAlignment = Alignment.BottomEnd,
+        ) {
+            NextEpisodeCard(
+                episodeLabel = state.next.upNextLabel(),
+                thumbnail = state.next.thumbnail,
+                secondsLeft = state.secondsLeft,
+                totalSeconds = AutoplayStateMachine.DEFAULT_COUNTDOWN_SECONDS,
+            )
+        }
         is AutoplayStateMachine.State.Resolving -> UpNextCard(
             headline = "Finding next episode…",
             detail = if (state.totalAddons > 0) {
