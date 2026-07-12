@@ -1,4 +1,38 @@
-# STATE — updated 2026-07-12 by session 25 (cont. 3)
+# STATE — updated 2026-07-12 by session 26
+
+## ⚠️ READ FIRST (session 26 — 2026-07-12 — alpha.54 PUBLISHED OTA: logo redo — banner/icon scaled into the launcher safe zone)
+**alpha.54 (versionCode 54) BUILT — gates green (assembleDebug +
+testDebugUnitTest, exit 0) + assembleRelease clean — and PUBLISHED to the
+update server. Neither box driven this session: BOTH will offer alpha.54 on
+their next app launch (one OK each; .117 skips straight from .52, .196 from
+.53 — versionCode compare, nothing cumulative to worry about).**
+Owner ask: "logo redo, it's way too large." The logo = the TV-launcher
+banner + launcher icon (no other logo surface exists in the app — Home's
+header is plain text). All three drawables drew their art near full-bleed:
+- `tv_banner_streams.xml` (owner brand): wordmark ink spanned x8–312 of 320
+  (2.5% margins). Now a `<group>` scales it 0.72 about the ink centre →
+  ~68% banner width, centred, Netflix-like breathing room.
+- `tv_banner.xml` (repo-neutral): the S filled 91% of banner height → 0.55
+  scale, ~50% height, centred.
+- `ic_launcher.xml`: S eased 0.85 → ~57% of the tile (was 67%).
+Same paths, no redraw — comments in each file say to redraw rather than
+stack transforms if the art ever changes. Verified: SVG before/after render
++ ON THE EMULATOR'S LAUNCHER Apps row (apps-view screenshot shows the new
+proportioned tile).
+⚠️ Emulator gotcha (cost 10 min): the TV launcher CACHES banners + labels —
+after installing, the Home favorites row still showed the old tile/label;
+`pm clear com.google.android.tvlauncher` busted it. If a real box still
+shows the old banner after updating, a box reboot refreshes the launcher
+row (don't chase it as an app bug).
+⏳ **NEXT ACTION:** (a) Boxes self-offer alpha.54 on next app open — owner
+presses Update (dialog focuses Cancel; Update is LEFT). This carries all of
+Round 16 to .117 too. (b) Owner's Round-16 retests (below) now happen on
+alpha.54: Naruto auto-pick = English dual audio; skip ~9s earlier; pause
+works with Skip button up; Settings Anime drawer; Search mic re-fires.
+(c) After updating, owner eyeballs the new launcher banner size (reboot the
+box if the launcher still shows the old one). (d) Backlog unchanged: 9s
+skip bias knob if it overshoots (Round-17 candidate), player UI beauty
+pass (owner wish, future), #16 user skins (future).
 
 ## ⚠️ READ FIRST (session 25 cont. 3 — 2026-07-12 — alpha.53 BUILT + OTA'd to .196: Round 16 fully built — ⚠️ .117 NOT updated on purpose)
 **alpha.53 (versionCode 53) BUILT — gates green (364 tests, 0 failures; both
