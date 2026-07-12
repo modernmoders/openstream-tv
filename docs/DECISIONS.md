@@ -1814,3 +1814,40 @@ polish. The behavioral decisions:
 4. Skip/countdown pills: background 0xF0→0xA8 alpha (owner: "see a little
    through it") and moved lower (bottom 140→96dp). Countdown reuses the pill
    style; the two never show together.
+
+## 61. 2026-07-12 (session 25 cont.) — Round-15 close-out: Naruto photos root cause, voice-first search, Settings rework (alpha.52)
+
+1. **Round-14 #4 / Round-15 #8 ROOT-CAUSED — it's an ecosystem data gap, not
+   our bug and not config.** Cinemeta AND the owner's AIOMetadata both return
+   thumbnail URLs for every Naruto episode, all seasons — but they all point
+   at `episodes.metahub.space/tt0409591/{s}/{e}/w780.jpg`, and metahub has NO
+   images for Naruto beyond roughly absolute episode 52: every S2+ URL is a
+   plain 404 (probed directly). Same reason Stremio showed blanks. Data can't
+   be fixed from our side, so the APP degrades gracefully now: an episode
+   still that fails to load swaps to the show's backdrop (one retry, then the
+   flat placeholder) — `EpisodeRow` tracks Coil's onError. Applies to every
+   show with missing stills, permanently.
+2. **Voice-first search (#9):** the mic button moved to the LEFT of the text
+   field, and opening Search fresh auto-fires the system recognizer
+   (`voiceFirstSearch` pref, default ON, Settings → "Search by talking").
+   Guards: fires once per arrival (rememberSaveable), only when the screen is
+   blank (a BACK-return with results stays put), never without a recognizer.
+3. **Settings rework (#10):** flat CAPTIONED sections (nothing expands) in
+   visual-first order — HOW THINGS LOOK (Home rows / Poster size / Discover
+   hide-watched, now surfaced in Settings too) → SOUND → SEARCH → ANIME
+   (+ Episode numbers moved here: it exists because of anime numbering) →
+   PLAYBACK → THIS TV (App update / Reset settings / Expert). **Home got the
+   same "View ⚙" pill as Discover** (poster size edited in place, live).
+   **Player moved under Expert mode** (long-press on a stream stays the
+   everyday override). **"Connect this TV" REMOVED** — it was a confusing
+   twin of "Reset this TV", which reaches the same name-setup screen.
+   **"Reset settings to default"** sits just before Expert: clears the
+   view_prefs + playback_prefs DataStores (`resetToDefaults()` = clear(), so
+   future settings are covered automatically) and touches NOTHING identity —
+   profile, addons, watch history all stay.
+4. Emulator-verified by screenshot (sections, Home View dialog, THIS TV
+   block); uiautomator dump crashes on Compose trees sometimes (NPE inside
+   the TOOL — a `Process: dev.openstream.tv` grep tells app crashes apart).
+5. **alpha.52 was delivered to BOTH boxes via the OTA updater** — publish →
+   prompt → confirm, no adb install. The wake, OK, wait, DPAD_LEFT, OK
+   sequence from DECISIONS #59 worked first try on both.

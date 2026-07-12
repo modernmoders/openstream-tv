@@ -1,4 +1,40 @@
-# STATE — updated 2026-07-11 by session 25 (cont.)
+# STATE — updated 2026-07-12 by session 25 (cont. 2)
+
+## ⚠️ READ FIRST (session 25 cont. 2 — 2026-07-12 — alpha.52 LIVE ON BOTH BOXES via OTA: Round 15 CLOSED — Naruto photos root-caused + fallback, voice-first search, Settings rework)
+**alpha.52 (versionCode 52) BUILT — gates green (362 tests, 0 failures; the
+known HomeViewModelTest flake cleared on rerun) + assembleRelease clean +
+emulator-verified by screenshot — and DELIVERED TO BOTH BOXES OVER THE AIR
+(publish → box prompt → confirm; .196 and .117 both verified 0.3.0-alpha.52,
+apps resumed, zero FATALs).** DECISIONS #61. Round 15 is now fully closed:
+- **#8 Naruto photos — ROOT-CAUSED, ecosystem gap, graceful fallback built.**
+  Every meta source (Cinemeta + owner's AIOMetadata) points Naruto episode
+  stills at metahub, and metahub simply has no images past ~absolute ep 52
+  (S2+ = HTTP 404; probed). Same on Stremio — nothing config-side can fix it.
+  The app now swaps a failed still to the SHOW'S BACKDROP (EpisodeRow onError
+  retry), so no show ever renders blank gray boxes again.
+- **#9 voice-first search:** mic button now LEFT of the text field; opening
+  Search fresh auto-starts the mic (say the title, no typing) — once per
+  arrival, only when blank, only if a recognizer exists. Settings → SEARCH →
+  "Search by talking" (default ON) turns it off.
+- **#10 Settings rework:** flat captioned sections, visual-first — HOW THINGS
+  LOOK / SOUND / SEARCH / ANIME (Episode numbers moved in) / PLAYBACK / THIS
+  TV. Home gained the same "View ⚙" pill as Discover (poster size in place,
+  live). Player → Expert mode. "Connect this TV" REMOVED (twin of "Reset this
+  TV"). NEW "Reset settings to default" just before Expert — resets view +
+  playback prefs, keeps profile/addons/history (no sign-out). Discover's
+  hide-watched also surfaced in Settings.
+- ⚠️ Emulator gotchas hit this session: uiautomator dump can CRASH ITSELF on
+  Compose trees (an NPE in the tool — check `Process: dev.openstream.tv`
+  before assuming an app crash); repeated BACK presses trip the
+  press-BACK-again-to-exit flow (drive Settings via the header pills instead).
+⏳ **NEXT ACTION:** (a) **Owner eyeballs alpha.52** (both boxes already have
+it): Search — mic is left of the box and opening Search starts listening
+right away (toggle: Settings → SEARCH); Settings — sectioned layout, Home
+"View ⚙" pill, Reset settings entry; Naruto — S2+ episode rows show the
+show's backdrop instead of blank boxes (community has no per-episode photos
+for those — that part is unfixable upstream). (b) Rachael's box leaves today:
+DONE — it's on alpha.52 with the OTA updater; future fixes just get
+published. (c) Backlog now: #16 user skins (future), any new owner rounds.
 
 ## ⚠️ READ FIRST (session 25 — 2026-07-11 — alpha.50 OTA UPDATER + alpha.51 skip cluster: BOTH LIVE ON BOTH BOXES, alpha.51 delivered over the internet)
 **The two headline items are DONE and deployed:**
