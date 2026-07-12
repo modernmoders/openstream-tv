@@ -1851,3 +1851,42 @@ polish. The behavioral decisions:
 5. **alpha.52 was delivered to BOTH boxes via the OTA updater** — publish →
    prompt → confirm, no adb install. The wake, OK, wait, DPAD_LEFT, OK
    sequence from DECISIONS #59 worked first try on both.
+
+## 62. 2026-07-12 (session 25 cont. 3) — Round 16: the ⛿ audio-language parser, skip re-tuning, Anime drawer (alpha.53)
+
+1. **"Japanese first stream" ROOT-CAUSED (Round-16 #6).** The alpha.37
+   English-audio ranking parsed an "Audio: …" section — but current
+   AIOStreams labels mark languages as a `⛿` pennant with Unicode SMALL-CAPS
+   codes (`⛿ ᴇɴ · ᴊᴀ · sᴜʙ (ᴇɴ)`). Nothing matched → every stream ranked
+   "English" (the conservative fallback) → resolution decided → 1080p ᴊᴀ-only
+   beat the 720p ᴇɴ·ᴊᴀ duals that DID exist for Naruto S1E12 (verified
+   against all 3 live AIOStreams). `hasEnglishAudio` now normalizes small
+   caps and reads the pennant's audio half — everything after "sub" is
+   subtitles and must not count (ᴊᴀ audio + ᴇɴ subs ≠ English). Old
+   "Audio:" format kept as fallback; bare pennant stays neutral. TDD'd with
+   the real label strings.
+2. **Skip re-tuning (owner feel-tested on the box):** early-end bias 2s→9s
+   ("subtract 7 more"); BOTH auto-skips default OFF now; auto-advance gets a
+   10s grace after the credits window opens, then an 8s countdown; and the
+   skip button no longer hijacks OK — it only intercepts while the control
+   bar is asleep (it was eating pause/controls for the entire 90s window).
+3. **Settings polish:** the ANIME group is a collapsed DRAWER below PLAYBACK
+   (darker slab 0x59000000 + drawn caret that flips; children render inside
+   the slab — the background is what says "grouped"). Entry text bumped a
+   size (titleLarge/bodyMedium; captions titleSmall) for couch readability.
+   Episode numbers lives inside the drawer.
+4. **Voice-first search fixed twice (Round-16 #3/#4):** a new
+   `VoiceSearchTrigger` singleton — goSection(SEARCH) bumps a counter, the
+   screen fires the mic once per unseen bump — so EVERY deliberate click
+   into Search re-fires the mic even over old results, while BACK-returns
+   (no bump) never do. The on-screen keyboard is hidden before the mic
+   launches and again when the overlay returns, and the text field skips its
+   entry focus-grab when a voice fire is pending (focusing it was what
+   popped the keyboard).
+5. **Player trouble panel:** "Software video" pill REMOVED (per-stream auto
+   decoder + the expert Settings toggle cover it); "Try a different stream"
+   stays leftmost and its label renders in ACCENT — reads as the first thing
+   to try without saying so.
+6. Deploy discipline: alpha.53 went OTA to **.196 only** — .117 was showing
+   a movie (owner rule this session); it will offer the update itself on its
+   next app launch.

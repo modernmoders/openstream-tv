@@ -1,5 +1,43 @@
 # STATE — updated 2026-07-12 by session 25 (cont. 3)
 
+## ⚠️ READ FIRST (session 25 cont. 3 — 2026-07-12 — alpha.53 BUILT + OTA'd to .196: Round 16 fully built — ⚠️ .117 NOT updated on purpose)
+**alpha.53 (versionCode 53) BUILT — gates green (364 tests, 0 failures; both
+documented HomeViewModelTest flakes cleared on rerun) + assembleRelease clean
++ emulator-verified by screenshot. Published to the update server and
+DELIVERED OVER THE AIR to .196 (verified 0.3.0-alpha.53, app resumed, no
+crashes). ⚠️ .117 deliberately untouched (owner watching a movie) — it's on
+alpha.52 and will OFFER alpha.53 itself on its next app launch (one OK).**
+DECISIONS #62. Every Round-16 item built:
+- **#6 Japanese-stream bug FIXED (the big one):** AIOStreams' current labels
+  mark languages as `⛿` + Unicode small-caps (`⛿ ᴇɴ · ᴊᴀ`); the alpha.37
+  parser looked for "Audio:" and matched NOTHING → everything ranked English
+  → resolution won → 1080p ᴊᴀ-only beat the real ᴇɴ·ᴊᴀ duals. Parser now
+  normalizes small caps, reads the pennant, and ignores the sub(…) half
+  (English SUBS ≠ English audio). Verified against the live labels for
+  Naruto S1E12 on all 3 instances. **Owner retest: Naruto should now
+  auto-pick the English dual-audio release.**
+- **Skip re-tuning:** end bias 9s (was 2s); BOTH auto-skips now DEFAULT OFF;
+  auto-advance = 10s grace + 8s countdown; skip button no longer hijacks OK
+  while the control bar is up (pause works during intros again).
+- **Settings:** ANIME is a collapsed drawer BELOW PLAYBACK on a darker slab
+  (drawn caret flips open; Episode numbers inside); entry text one size up.
+- **Search:** every deliberate click into Search re-fires the mic (new
+  VoiceSearchTrigger — rail/pill bumps a counter; BACK-returns don't);
+  keyboard hidden before + after the voice overlay and the field skips its
+  focus-grab when a voice fire is pending → no lingering keyboard.
+- **Player:** "Software video" pill gone; "Try a different stream" leftmost
+  with an ACCENT label (reads primary without saying "try first").
+- Q&A answered: skip is anime-only (AniSkip = community MAL-keyed DB; no
+  equivalent data exists for general TV).
+⏳ **NEXT ACTION:** (a) **Owner tests on .196 tonight** (it has alpha.53):
+Naruto → auto-pick should be English dual-audio; skip lands ~9s earlier;
+pause works while the Skip button shows; Settings → Anime drawer + bigger
+text; Search mic re-fires on every magnifying-glass click, no stuck
+keyboard. (b) **.117 self-offers alpha.53 on next app open** — just press
+Update. (c) If 9s early-bias overshoots on other anime, make the bias a
+per-show or Settings knob (logged as a possible Round-17 item). (d) Player
+UI beauty pass = owner wish, future round.
+
 ## ⚠️ OWNER ROUND 16 (2026-07-12, session 25 cont. 3) — FULL LIST, logged before building
 🚨 Log first, build second. 🚨 **TEST ONLY on the emulator + .196 — do NOT
 touch .117 (owner is watching something on it).** OTA publish is fine (the
