@@ -25,7 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -419,6 +421,12 @@ private fun DetailsContent(
                     video = video,
                     episodeNumber = episodeNumber,
                     watch = watch,
+                    // Round-15 #8: metahub (the ecosystem's episode-still CDN)
+                    // simply has no images for long anime past ~ep 52 (Naruto
+                    // S2+ 404s — same gap the owner saw on Stremio). When a
+                    // still fails to load, fall back to the show's backdrop so
+                    // the row never renders an empty gray box.
+                    fallbackArt = meta.background ?: meta.poster,
                     onClick = { onPlayEpisode(video) },
                     // Entry focus lands here when this is the resume episode, or
                     // (no history) on the first episode of a season-less series.
@@ -467,6 +475,7 @@ private fun EpisodeRow(
     watch: WatchProgress?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    fallbackArt: String? = null,
 ) {
     val watched = watch != null && ProgressRepository.isWatched(watch)
     val progressFraction = if (watched) 0f else watch?.fractionWatched ?: 0f
@@ -483,12 +492,16 @@ private fun EpisodeRow(
                     .clip(RoundedCornerShape(8.dp))
                     .alpha(contentAlpha),
             ) {
+                // A 404'd still swaps to the show's backdrop (one retry, then
+                // the flat placeholder) — see the call site's #8 note.
+                var stillFailed by remember(video.thumbnail) { mutableStateOf(false) }
                 AsyncImage(
-                    model = video.thumbnail,
+                    model = if (stillFailed && fallbackArt != null) fallbackArt else video.thumbnail,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     placeholder = ColorPainter(EpisodeThumbPlaceholder),
                     error = ColorPainter(EpisodeThumbPlaceholder),
+                    onError = { if (!stillFailed) stillFailed = true },
                     modifier = Modifier.fillMaxSize(),
                 )
                 if (watched) {

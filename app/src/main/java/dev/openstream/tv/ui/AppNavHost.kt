@@ -210,7 +210,6 @@ fun AppNavHost(
             SettingsScreen(
                 onBack = goBack,
                 onHomeRows = { navController.navigate(Routes.SETTINGS_HOME_ROWS) },
-                onConnect = { navController.navigate(Routes.CONNECT) },
                 onAddons = { navController.navigate(Routes.ADDONS) },
                 onAppLog = { navController.navigate(Routes.SETTINGS_APP_LOG) },
                 // "Reset this TV": land on Welcome/Connect with a clean back

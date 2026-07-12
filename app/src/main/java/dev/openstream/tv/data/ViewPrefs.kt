@@ -64,6 +64,13 @@ interface ViewPrefs {
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: Flow<Boolean>
 
+    /**
+     * Voice-first search (owner Round-15 #9): opening Search starts the
+     * system microphone right away — say the title instead of typing it.
+     * Default ON; BACK out of the voice overlay lands on the keyboard.
+     */
+    val voiceFirstSearch: Flow<Boolean>
+
     suspend fun setDiscoverColumns(columns: Int)
     suspend fun setDiscoverSort(sort: DiscoverSortMode)
     suspend fun setDiscoverHideWatched(enabled: Boolean)
@@ -71,6 +78,14 @@ interface ViewPrefs {
     suspend fun setExpertMode(enabled: Boolean)
     suspend fun setEpisodeNumbering(mode: EpisodeNumbering)
     suspend fun setUiSounds(enabled: Boolean)
+    suspend fun setVoiceFirstSearch(enabled: Boolean)
+
+    /**
+     * "Reset settings to default" (owner Round-15 #10): wipe every view
+     * preference back to factory — poster sizes, sort, sounds, expert mode —
+     * WITHOUT touching who this box is (profile/addons stay).
+     */
+    suspend fun resetToDefaults()
 }
 
 private val Context.viewPrefsStore by preferencesDataStore("view_prefs")
@@ -144,6 +159,19 @@ class DataStoreViewPrefs @Inject constructor(
         context.viewPrefsStore.edit { it[UI_SOUNDS] = enabled }
     }
 
+    override val voiceFirstSearch: Flow<Boolean> =
+        context.viewPrefsStore.data.map { prefs -> prefs[VOICE_FIRST_SEARCH] ?: true }
+
+    override suspend fun setVoiceFirstSearch(enabled: Boolean) {
+        context.viewPrefsStore.edit { it[VOICE_FIRST_SEARCH] = enabled }
+    }
+
+    override suspend fun resetToDefaults() {
+        // clear() drops every key → every read above falls back to its
+        // default. New settings are covered automatically.
+        context.viewPrefsStore.edit { it.clear() }
+    }
+
     private companion object {
         val DISCOVER_COLUMNS = intPreferencesKey("discover_columns")
         val DISCOVER_SORT = stringPreferencesKey("discover_sort")
@@ -152,5 +180,6 @@ class DataStoreViewPrefs @Inject constructor(
         val EXPERT_MODE = booleanPreferencesKey("expert_mode")
         val EPISODE_NUMBERING = stringPreferencesKey("episode_numbering")
         val UI_SOUNDS = booleanPreferencesKey("ui_sounds")
+        val VOICE_FIRST_SEARCH = booleanPreferencesKey("voice_first_search")
     }
 }

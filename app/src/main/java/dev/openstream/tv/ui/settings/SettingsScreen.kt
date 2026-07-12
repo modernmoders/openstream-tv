@@ -63,7 +63,6 @@ import dev.openstream.tv.ui.theme.SurfaceCardFocused
 fun SettingsScreen(
     onBack: () -> Unit,
     onHomeRows: () -> Unit,
-    onConnect: () -> Unit,
     onAddons: () -> Unit,
     onAppLog: () -> Unit,
     onReset: () -> Unit,
@@ -80,12 +79,15 @@ fun SettingsScreen(
     val autoSkipCredits by viewModel.autoSkipCredits.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
+    val voiceFirst by viewModel.voiceFirstSearch.collectAsStateWithLifecycle()
+    val discoverHideWatched by viewModel.discoverHideWatched.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
     val profileName by viewModel.profileName.collectAsStateWithLifecycle()
     var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
     var pickingNumbering by remember { mutableStateOf(false) }
     var confirmingReset by remember { mutableStateOf(false) }
+    var confirmingSettingsReset by remember { mutableStateOf(false) }
 
     // Predictable entry point: land on the first setting, not Back.
     val firstFocus = remember { FocusRequester() }
@@ -129,8 +131,13 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 8.dp),
         ) {
+            // Round-15 #10 layout: what you SEE first, then sound, search,
+            // anime, playback — and "this TV" housekeeping at the bottom.
+            // Sections are flat captions, not expanders: everything is one
+            // glance + one scroll, nothing to unfold.
+            SectionCaption("HOW THINGS LOOK — Home and Discover also have a View button right on them")
             SettingEntry(
-                title = "Home rows",
+                title = "Home screen rows",
                 description = "Reorder, rename, or hide the rows on the home screen",
                 onClick = onHomeRows,
                 modifier = Modifier.focusRequester(firstFocus),
@@ -141,26 +148,35 @@ fun SettingsScreen(
                 onClick = { pickingDensity = true },
             )
             SettingEntry(
-                title = "Episode numbering",
-                description = episodeNumberingLabel(numbering),
-                onClick = { pickingNumbering = true },
-            )
-            SettingEntry(
-                title = "Player",
-                description = "Pressing OK on a stream uses: " +
-                    playerPrefLabel(playerPref, viewModel.installedPlayers),
-                onClick = { pickingPlayer = true },
-            )
-            // OK toggles directly — an on/off needs no picker dialog.
-            SettingEntry(
-                title = "Auto-play first stream",
-                description = if (autoPlay) {
-                    "On — picking a movie or episode starts playing right away; " +
-                        "a broken stream quietly tries the next server"
+                title = "Hide watched shows in Discover",
+                description = if (discoverHideWatched) {
+                    "On — shows you've finished are hidden while browsing Discover"
                 } else {
-                    "Off — picking a movie or episode shows the list of streams"
+                    "Off — finished shows stay visible while browsing Discover"
                 },
-                onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
+                onClick = { viewModel.setDiscoverHideWatched(!discoverHideWatched) },
+            )
+            SectionCaption("SOUND")
+            SettingEntry(
+                title = "Menu sounds",
+                description = if (sounds) {
+                    "On — soft ticks while moving around the menus"
+                } else {
+                    "Off — the menus stay silent"
+                },
+                onClick = { viewModel.setUiSounds(!sounds) },
+            )
+            SectionCaption("SEARCH")
+            SettingEntry(
+                title = "Search by talking",
+                description = if (voiceFirst) {
+                    "On — opening Search starts the microphone right away: just " +
+                        "say the show's name. You can still type instead"
+                } else {
+                    "Off — opening Search shows the keyboard; the microphone " +
+                        "button next to the box still works"
+                },
+                onClick = { viewModel.setVoiceFirstSearch(!voiceFirst) },
             )
             // --- Anime (owner Round-15 #7): the skip features only ever fire
             // on anime episodes the community has timed, so they live under
@@ -202,16 +218,25 @@ fun SettingsScreen(
                     onClick = { viewModel.setAutoSkipCredits(!autoSkipCredits) },
                 )
             }
-            // OK toggles directly, same as autoplay above.
             SettingEntry(
-                title = "Interface sounds",
-                description = if (sounds) {
-                    "On — soft ticks while moving around the menus"
-                } else {
-                    "Off — the interface stays silent"
-                },
-                onClick = { viewModel.setUiSounds(!sounds) },
+                title = "Episode numbers",
+                description = episodeNumberingLabel(numbering) +
+                    " — mostly matters for long anime, where seasons and " +
+                    "one big count disagree",
+                onClick = { pickingNumbering = true },
             )
+            SectionCaption("PLAYBACK")
+            SettingEntry(
+                title = "Auto-play first stream",
+                description = if (autoPlay) {
+                    "On — picking a movie or episode starts playing right away; " +
+                        "a broken stream quietly tries the next server"
+                } else {
+                    "Off — picking a movie or episode shows the list of streams"
+                },
+                onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
+            )
+            SectionCaption("THIS TV")
             // Self-update (owner 2026-07-11): boxes that leave the house
             // update themselves. The row is its own tiny state machine —
             // check on demand, then flip into an install button.
@@ -245,6 +270,15 @@ fun SettingsScreen(
                     }
                 },
             )
+            // Round-15 #10: an everyday-safe "undo my fiddling" — resets the
+            // knobs above WITHOUT touching who this box belongs to. Sits just
+            // before Expert on purpose: it's the last non-technical thing.
+            SettingEntry(
+                title = "Reset settings to default",
+                description = "Puts every setting on this screen back how it " +
+                    "started. Keeps your name, your shows, and where you left off",
+                onClick = { confirmingSettingsReset = true },
+            )
             // Deliberately LAST (owner directive 2026-07-06): technical tools
             // stay out of sight unless whoever looks after the box opts in.
             SettingEntry(
@@ -257,10 +291,18 @@ fun SettingsScreen(
                 onClick = { viewModel.setExpertMode(!expert) },
             )
             if (expert) {
-                // Round 14 (owner 2026-07-11): the decoder toggle and re-connect
-                // moved in here — a viewer has no business re-linking the box or
-                // flipping decoders; the in-player "Fix blocky video" covers the
-                // everyday case.
+                // Round 14/15 (owner): decoder + the external-player pick live
+                // in here — a viewer has no business flipping decoders or
+                // players; the in-player "Fix blocky video" / long-press
+                // cover the everyday cases. "Connect this TV" is GONE
+                // (Round-15 #10): "Reset this TV" below reaches the same
+                // name-setup screen without a confusing twin entry.
+                SettingEntry(
+                    title = "Player",
+                    description = "Pressing OK on a stream uses: " +
+                        playerPrefLabel(playerPref, viewModel.installedPlayers),
+                    onClick = { pickingPlayer = true },
+                )
                 SettingEntry(
                     title = "Prefer software video decoder",
                     description = if (softwareDecoder) {
@@ -272,14 +314,6 @@ fun SettingsScreen(
                     },
                     onClick = { viewModel.setPreferSoftwareDecoder(!softwareDecoder) },
                 )
-                if (viewModel.setupConfigured) {
-                    SettingEntry(
-                        title = "Connect this TV",
-                        description = "Type your name and your ${viewModel.brand} " +
-                            "shows set themselves up — nothing else to do",
-                        onClick = onConnect,
-                    )
-                }
                 SettingEntry(
                     title = "Addons",
                     description = "Add, remove, or reorder the services this TV gets its shows from",
@@ -341,6 +375,57 @@ fun SettingsScreen(
             },
             onDismiss = { confirmingReset = false },
         )
+    }
+    if (confirmingSettingsReset) {
+        ResetSettingsDialog(
+            onConfirm = {
+                viewModel.resetSettingsToDefaults { confirmingSettingsReset = false }
+            },
+            onDismiss = { confirmingSettingsReset = false },
+        )
+    }
+}
+
+/**
+ * Confirm for "Reset settings to default" (Round-15 #10). Reassurance is the
+ * whole point of the wording: nothing about WHO the box is gets touched.
+ */
+@Composable
+private fun ResetSettingsDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val cancelFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { cancelFocus.requestFocus() } }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .width(460.dp)
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
+        ) {
+            Text(
+                text = "Reset settings to default?",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
+            Text(
+                text = "Every setting goes back how it started — poster size, " +
+                    "sounds, anime skipping, all of it. You stay signed in, and " +
+                    "your shows and watch history are untouched.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MutedText,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.focusRequester(cancelFocus),
+                ) { Text("Cancel") }
+                Button(onClick = onConfirm) { Text("Reset settings") }
+            }
+        }
     }
 }
 

@@ -65,6 +65,10 @@ import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import dev.openstream.tv.ui.theme.Hairline
+import androidx.compose.ui.window.Dialog
+import dev.openstream.tv.data.DEFAULT_POSTER_COLUMNS
+import dev.openstream.tv.data.MAX_POSTER_COLUMNS
+import dev.openstream.tv.data.MIN_POSTER_COLUMNS
 import dev.openstream.tv.ui.theme.MutedText
 import dev.openstream.tv.ui.theme.SurfaceCard
 
@@ -137,6 +141,9 @@ fun HomeScreen(
     // return. Remember WHICH tile was opened instead; rememberSaveable outlives
     // the back stack. It is never cleared: the last tile you opened stays the
     // anchor for every later return to Home.
+    // Home "View ⚙" (owner Round-15 #10): poster density edited right here,
+    // same global pref as Settings → it applies live behind the dialog.
+    var showViewOptions by remember { mutableStateOf(false) }
     var openedRowKey by rememberSaveable { mutableStateOf<String?>(null) }
     var openedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val openItem: (String, MetaItem) -> Unit = { rowKey, item ->
@@ -154,10 +161,10 @@ fun HomeScreen(
             .padding(vertical = 27.dp),
     ) {
         when {
-            state.initializing -> HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
+            state.initializing -> HomeHeader(onDiscover, onSearch, { showViewOptions = true }, onSettings, headerFocus)
 
             !state.hasAddons -> {
-                HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
+                HomeHeader(onDiscover, onSearch, { showViewOptions = true }, onSettings, headerFocus)
                 EmptyHome()
             }
 
@@ -246,7 +253,7 @@ fun HomeScreen(
                     // being torn down for a header/hero — cheaper hold-scroll
                     // on the 32-bit boxes (round 14 #9).
                     item(key = "header", contentType = "header") {
-                        HomeHeader(onDiscover, onSearch, onSettings, headerFocus)
+                        HomeHeader(onDiscover, onSearch, { showViewOptions = true }, onSettings, headerFocus)
                     }
                     if (featured != null) {
                         item(key = HOME_FEATURED_KEY, contentType = "hero") {
@@ -302,12 +309,75 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showViewOptions) {
+        HomeViewOptionsDialog(
+            currentColumns = state.columns,
+            onColumns = viewModel::setPosterColumns,
+            onDismiss = { showViewOptions = false },
+        )
+    }
+}
+
+/**
+ * Home's "View ⚙" dialog (owner Round-15 #10) — the same edit-in-place
+ * pattern as Discover's: picks apply live behind the dialog, Back closes.
+ * Poster size here IS Settings → Poster size (one global density for
+ * Home/Search rows), just reachable where you're looking at the posters.
+ */
+@Composable
+private fun HomeViewOptionsDialog(
+    currentColumns: Int,
+    onColumns: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val selectedFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { selectedFocus.requestFocus() } }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .width(420.dp)
+                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .padding(28.dp),
+        ) {
+            Text(
+                text = "View",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            Text(
+                text = "Poster size",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
+            (MIN_POSTER_COLUMNS..MAX_POSTER_COLUMNS).forEach { columns ->
+                val selected = columns == currentColumns
+                SurfacePill(
+                    label = "$columns posters per row" +
+                        if (columns == DEFAULT_POSTER_COLUMNS) " · standard" else "",
+                    onClick = { onColumns(columns) },
+                    modifier = if (selected) Modifier.focusRequester(selectedFocus) else Modifier,
+                    selected = selected,
+                )
+            }
+            Text(
+                text = "Changes show up behind this window right away.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedText,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
 }
 
 @Composable
 private fun HomeHeader(
     onDiscover: () -> Unit,
     onSearch: () -> Unit,
+    onView: () -> Unit,
     onSettings: () -> Unit,
     headerFocus: FocusRequester,
 ) {
@@ -333,6 +403,17 @@ private fun HomeHeader(
         ) {
             SurfacePill("Discover", onDiscover, Modifier.focusRequester(headerFocus))
             SurfacePill("Search", onSearch)
+            // Home's own view settings, same "View ⚙" language as Discover
+            // (owner Round-15 #10). headerFocus stays on Discover (#33 anchor).
+            SurfacePill(onClick = onView) {
+                Text(
+                    text = "View",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+                GearIcon(tint = Color.White, modifier = Modifier.size(16.dp))
+            }
             // Round 14 #11: Settings reads apart from the browse pills — extra
             // gap + the shared gear glyph instead of a third look-alike text
             // pill. headerFocus stays on Discover (the #33 hold-UP anchor).

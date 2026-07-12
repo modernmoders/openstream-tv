@@ -85,6 +85,9 @@ interface PlaybackPrefs {
     suspend fun setSkipIntrosEnabled(enabled: Boolean)
     suspend fun setAutoSkipIntros(enabled: Boolean)
     suspend fun setAutoSkipCredits(enabled: Boolean)
+
+    /** Part of Settings → "Reset settings to default" — see ViewPrefs. */
+    suspend fun resetToDefaults()
 }
 
 private val Context.playbackPrefsStore by preferencesDataStore("playback_prefs")
@@ -154,6 +157,10 @@ class DataStorePlaybackPrefs @Inject constructor(
 
     override suspend fun setAutoSkipCredits(enabled: Boolean) {
         context.playbackPrefsStore.edit { it[AUTO_SKIP_CREDITS] = enabled }
+    }
+
+    override suspend fun resetToDefaults() {
+        context.playbackPrefsStore.edit { it.clear() }
     }
 
     private companion object {

@@ -175,4 +175,10 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    /** Home's "View ⚙" dialog (owner Round-15 #10) edits the same global
+     *  poster density Settings does — changed in place, applies live. */
+    fun setPosterColumns(columns: Int) {
+        viewModelScope.launch { viewPrefs.setPosterColumns(columns) }
+    }
 }

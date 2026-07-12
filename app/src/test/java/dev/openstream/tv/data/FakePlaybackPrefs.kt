@@ -53,4 +53,14 @@ class FakePlaybackPrefs : PlaybackPrefs {
     override suspend fun setAutoSkipCredits(enabled: Boolean) {
         autoSkipCreditsState.value = enabled
     }
+
+    override suspend fun resetToDefaults() {
+        languagesState.value = LanguagePrefs()
+        playerState.value = PLAYER_INTERNAL
+        autoPlayState.value = false
+        softwareDecoderState.value = false
+        skipIntrosState.value = true
+        autoSkipIntrosState.value = false
+        autoSkipCreditsState.value = true
+    }
 }

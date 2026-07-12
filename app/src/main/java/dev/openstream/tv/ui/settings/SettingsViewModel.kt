@@ -17,6 +17,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -88,6 +89,16 @@ class SettingsViewModel @Inject constructor(
     val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    /** Voice-first search (Round-15 #9): opening Search fires the mic. */
+    val voiceFirstSearch: StateFlow<Boolean> = viewPrefs.voiceFirstSearch
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    /** Discover's "hide watched" — surfaced here too so every view setting
+     *  has a Settings home (Round-15 #10); Discover edits the same pref. */
+    val discoverHideWatched: StateFlow<Boolean> = viewPrefs.discover
+        .map { it.hideWatched }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /**
      * Concrete players installed right now (§6.2: only show what exists).
      * GENERIC is excluded — "always ask the system chooser" is just Ask.
@@ -133,6 +144,27 @@ class SettingsViewModel @Inject constructor(
 
     fun setUiSounds(enabled: Boolean) {
         viewModelScope.launch { viewPrefs.setUiSounds(enabled) }
+    }
+
+    fun setVoiceFirstSearch(enabled: Boolean) {
+        viewModelScope.launch { viewPrefs.setVoiceFirstSearch(enabled) }
+    }
+
+    fun setDiscoverHideWatched(enabled: Boolean) {
+        viewModelScope.launch { viewPrefs.setDiscoverHideWatched(enabled) }
+    }
+
+    /**
+     * "Reset settings to default" (Round-15 #10): every view + playback
+     * preference back to factory. Deliberately does NOT touch the profile,
+     * addons, or watch history — nobody gets signed out by this.
+     */
+    fun resetSettingsToDefaults(onDone: () -> Unit) {
+        viewModelScope.launch {
+            viewPrefs.resetToDefaults()
+            playbackPrefs.resetToDefaults()
+            onDone()
+        }
     }
 
     /**

@@ -107,19 +107,28 @@ fun SearchScreen(
                     }
             }
 
+            // Voice-first (owner Round-15 #9): arriving at Search fresh fires
+            // the mic straight away — say the title, no typing. Once per
+            // arrival (rememberSaveable survives the section's saved state,
+            // so BACK-and-return doesn't re-open the overlay), and only while
+            // the screen is empty — a return with results stays put. BACK out
+            // of the voice overlay just lands on the keyboard as before.
+            var micAutoFired by rememberSaveable { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                if (state.voiceFirst && voiceAvailable && !micAutoFired &&
+                    query.isEmpty() && !state.searched
+                ) {
+                    micAutoFired = true
+                    runCatching { voiceLauncher.launch(voiceIntent) }
+                }
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(Modifier.weight(1f)) {
-                    TvTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        onSubmit = { viewModel.search(query) },
-                        focusRequester = fieldFocus,
-                        imeAction = ImeAction.Search,
-                    )
-                }
+                // Mic on the LEFT of the field (owner Round-15 #9): speaking
+                // is the first-class way in, typing the fallback.
                 if (voiceAvailable) {
                     OutlinedButton(onClick = {
                         // Recognizer can vanish between resolve and click
@@ -131,6 +140,15 @@ fun SearchScreen(
                         // microphone for a better, clearer icon").
                         MicIconImage(tint = Accent, modifier = Modifier.size(20.dp))
                     }
+                }
+                Box(Modifier.weight(1f)) {
+                    TvTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        onSubmit = { viewModel.search(query) },
+                        focusRequester = fieldFocus,
+                        imeAction = ImeAction.Search,
+                    )
                 }
             }
         }

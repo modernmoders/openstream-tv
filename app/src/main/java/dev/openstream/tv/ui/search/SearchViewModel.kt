@@ -49,6 +49,8 @@ class SearchViewModel @Inject constructor(
         val columns: Int = DEFAULT_POSTER_COLUMNS,
         /** Latest watch progress per "metaType/metaId" for tile indicators (#5). */
         val progressByMeta: Map<String, WatchProgress> = emptyMap(),
+        /** Voice-first search (Round-15 #9): opening Search fires the mic. */
+        val voiceFirst: Boolean = true,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -65,6 +67,11 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             progressRepository.observeProgressByMetaKey().collect { byMeta ->
                 _uiState.update { it.copy(progressByMeta = byMeta) }
+            }
+        }
+        viewModelScope.launch {
+            viewPrefs.voiceFirstSearch.collect { on ->
+                _uiState.update { it.copy(voiceFirst = on) }
             }
         }
     }
