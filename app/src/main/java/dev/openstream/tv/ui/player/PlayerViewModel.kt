@@ -37,6 +37,7 @@ import dev.openstream.tv.player.applyPreferredLanguages
 import dev.openstream.tv.player.rememberedLanguage
 import dev.openstream.tv.player.skip.SkipSegment
 import dev.openstream.tv.player.skip.SkipTimesRepository
+import dev.openstream.tv.player.skip.absoluteEpisodeNumber
 import dev.openstream.tv.player.skip.activeSegmentAt
 import dev.openstream.tv.ui.sound.UiSounds
 import javax.inject.Inject
@@ -389,11 +390,15 @@ class PlayerViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(skipSegment = null)
         if (!skipEnabled || req.metaType != "series") return
         val videoId = req.mediaRef?.externalId ?: return
-        val episode = episodeVideos.firstOrNull { it.id == videoId }?.episode
-            ?: episodeNumberFromVideoId(videoId) ?: return
+        val video = episodeVideos.firstOrNull { it.id == videoId }
+        val episode = video?.episode ?: episodeNumberFromVideoId(videoId) ?: return
+        // Season + absolute position feed the IMDb→MAL bridge; both are
+        // best-effort (null just narrows how much the resolver can map).
+        val season = video?.season ?: seasonNumberFromVideoId(videoId)
+        val absolute = season?.let { absoluteEpisodeNumber(episodeVideos, it, episode) }
         viewModelScope.launch {
             val duration = engine.value?.exoPlayer?.duration?.takeIf { it > 0 } ?: 0L
-            skipSegments = skipTimes.segmentsFor(req.metaId, episode, duration)
+            skipSegments = skipTimes.segmentsFor(req.metaId, season, episode, absolute, duration)
         }
     }
 
@@ -402,6 +407,17 @@ class PlayerViewModel @Inject constructor(
     private fun episodeNumberFromVideoId(id: String): Int? {
         val parts = id.split(':')
         return if (parts.size >= 3) parts.last().toIntOrNull() else null
+    }
+
+    /** Season from an IMDb-style id "tt123:1:6" ONLY — a kitsu:/mal: id's
+     *  middle part is the catalog id, not a season, so it must never match. */
+    private fun seasonNumberFromVideoId(id: String): Int? {
+        val parts = id.split(':')
+        return if (parts.size >= 3 && parts[0].startsWith("tt")) {
+            parts[parts.size - 2].toIntOrNull()
+        } else {
+            null
+        }
     }
 
     /** Main-thread position poll → the active skip window (or null). */

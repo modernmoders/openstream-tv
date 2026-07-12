@@ -47,33 +47,48 @@ class OkHttpAniSkipClient @Inject constructor(
 }
 
 /**
- * Resolve a series id to a MAL id. Direct for mal:/myanimelist: ids; a Kitsu id
- * is mapped through Kitsu's public `mappings` endpoint; an AniList id likewise.
- * IMDb (tt…) returns null — there's no confident 1:1 to a single MAL entry.
- * Logs the outcome so a box's App log reveals what an anime episode actually
- * carried (the only way to verify this without the streams on hand).
+ * Resolve a series id + episode position to AniSkip's (MAL id, MAL episode).
+ * Direct for mal:/myanimelist: ids; a Kitsu id is mapped through Kitsu's
+ * public `mappings` endpoint (episode numbering already matches MAL for
+ * both). An IMDb id (tt…) goes through the bundled anime-lists bridge, which
+ * also translates the seasonal episode number into the MAL entry's own
+ * numbering (split cours, absolute-numbered shows). Logs the outcome so a
+ * box's App log reveals what an anime episode actually carried (the only way
+ * to verify this without the streams on hand).
  */
 @Singleton
 class KitsuAnimeMalIdResolver @Inject constructor(
     private val httpClient: OkHttpClient,
+    private val bundledAnimeMap: BundledAnimeMap,
     private val diagnostics: DiagnosticsSink,
 ) : AnimeMalIdResolver {
 
-    override suspend fun malId(seriesMetaId: String): Long? {
+    override suspend fun resolve(
+        seriesMetaId: String,
+        season: Int?,
+        episode: Int,
+        absoluteEpisode: Int?,
+    ): MalEpisode? {
         val id = seriesMetaId.trim()
-        // "kitsu:123", "mal:123:4", "tt123:1:2" — take the scheme + first number.
+        // "kitsu:123", "mal:123:4" — take the scheme + first number. A bare
+        // IMDb series id ("tt0409591") has no scheme prefix at all.
         val scheme = id.substringBefore(':', "").lowercase()
         val rawNumber = id.substringAfter(':', "").substringBefore(':')
         val number = rawNumber.toLongOrNull()
         val result = when {
-            scheme in setOf("mal", "myanimelist") && number != null -> number
-            scheme == "kitsu" && number != null -> kitsuToMal(number)
-            scheme == "anilist" && number != null -> anilistToMal(number)
+            scheme in setOf("mal", "myanimelist") && number != null -> MalEpisode(number, episode)
+            scheme == "kitsu" && number != null -> kitsuToMal(number)?.let { MalEpisode(it, episode) }
+            scheme == "anilist" && number != null -> anilistToMal(number)?.let { MalEpisode(it, episode) }
+            // The first lookup lazily reads the asset off disk → stay on IO.
+            id.startsWith("tt") -> withContext(Dispatchers.IO) {
+                resolveMalEpisode(bundledAnimeMap.entriesFor(id), season ?: 0, episode, absoluteEpisode)
+            }
             else -> null
         }
         diagnostics.record(
             "skip",
-            "malId($seriesMetaId) → ${result ?: "unresolved (scheme=$scheme)"}",
+            "malId($seriesMetaId s=$season e=$episode abs=$absoluteEpisode) → " +
+                (result?.let { "mal=${it.malId} ep=${it.episode}" } ?: "unresolved (scheme=$scheme)"),
         )
         return result
     }

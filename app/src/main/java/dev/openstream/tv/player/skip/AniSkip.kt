@@ -50,14 +50,20 @@ fun interface AniSkipClient {
 }
 
 /**
- * Resolve the app's series id to a MyAnimeList id, or null when there's no
- * confident mapping (AniSkip needs a MAL id). Anime addons that use kitsu:/mal:
- * ids resolve cleanly; an IMDb-only id (tt…) has no reliable 1:1 MAL mapping,
- * so it returns null and the feature stays silent rather than skipping the
- * wrong window.
+ * Resolve the app's series id + episode position to AniSkip's key: a MAL id
+ * and the episode number WITHIN that MAL entry. kitsu:/mal: ids resolve
+ * directly (their episode numbering already matches MAL). An IMDb id (tt…)
+ * goes through the bundled anime-lists bridge, which needs [season] and — for
+ * absolute-numbered shows like Naruto — [absoluteEpisode]. Null whenever the
+ * mapping isn't confident: silence beats skipping the wrong window.
  */
 fun interface AnimeMalIdResolver {
-    suspend fun malId(seriesMetaId: String): Long?
+    suspend fun resolve(
+        seriesMetaId: String,
+        season: Int?,
+        episode: Int,
+        absoluteEpisode: Int?,
+    ): MalEpisode?
 }
 
 // --- AniSkip v2 wire format (only the fields we use) ---

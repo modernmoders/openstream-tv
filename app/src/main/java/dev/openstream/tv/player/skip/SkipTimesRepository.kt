@@ -18,15 +18,21 @@ class SkipTimesRepository @Inject constructor(
 ) {
     suspend fun segmentsFor(
         seriesMetaId: String,
+        season: Int?,
         episode: Int,
+        absoluteEpisode: Int?,
         durationMs: Long,
     ): List<SkipSegment> {
         if (episode <= 0) return emptyList()
-        val mal = resolver.malId(seriesMetaId) ?: return emptyList()
+        val mal = resolver.resolve(seriesMetaId, season, episode, absoluteEpisode)
+            ?: return emptyList()
         val lengthSec = (durationMs / 1000).takeIf { it > 0 }
-        val segments = client.skipTimes(mal, episode, lengthSec)
+        val segments = client.skipTimes(mal.malId, mal.episode, lengthSec)
         if (segments.isNotEmpty()) {
-            diagnostics.record("skip", "mal=$mal ep=$episode → ${segments.size} skip window(s)")
+            diagnostics.record(
+                "skip",
+                "mal=${mal.malId} ep=${mal.episode} → ${segments.size} skip window(s)",
+            )
         }
         return segments
     }

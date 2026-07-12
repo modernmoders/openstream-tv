@@ -91,28 +91,46 @@ class AniSkipTest {
     fun `unresolved id means no segments and no AniSkip call`() = runTest {
         var called = false
         val r = repo(
-            resolver = AnimeMalIdResolver { null },
+            resolver = { _, _, _, _ -> null },
             client = { _, _, _ -> called = true; listOf(intro) },
         )
-        assertTrue(r.segmentsFor("tt123", 3, 0).isEmpty())
+        assertTrue(r.segmentsFor("tt123", season = 1, episode = 3, absoluteEpisode = null, durationMs = 0).isEmpty())
         assertTrue("must not query AniSkip without a MAL id", !called)
     }
 
     @Test
     fun `resolved id passes AniSkip windows through`() = runTest {
         val r = repo(
-            resolver = AnimeMalIdResolver { 20L },
+            resolver = { _, _, _, _ -> MalEpisode(20L, 3) },
             client = { mal, ep, _ -> if (mal == 20L && ep == 3) listOf(intro, credits) else emptyList() },
         )
-        assertEquals(listOf(intro, credits), r.segmentsFor("mal:20", 3, 0))
+        assertEquals(
+            listOf(intro, credits),
+            r.segmentsFor("mal:20", season = null, episode = 3, absoluteEpisode = null, durationMs = 0),
+        )
+    }
+
+    @Test
+    fun `the resolver's TRANSLATED episode is what AniSkip gets asked for`() = runTest {
+        // Naruto S2E5 → MAL 20 absolute episode 40: the client must see 40, not 5.
+        val r = repo(
+            resolver = { id, season, episode, absolute ->
+                if (id == "tt0409591" && season == 2 && episode == 5) MalEpisode(20L, absolute!!) else null
+            },
+            client = { mal, ep, _ -> if (mal == 20L && ep == 40) listOf(intro) else emptyList() },
+        )
+        assertEquals(
+            listOf(intro),
+            r.segmentsFor("tt0409591", season = 2, episode = 5, absoluteEpisode = 40, durationMs = 0),
+        )
     }
 
     @Test
     fun `non-positive episode is ignored`() = runTest {
         val r = repo(
-            resolver = AnimeMalIdResolver { 20L },
+            resolver = { _, _, _, _ -> MalEpisode(20L, 1) },
             client = { _, _, _ -> listOf(intro) },
         )
-        assertTrue(r.segmentsFor("mal:20", 0, 0).isEmpty())
+        assertTrue(r.segmentsFor("mal:20", season = null, episode = 0, absoluteEpisode = null, durationMs = 0).isEmpty())
     }
 }
