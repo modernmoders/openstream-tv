@@ -1,4 +1,54 @@
-# STATE — updated 2026-07-12 by session 27
+# STATE — updated 2026-07-12 by session 28
+
+## ⚠️ READ FIRST (session 28 — 2026-07-12 — ROUND 18 COMPLETE: passport round finished across two sessions)
+**The prior session (cut off on usage limits) had already built more than it
+logged: passport UI items 1/6/8 are live in StremioSurfer/passport.html
+(Addon Links trimmed to AIOLists; RD days-left chips + billing.owe_half_year
+field; amber "shared with <name>" notes on duplicate values), item 7's
+rd_reminders.py is wired into launchd (com.adamsavoy.rd-reminders: 10:00 /
+12:30 / 17:00; the 17:00 run fired a real "Myles Mobile expires TODAY" alert),
+and item 9's Myles Dad is re-added to the live passport (RD key active to
+2026-10-17, Myles' torbox, notes list what he still needs).** This session
+finished the rest — all work in ~/Documents/Claude/StremioSurfer (not this
+repo), nothing pushed to any user account, zero writes to Rachael's anything:
+- **Item 2/5 VERIFIED clean:** Mike + Anna/Jay + Clarence share ONE active RD
+  key (expiry 2026-12-07 on all three — the owner's UI edit took). Jacob/
+  Toby/Clarence/Mike all have debridio + RD set. Debridio sharing: Rachael+
+  Clarence+Jacob on one key, Mike+Toby on another. rd_checked_at is fresh
+  everywhere now (the reminder run refreshes it — the stale-checker audit
+  finding is dead).
+- **Items 3+4 BUILT — `make_user_configs.py`:** pulls the SFW templates LIVE
+  (read-only: Rachael's Discover 186 cats / Streaming 99 / elfhosted
+  AIOStreams; Adam's anime Streaming 96 for Jacob), swaps in each user's own
+  keys, blanks per-account fields (trakt/simkl tokens, sessionId), sweeps for
+  template-owner value leaks (shared keys exempt). Wrote 30 import-ready
+  files: setup_kits/<slug>/configs/{aiometadata-discover,aiometadata-
+  streaming,aiostreams-elfhosted}.json + MISSING.txt for all 10 non-template
+  users. Verified: fingerprint spot-checks, cross-user leak scan CLEAN, all
+  wrappers match AIOMetadata's import format / AIOStreams' template format.
+  `--report` prints the per-user missing-components list (item 3): all 9
+  regular users lack exactly the 2 AIOMetadata accounts + 3rd AIOStreams +
+  gemini key + their own Trakt connect; Myles Dad lacks everything (by
+  design, Stremio-only).
+- **Item 10 BUILT — `make_master_csv.py`:** every non-Rachael Chrome export
+  is a ~1,100-row synced copy of Adam's vault + a few person rows. Wrote
+  ~/Documents/Chrome/MASTER_passport_logins.csv (141 service logins,
+  person-attributed via passport UUID/email/name matching; 19 legacy rows
+  left "?") and Adam_IMPORT_missing.csv (31 rows others have that Adam's
+  vault lacks — incl. Rachael's whole 10-row kit) for chrome://password-
+  manager import. Oddity flagged: jody's export holds a trakt.tv login
+  under Myles@savoy.solutions; "Jamie" accounts exist but aren't in the
+  passport.
+⏳ **NEXT ACTION:** (a) Owner reloads the passport UI and eyeballs items
+1/6/8 (AIOLists-only links, days-left + owe-½-yr chips, shared-with notes).
+(b) Owner imports Adam_IMPORT_missing.csv into his Chrome, then archives
+the per-person exports. (c) When Gemini keys arrive: paste into passport →
+rerun `python3 make_user_configs.py` (10s) → fresh configs. (d) Rollout per
+endgame plan: create the 2 AIOMetadata + 1 elfhosted AIOStreams accounts per
+user with the pre-filled config files, then per-person profiles. (e) Myles
+Mobile's RD EXPIRED 2026-07-13 — renew or let lapse (Myles Manuel's is
+active to 2027-05; same person?). (f) App backlog unchanged (alpha.55
+retests, 9s bias knob, user skins).
 
 ## ⚠️ OWNER ROUND 18 (2026-07-12, session 27 cont.) — PASSPORT ROUND, logged before building
 🚨 All passport/StremioSurfer work (~/Documents/Claude/StremioSurfer, live
