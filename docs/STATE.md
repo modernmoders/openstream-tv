@@ -1,4 +1,41 @@
-# STATE — updated 2026-07-12 by session 25 (cont. 2)
+# STATE — updated 2026-07-12 by session 25 (cont. 3)
+
+## ⚠️ OWNER ROUND 16 (2026-07-12, session 25 cont. 3) — FULL LIST, logged before building
+🚨 Log first, build second. 🚨 **TEST ONLY on the emulator + .196 — do NOT
+touch .117 (owner is watching something on it).** OTA publish is fine (the
+prompt only appears on .117's next app launch — one OK, owner's choice).
+1. **Settings: ANIME section moves BELOW PLAYBACK**, ships COLLAPSED by
+   default, with a darker grouped background — "like an app drawer that
+   slides out" / anything that shows the rows belong together.
+2. **Settings text bigger** — titles at least, maybe everything.
+3. **Voice-first search: the keyboard pops open during the mic flow and
+   stays open after the result lands.** Close it or never show it.
+4. **Voice-first search only fires ONCE:** search by mic, go Home, click the
+   magnifying glass again → keyboard, no mic. Every deliberate click into
+   Search should start the mic again.
+5. Q answered in-chat: skip is ANIME-ONLY (AniSkip = community MAL-keyed DB;
+   no such data exists for general TV).
+6. **Naruto S1E12: first auto-picked stream was JAPANESE audio, only other
+   option Italian** ("I thought we fixed that" — alpha.37 English-audio-first
+   ranking). Investigate the actual AIOStreams labels for that episode; the
+   audio parse or the ranking is missing something (or the results are just
+   thin for old anime and BOTH streams were non-English).
+7. **Auto-skip defaults BOTH OFF** ("skip intros by themselves" already off —
+   also default off "play the next episode by itself").
+8. **Auto-advance timing:** the next-episode countdown should start 10
+   seconds AFTER the credits window opens, and count down from 8 (was 5).
+9. **Skip button hijacks OK:** while "Skip Intro" is on-screen NOTHING else
+   is selectable — every OK skips. Only intercept when the control bar is
+   hidden; with the bar up, OK must act on the focused control.
+10. **Intro skip still lands late: subtract 7 MORE seconds** (total early
+    bias 2s → 9s).
+11. **Player "Having trouble?" panel:** REMOVE the "Software video" toggle
+    pill; move "Try a different stream" to the LEFT and make it read as the
+    first thing to try (visual emphasis, not literal words). Owner wishes the
+    player UI looked better overall (bigger redesign = future).
+12. Process reminder: never build partway and stop without logging.
+Priorities: log → #6 investigation → all app items as alpha.53 → gates →
+emulator → OTA publish → drive .196 ONLY → checkpoint.
 
 ## ⚠️ READ FIRST (session 25 cont. 2 — 2026-07-12 — alpha.52 LIVE ON BOTH BOXES via OTA: Round 15 CLOSED — Naruto photos root-caused + fallback, voice-first search, Settings rework)
 **alpha.52 (versionCode 52) BUILT — gates green (362 tests, 0 failures; the
