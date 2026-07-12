@@ -1,4 +1,39 @@
-# STATE — updated 2026-07-11 by session 24 cont. 5
+# STATE — updated 2026-07-11 by session 24 cont. 6
+
+## ⚠️ READ FIRST (session 24 cont. 6 — 2026-07-11 — alpha.49 BUILT: anime IMDb→MAL bridge — AniSkip now works for the owner's IMDb-keyed anime; ⚠️ NOT DEPLOYED — owner away from the boxes)
+**alpha.49 (versionCode 49) BUILT — gates green (353 tests, 0 failures; 15 new)
++ assembleRelease clean + emulator smoke passed (installed, MainActivity
+resumed, crash buffer empty). ⚠️ NOT deployed to EITHER box — the owner is at
+his parents' house, both boxes unreachable by design this session.**
+DECISIONS #58. This is Round-14 **#3** (the big backlog item): AniSkip never
+fired because the owner's anime is IMDb-keyed (box log `malId(tt…) →
+unresolved scheme=`) and AniSkip needs MAL id + MAL episode.
+- **Bundled IMDb→MAL map**: `tools/build_anime_map.py` merges Fribb/anime-lists
+  (imdb↔mal + TVDB season per MAL entry) with ScudLee's anime-list.xml
+  (absolute-numbered shows + split-cour episode offsets) →
+  `app/src/main/assets/anime_imdb_mal.json` (~110 KB, 3,870 shows). Verified
+  entries: Naruto absolute → MAL 20, Shippuden → 1735, One Piece → 21, AoT all
+  4 seasons INCLUDING Final-Season part offsets 16/28, DBS 8 entries, JJK 3.
+  Rerun the script any time to refresh the asset (it self-refuses tiny maps).
+- **`ImdbMalBridge.kt`** (pure, 14 tests incl. a committed-asset gate test):
+  seasonal entries by largest-offset-below-episode (split cours), absolute
+  shows translate via the episode's position in the app's own episode list
+  (specials excluded). Naruto S2E5 → MAL 20 **ep 40** — the resolver now
+  returns the TRANSLATED episode (`MalEpisode`), the wrong-window trap.
+- **Resolver/repository/PlayerViewModel** now pass season + absolute episode;
+  kitsu:/mal: paths unchanged (episode passes through). The skip diagnostics
+  line logs `s=… e=… abs=… → mal=… ep=…` — the box App log will show exactly
+  what each anime episode resolves to.
+- ⚠️ NOT verifiable end-to-end without a box: playing a stream on the emulator
+  would fire the alpha.35 Trakt check-in on the owner's account. **Owner test
+  on the box: play an IMDb-keyed anime episode with a timed intro (Naruto,
+  AoT, JJK) → "Skip Intro" should appear; if not, App log → the `skip` lines.**
+- #4 (blank Naruto episode photos after S1) is NOT this — that's the meta
+  addon's seasonal↔absolute artwork lookup, data-side, still open.
+⏳ **DEPLOY alpha.49 to BOTH boxes when the owner is home** (carries alpha.48's
+polish out too; .117 is on alpha.47, .196 on alpha.45):
+`adb connect 192.168.1.117:5555 && adb -s 192.168.1.117:5555 install -r app/build.nosync/outputs/apk/release/app-release.apk`
+(same for .196; then leanback relaunch on both.)
 
 ## ⚠️ READ FIRST (session 24 cont. 5c — 2026-07-11 — alpha.48 BUILT: consistency polish batch; ⚠️ NOT DEPLOYED — network dropped)
 **alpha.48 (versionCode 48) BUILT — gates green (340 tests, 0 failures) +

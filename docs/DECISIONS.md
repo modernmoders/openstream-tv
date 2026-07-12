@@ -1716,3 +1716,41 @@ Owner: "polish the app to match the consistency of Stremio/Netflix."
    disposed catalog row's nodes get recycled for the next catalog row
    instead of being torn down for a structurally different item — cheaper
    hold-scroll on the 32-bit boxes.
+
+## 58. 2026-07-11 (session 24 cont. 6) — Anime IMDb→MAL bridge: AniSkip works for IMDb-keyed anime (alpha.49)
+
+Round-14 #3 root cause was never "AniSkip is broken" — the box log's
+`malId(tt…) → unresolved scheme=` line said it plainly: AniSkip is keyed
+by MyAnimeList id + episode, and the owner's anime plays under IMDb ids,
+which the resolver refused (no confident 1:1). The fix is a BUNDLED
+mapping, not a live one:
+1. **`tools/build_anime_map.py`** merges two community datasets —
+   Fribb/anime-lists (imdb↔mal, plus which TVDB season each MAL entry is)
+   and ScudLee/Anime-Lists' anime-list.xml (`defaulttvdbseason`, "a" =
+   absolute-numbered, + `episodeoffset` for split-cour seasons) — into
+   `app/src/main/assets/anime_imdb_mal.json` (~110 KB, 3.9k shows,
+   `{"tt…":[[malId,tvdbSeason,offset],…]}`, season -1 = absolute).
+   Entries neither dataset can place in a season are DROPPED (~1.1k):
+   silence beats skipping a window in the wrong episode. A committed-asset
+   unit test (BundledAnimeMapAssetTest) fails the gate if a regeneration
+   ever ships corrupt/empty.
+2. **Bundled beats fetched** on purpose: works offline, no new hosting, no
+   cache-staleness class of bug (DECISIONS #51's lesson), and the map for
+   existing shows barely changes — the alpha deploy cadence out-runs it.
+3. **`ImdbMalBridge.kt` is all pure functions** (parse / resolve /
+   absolute-episode arithmetic), 14 unit tests. `resolveMalEpisode` picks
+   the seasonal entry with the largest offset below the episode
+   (split-cour), else falls back to absolute entries using the episode's
+   1-based position in the app's OWN resolved episode list
+   (`absoluteEpisodeNumber` — counts season>0 only; specials don't advance
+   absolute numbering). S1 may use its own episode number as absolute when
+   the list is unavailable (S1E7 IS absolute 7); later seasons never guess.
+4. **`AnimeMalIdResolver` now returns `MalEpisode(malId, episode)`** — the
+   translated episode, not the app's. Naruto S2E5 must query MAL 20 ep 40;
+   passing the seasonal "5" through was the silent-wrong-answer trap.
+   kitsu:/mal: ids pass their episode through unchanged (their numbering
+   already matches MAL).
+5. NOT solved here: #4 (blank Naruto episode THUMBNAILS after S1) — that's
+   the meta addon's seasonal↔absolute art lookup, a data-side issue, not
+   the skip path. The diagnostics line now logs season/absolute/result, so
+   the box log will show exactly what an anime episode resolves to.
