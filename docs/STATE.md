@@ -1,4 +1,34 @@
-# STATE — updated 2026-07-12 by session 26
+# STATE — updated 2026-07-12 by session 27
+
+## ⚠️ OWNER ROUND 17 (2026-07-12, session 27) — FULL LIST, logged before building
+🚨 Log first, build second. Owner supplied a player-UI mockup image (Skip Intro
+pill + "Up next" card) to match.
+1. **Voice search focus + lit mic:** "when you search, the pointer/mouse/
+   selection stays in the sidebar over the magnifying glass. please make it go
+   to the magnifying glass [the mic button on the Search screen] and make it
+   light up instantly and darken back to normal when it's done listening."
+2. **Q: intro vs next-episode bias.** "The intro finally skipped to right
+   before the end of the intro (good) but the next episode came about 10
+   seconds early on this episode." → the 9s early-end bias trims every
+   window's END; the credits window START was never biased — raw community
+   data. Fix: bias the credits start LATER (safe direction: a late prompt is
+   invisible, an early one covers the ending).
+3. **Series-level watched display on cards:** "a different colored display for
+   how much the user has watched out of ALL of the series — not just the
+   episode, on the cards/art."
+4. **Skip Intro / Next Episode UI per the mockup:** pill with »; "Up next"
+   card with Play now + Cancel + countdown ring; control bar ("scrobble UI")
+   must PUSH the skip/next UI UP when raised instead of covering it (owner hit
+   this last night: tapped down, the bar covered the Next Episode button).
+   Mockup notes: Skip Intro fades after ~20s, no cancel needed; second
+   button (Cancel) a little more see-through. Owner likes the design overall
+   (knows "Try a different stream" reads oddly there — it predates the pill).
+5. **"Continue doing what you do best, making it look and feel great"** —
+   general polish license around these areas.
+6. **Passport audit before rollout:** "We can probably start pushing these
+   changes to the other users' Stremio accounts — is there any info I need to
+   look over in the passport (duplicated info, wrong info, etc)?" (Read-only
+   audit; NO writes to Rachael's anything without per-request permission.)
 
 ## ⚠️ READ FIRST (session 26 — 2026-07-12 — alpha.54 PUBLISHED OTA: logo redo — banner/icon scaled into the launcher safe zone)
 **alpha.54 (versionCode 54) BUILT — gates green (assembleDebug +
