@@ -309,6 +309,58 @@ class StreamCascadeTest {
     }
 
     @Test
+    fun `explicit filename language listing overrides a lying pennant`() {
+        // Real Naruto S1E13 label (owner 2026-07-12, "the dang italian one
+        // again"): AIOStreams' pennant claims ᴇɴ·ᴊᴀ, but the release's own
+        // filename says audio = JPN + ITA and subs = ITA + ENG. The filename
+        // is the ground truth the pennant was (mis)derived from — trust it.
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(
+                name = "1080P ⚡ ☁︎  Naruto   s₀₁",
+                description = "▣  HEVC   ♬  DD+   | ⛉  [RD] Library | ⛿  ᴇɴ · ᴊᴀ  · sᴜʙ",
+                filename = "Naruto (2002) [S01][1080p H265][EAC3 JPN ITA Sub ITA ENG][16.3 GiB][WIKIRIP]",
+            )
+        ))
+        // The per-episode sibling of the same release lies the same way.
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(
+                description = "✎  Naruto  s₀₁·ᴇ₁₃ | ▣  HEVC | ⛿  ᴇɴ · ᴊᴀ  · sᴜʙ",
+                filename = "Naruto - S01E13 - Gli specchi diabolici di Haku [1080p H265][EAC3 JPN ITA Sub ITA ENG][tt0409591] [WIKIRIP].mkv",
+            )
+        ))
+        // "[Eng-Sub]" names the SUBTITLES, not the audio — the pennant stays
+        // in charge (real df68 label, same episode).
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(
+                description = "✎  Naruto  ᴇ₁₃ | ▣  AVC   ♬  DD   | ⛿  ᴇɴ  · sᴜʙ",
+                filename = "Naruto - 013 - Haku's Secret Jutsu! Crystal Ice Mirrors! [BD][800p][x264][AC3][Eng-Sub]-df68.mkv",
+            )
+        ))
+        // A filename with no language listing leaves the pennant in charge
+        // (real SeaDex dual-audio label, same episode).
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(
+                description = "★★★★★ ☁︎  Naruto   ᴇ₁₃ | ⛿  ᴇɴ · ᴊᴀ  · sᴜʙ (ᴇɴ)",
+                filename = "Naruto.013.v4.480p.DVD.Dual-Audio.FLAC.mkv",
+            )
+        ))
+        // Dotted release names carry the same convention.
+        assertFalse(StreamCascade.hasEnglishAudio(
+            stream(description = "⛿  ᴇɴ", filename = "Show.S01E01.ITA.JPN.AC3.1080p.WEB.mkv")
+        ))
+        // An explicit English listing also RESCUES a stream the pennant
+        // wrongly marks foreign.
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(description = "⛿  ɪᴛ", filename = "Show.S01E01.[AC3 ENG JPN Sub ENG].mkv")
+        ))
+        // A lone maybe-language token with no other evidence is a title word,
+        // not a listing ("The Spa" is not Spanish audio).
+        assertTrue(StreamCascade.hasEnglishAudio(
+            stream(description = "⛿  ᴇɴ", filename = "The.Spa.2024.1080p.WEB.mkv")
+        ))
+    }
+
+    @Test
     fun `english dual audio outranks higher-resolution japanese-only`() {
         // The owner's actual complaint: 1080p ᴊᴀ-only auto-picked over the
         // 720p ᴇɴ·ᴊᴀ dual release. English audio must beat resolution.

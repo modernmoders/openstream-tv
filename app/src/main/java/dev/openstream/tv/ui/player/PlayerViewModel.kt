@@ -628,11 +628,15 @@ class PlayerViewModel @Inject constructor(
      * Playback continues from where the broken stream left off. False when
      * the list is exhausted — the caller falls back to the error panel.
      */
-    fun tryNextStream(): Boolean {
+    fun tryNextStream(preferDifferent: Boolean = false): Boolean {
         val req = request ?: return false
         val engine = engine.value ?: return false
+        // The stream being abandoned — the manual button skips its same-
+        // release siblings first (a glitched encode's twin glitches too);
+        // the quiet error auto-skip keeps the plain ranked order.
+        val abandoned = if (preferDifferent) autoplayOrigin.origin?.stream else null
         while (true) {
-            val alt = alternatives.advance() ?: return false
+            val alt = alternatives.advance(preferDifferentFrom = abandoned) ?: return false
             val source = alt.stream.toPlayableSource(req.source.title) ?: continue
             // Mid-play death keeps the position; an open failure has none, so
             // the original start (e.g. the auto-resume point) carries over.
@@ -756,7 +760,7 @@ class PlayerViewModel @Inject constructor(
      * to go, never a dead/hidden button.
      */
     fun tryAnotherStream() {
-        if (!tryNextStream()) openCurrentStreamList()
+        if (!tryNextStream(preferDifferent = true)) openCurrentStreamList()
     }
 
     private fun openCurrentStreamList() {

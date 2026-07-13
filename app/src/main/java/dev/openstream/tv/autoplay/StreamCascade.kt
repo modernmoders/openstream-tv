@@ -156,9 +156,68 @@ object StreamCascade {
         return Regex("""\b[a-z]{2}\b""").findAll(audioPart).map { it.value }.toList()
     }
 
+    // --- explicit language listings in release filenames (owner 2026-07-12,
+    //     Round 19: the WIKIRIP Italian releases carry the AIOStreams pennant
+    //     `⛿ ᴇɴ·ᴊᴀ` even though their own filename says
+    //     `[EAC3 JPN ITA Sub ITA ENG]` — audio JPN+ITA, subs ITA+ENG. The
+    //     pennant is DERIVED data and can lie; the filename is the ground
+    //     truth it was derived from, so an explicit listing there wins.) ---
+
+    private val LANG_CODES = mapOf(
+        "eng" to "en", "ita" to "it", "jpn" to "ja", "jap" to "ja", "spa" to "es",
+        "fre" to "fr", "fra" to "fr", "ger" to "de", "deu" to "de", "rus" to "ru",
+        "hin" to "hi", "por" to "pt", "kor" to "ko", "chi" to "zh", "zho" to "zh",
+        "dut" to "nl", "nld" to "nl", "swe" to "sv", "ara" to "ar", "tur" to "tr",
+        "pol" to "pl", "tha" to "th", "vie" to "vi", "ind" to "id", "ukr" to "uk",
+        "cze" to "cs", "ces" to "cs", "dan" to "da", "fin" to "fi", "gre" to "el",
+        "ell" to "el", "heb" to "he", "hun" to "hu", "nor" to "no", "rum" to "ro",
+        "ron" to "ro", "srp" to "sr",
+    )
+    private val AUDIO_CODEC =
+        Regex("""\b(aac|ac3|eac3|dd|ddp|dts|flac|opus|mp3|truehd|atmos)\b""")
+
+    /** "Eng-Sub" / "SubIta" glue a language to the subs marker — that names
+     *  SUBTITLES and must never count as (or split) the audio listing. */
+    private val ATTACHED_SUB =
+        Regex("""\b([a-z]{2,4})[-_.]?subs?\b|\bsubs?[-_.]?([a-z]{2,4})\b""")
+    private val BRACKET_GROUP = Regex("""\[([^\]]+)]""")
+    private val TOKEN_SPLIT = Regex("""[^a-z0-9]+""")
+
     /**
-     * Does this stream carry English audio? Read from the label's language
-     * pennant (`⛿ ᴇɴ · ᴊᴀ`) or, in older label formats, its **Audio**
+     * Audio languages read from an explicit listing in the release filename:
+     * `[EAC3 JPN ITA Sub ITA ENG]` (audio before "Sub", subtitles after) or
+     * the dotted form `Show.S01E01.ITA.JPN.AC3.1080p`. Null when the filename
+     * carries no listing — lone maybe-language tokens without a subs marker,
+     * a second language, or an audio codec are title words ("The.Spa.2024"),
+     * not evidence.
+     */
+    private fun filenameAudioCodes(filename: String?): Set<String>? {
+        if (filename.isNullOrBlank()) return null
+        val lower = filename.lowercase()
+        val groups = BRACKET_GROUP.findAll(lower).map { it.groupValues[1] }.toList()
+            .ifEmpty { listOf(lower) }
+        val audio = mutableSetOf<String>()
+        var concluded = false
+        for (group in groups) {
+            val cleaned = ATTACHED_SUB.replace(group, " ")
+            val tokens = cleaned.split(TOKEN_SPLIT).filter { it.isNotEmpty() }
+            val subAt = tokens.indexOfFirst { it == "sub" || it == "subs" }
+            val audioLangs = (if (subAt >= 0) tokens.take(subAt) else tokens)
+                .mapNotNull { LANG_CODES[it] }
+            if (audioLangs.isEmpty()) continue
+            val anchored = subAt >= 0 || audioLangs.size >= 2 ||
+                AUDIO_CODEC.containsMatchIn(group)
+            if (!anchored) continue
+            audio += audioLangs
+            concluded = true
+        }
+        return if (concluded) audio else null
+    }
+
+    /**
+     * Does this stream carry English audio? An explicit language listing in
+     * the release FILENAME is most trustworthy; then the label's language
+     * pennant (`⛿ ᴇɴ · ᴊᴀ`); then, in older label formats, its **Audio**
      * section — never the release's overall tag, which lies (owner
      * 2026-07-10).
      *
@@ -167,6 +226,7 @@ object StreamCascade {
      * can't reason about.
      */
     fun hasEnglishAudio(stream: Stream): Boolean {
+        filenameAudioCodes(stream.behaviorHints.filename)?.let { return "en" in it }
         val label = labelText(stream)
         pennantAudioCodes(label)?.let { codes ->
             if (codes.isEmpty()) return true // bare pennant: neutral
