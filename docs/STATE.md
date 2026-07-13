@@ -1,5 +1,39 @@
 # STATE — updated 2026-07-12 by session 28
 
+## ⚠️ OWNER ROUND 19 (2026-07-12, session 28) — logged before building
+🚨 Log first, build second. Owner confirmed Round-18 checklist items 1-4 good.
+1. **Sidebar sharing marks (passport UI):** color-coded dots/shapes next to
+   names showing who shares what with whom (e.g. same green triangle next to
+   Myles + Myles Mobile if they share Real-Debrid). "If it's too much or too
+   cluttered make it expandable."
+2. **Myles Mobile does NOT need RD renewed** ("second account — Torbox and
+   debridio should be enough"): stop the expired-RD nags for him; his configs
+   should lean on Torbox+Debridio, not RD.
+3. **Gemini keys are ALL in the passport now** → re-run the config maker.
+4. **Gmails created for almost everyone** (store in passport): Toby=
+   tobysstreams, Myles Manuel + Myles Mobile = mylessstreams, Jody=
+   jodysstreams, Jacob=christmasbabyjesus12, Clarence=bopsstreams,
+   Anna/Jay=adamtpelectric (all @gmail.com); passwords = same as passport.
+   Rachael's is already her email field (no write — standing rule).
+   **Myles Dad: "take him off the list, let's not worry about him"** → drop
+   him from config generation + rollout lists (passport entry stays — it
+   holds his contract note + keys).
+5. **Rollout questions answered + asked for:** users DO have AIOStreams #1+#2
+   accounts already; owner wants configs for ALL 5 instances per person
+   (anime + non-anime variants) since templates don't cross instances and
+   he'll redo the existing ones anyway. (Earlier sessions created AIOStreams
+   accounts via API — offer to push/create via API instead of manual UI.)
+6. Round-18 oddity fixed by owner: jody's Trakt link was Myles' — also
+   fixed inside jody's AIOLists (owner updated that link).
+7. **APP BUG (alpha.55): auto-pick STILL chooses a no-English-audio stream**
+   (the Italian Naruto one; it has English SUBS but not audio). Owner's
+   theory: the app decides before all addons respond (AIOStreams capped at
+   5s; waiting up to 5s "I guess not horrible"). Investigate the race AND
+   the ranking for this exact episode.
+8. **APP BUG: "Try a different stream" landed on the colorful glitched
+   stream** (the blocky/corrupt-decode one) — the fallback should avoid or
+   fix that (software decoder path exists under Expert mode).
+
 ## ⚠️ READ FIRST (session 28 — 2026-07-12 — ROUND 18 COMPLETE: passport round finished across two sessions)
 **The prior session (cut off on usage limits) had already built more than it
 logged: passport UI items 1/6/8 are live in StremioSurfer/passport.html
