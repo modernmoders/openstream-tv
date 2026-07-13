@@ -1,5 +1,70 @@
 # STATE — updated 2026-07-12 by session 28
 
+## ⚠️ READ FIRST (session 28 cont. — 2026-07-12 — ROUND 19 COMPLETE: alpha.56 PUBLISHED OTA + passport sharing marks, all-instance configs)
+**alpha.56 (versionCode 56) BUILT — gates green (374 tests, 0 failures; 5 new)
++ assembleRelease clean — emulator smoke passed (installed, MainActivity
+RESUMED, crash buffer empty, versionName 0.3.0-alpha.56) — PUBLISHED to the
+update server (verify readback 200). Boxes self-offer on next app launch
+(⚠️ .117 was on the network this session — untouched; only emulator-5554 was
+driven).** Commit `cb784c9`. Everything in Round 19 built:
+- **#7 Italian auto-pick ROOT-CAUSED + FIXED — NOT a race.** The auto-pick
+  already waits for every addon (bestPlayableWhenSettled returns Waiting
+  while any group loads — owner's 5s theory disproven, no waiting change
+  needed). Real cause: the Italian WIKIRIP Naruto releases (S1 pack + per-
+  episode twins) carry AIOStreams' pennant `⛿ ᴇɴ·ᴊᴀ` even though their own
+  filename says `[EAC3 JPN ITA Sub ITA ENG]` (audio JPN+ITA, subs ITA+ENG) —
+  AIOSTREAMS' OWN LABEL LIES, our parser trusted it, and 1080p-cached-HEVC
+  beat the true English duals (480p SeaDex / 720p iVy). Fix: an explicit
+  audio/sub language listing in the release FILENAME (bracket groups or
+  dotted names, with sub-marker/2-langs/audio-codec anchors so title words
+  like "The.Spa" never match) now overrides the pennant in both directions.
+  Verified against the live S1E13/14/15 labels. **Owner retest: Naruto →
+  auto-pick should land on an English dual (SeaDex/iVy), never WIKIRIP.**
+- **#8 "Try a different stream" now means DIFFERENT:** the manual button
+  skips candidates whose release pattern matches the abandoned stream
+  (StreamAlternatives.advance(preferDifferentFrom), Jaccard ≥ 0.5 = same
+  family — the WIKIRIP pack vs its episode twin measures exactly 0.5),
+  falling back to a similar one only when nothing else remains. The quiet
+  on-error auto-skip keeps the plain ranked order. (The #7 fix also demotes
+  both WIKIRIPs below every English stream, so the glitched pair now sits
+  at the list's bottom anyway.)
+- **#1 Passport sidebar sharing marks:** colored shape glyphs (triangle/
+  circle/square/diamond/star × 7 colors) next to sidebar names for every
+  share group (same RD key, debridio pairs, Myles' torbox, shared gmail/
+  gemini); values shared by >half the users (rpdb, group torbox) are
+  excluded as noise. Collapsible "Sharing ▸" legend bar above the client
+  list names each group's members. Verified in the browser on :5000.
+- **#4 Gmail field:** new Account row in the passport; gmails written via
+  the server API for Toby/Myles Manuel/Myles Mobile/Jody/Jacob/Clarence/
+  Anna-Jay (Rachael untouched — hers already her email). Myles Manuel +
+  Mobile share one gmail → the share-glyph + "shared with" notes show it.
+- **#2 Myles Mobile no-RD:** billing.rd_not_needed=yes set via API;
+  rd_reminders.py skips ALL RD nags for flagged users (dry-run verified:
+  his expired-RD alert is gone); his 3 AIOStreams configs ship with
+  Real-Debrid DISABLED, Torbox+Debridio carrying streams.
+- **#3+#5 config maker now covers ALL 5 instances** (aiostreams-primary/
+  backup/elfhosted + aiometadata-discover/streaming): Rachael's live
+  primary/backup configs pulled as SFW templates too. Rerun with the new
+  gemini keys → 45 files, MISSING down to just "connect their own Trakt"
+  notes. Myles Dad dropped from targets (owner: off the list; passport
+  entry + stale configs dir removed). Jacob's streaming = Adam's anime.
+  Leak scan across all 45: CLEAN.
+- **Rollout answers for the owner:** everyone already HAS AIOStreams #1+#2
+  accounts (only #3 elfhosted + both AIOMetadata are new); templates indeed
+  don't cross instances — that's why there's one config file PER instance
+  per person, keys pre-filled. push_aiostreams.py can PUSH the primary/
+  backup configs to existing accounts and CREATE the missing elfhosted ones
+  via API (earlier sessions did exactly that) — offered, awaiting owner
+  go-ahead. AIOMetadata accounts have no create-API confirmed yet: make
+  each account in the UI, then Import Config File.
+⏳ **NEXT ACTION:** (a) Boxes self-offer alpha.56 — owner presses Update
+(dialog focuses Cancel, Update is LEFT). (b) Owner retests: Naruto auto-pick
+= English dual audio; "Try a different stream" from a glitched stream lands
+on a genuinely different release. (c) Owner eyeballs the passport sidebar
+glyphs + "Sharing" legend, Gmail rows. (d) On owner's word: push configs to
+existing AIOStreams accounts / create elfhosted ones via push_aiostreams.py;
+AIOMetadata accounts by hand + import. (e) Backlog: 9s bias knob, #16 skins.
+
 ## ⚠️ OWNER ROUND 19 (2026-07-12, session 28) — logged before building
 🚨 Log first, build second. Owner confirmed Round-18 checklist items 1-4 good.
 1. **Sidebar sharing marks (passport UI):** color-coded dots/shapes next to
