@@ -1,4 +1,44 @@
-# STATE — updated 2026-07-12 by session 28
+# STATE — updated 2026-07-15 by session 29
+
+## ⚠️ OWNER ROUND 20 (2026-07-15, session 29) — FULL LIST, logged before building
+🚨 Log first, build second. Owner also confirmed: **adding English to "Required
+Languages" in AIOStreams on his account fixed Naruto auto-pick** (Round-19 #7
+follow-up — config-side remedy works alongside the alpha.56 parser fix).
+1. **Q: "What do I need to do (again) to get everyone set up for us to push
+   the addon configuration to them?"** → answer from the Round-19 rollout
+   notes (push_aiostreams.py for AIOStreams; AIOMetadata accounts by hand +
+   Import Config File).
+2. **Stremio account addon push:** owner noticed HIS Stremio account is
+   missing Cinemeta (he uninstalled it a while back) and AIOLists, and still
+   carries the OLD AIOStreams instances. Ask: push the correct addon set to
+   Stremio accounts via API — remove current addons while adding the correct
+   ones. May need add-new-first (or remove>add>remove>add) in case the
+   account rejects an empty collection. **Try on Adam's account first.**
+   (Rachael's remains untouchable without per-request permission.)
+3. **APP BUG: episode selection loses place** — click a series episode, back
+   out → the selection lands 3-4 episodes EARLIER than the one clicked.
+4. **APP BUG: some movie covers don't load on Discover.**
+5. **APP BUG/RULE: Search → click a result card → BACK returns focus to the
+   search bar, not the card.** New standing rule: when backing out to a
+   screen the user was already on (since program open), ALWAYS return focus
+   to where the pointer last was.
+6. **Rename "Reset this TV" → "Reset this TV to Factory Defaults".**
+7. **Settings sub-screens with visuals:** move confusing settings into their
+   own "screen" (like Home screen rows) with a photo/illustration showing
+   what the toggle does. Owner offered to upload ON/OFF photos if we can't
+   render the difference. Per-setting guidance:
+   - Home screen rows: could have it. Poster size: same.
+   - Hide watched shows: doesn't need one. Menu sounds: doesn't.
+   - "Search by talking": REMOVE from Settings; surface it above the search
+     bar somewhere, with wording/illustration showing the mic swaps sides.
+   - Auto play first stream: sub-screen, or just say "RECOMMENDED ON".
+   - "Skip intros by themselves" → rename "Skip intros automatically" +
+     "Beta" warning; same treatment for "Play the next episode by itself"
+     (automatic wording + Beta warning).
+8. **Move Continue Watching ABOVE Trakt Recommendations on Home.**
+9. **Bug check pass:** owner has no testers besides himself — do whatever
+   automated bug checking possible (e.g. exercising visual tags/encodings).
+10. Tooling license: "Use any extensions/skills/plugins/etc you'd like."
 
 ## ⚠️ READ FIRST (session 28 cont. — 2026-07-12 — ROUND 19 COMPLETE: alpha.56 PUBLISHED OTA + passport sharing marks, all-instance configs)
 **alpha.56 (versionCode 56) BUILT — gates green (374 tests, 0 failures; 5 new)
