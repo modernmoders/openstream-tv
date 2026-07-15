@@ -1,5 +1,67 @@
 # STATE — updated 2026-07-15 by session 29
 
+## ⚠️ READ FIRST (session 29 — 2026-07-15 — ROUND 20 COMPLETE: alpha.57 PUBLISHED OTA + Adam's Stremio account fixed + push_stremio_bundle.py)
+**alpha.57 (versionCode 57) BUILT — gates green (378 tests, 0 failures; 5 new
+corpus tests) + assembleRelease clean — PUBLISHED to the update server
+(version.json readback 200, sstreams-57.apk). Boxes self-offer on next app
+launch (⚠️ .117 AND .171 were on the network — both untouched; only
+emulator-5554 was driven).** Commit `c31e5b2`, DECISIONS #64. Round 20 built:
+- **#2 STREMIO ACCOUNT PUSH DONE (Adam's account, verified):** his Stremio
+  now carries the canonical 8-addon bundle in Rachael's order — Cinemeta
+  (was uninstalled), Local Files, AIOMeta discover+streaming, AIOStreams
+  primary/backup/elfhosted (primary URL was stale — same uuid, new enc
+  segment), AIOLists (was missing). One atomic addonCollectionSet (no
+  empty-collection moment — the remove>add>remove>add worry is moot).
+  Backup taken first (stremio-addons-backup-adam-2026-07-15.json).
+  **NEW TOOL `push_stremio_bundle.py`** (StremioSurfer): --user/--all/
+  --dry-run, per-user backups, skips missing slots, REFUSES Rachael
+  without --include-rachael. Everyone-else rollout = one command, later.
+- **#3 episode focus:** back from a stream list lands on the episode the
+  user CLICKED (saveable openedVideoId beats resumeVideoId as entry anchor).
+- **#5 Search back-focus:** back from Details restores the opened result
+  card (openedRowKey + gated probe), not the search bar. Standing rule
+  honored on all browse surfaces now (Home/Discover already had it).
+- **#8 Continue Watching above EVERYTHING on Home** — pinnedRowCount and
+  the round-14 pinned/CW split deleted; recs still sort first among
+  catalog rows.
+- **#4 Discover covers:** failed poster → backdrop → always-visible title
+  (no more anonymous dark boxes). Upstream cause noted: owner's rpdb key
+  is free-tier (t0-free-rpdb) which rate-limits artwork.
+- **#6+#7 Settings:** "Reset this TV to Factory Defaults" (entry+dialog);
+  Poster size = NEW settings/poster-size SCREEN with a live miniature
+  poster wall that re-lays per focused option (emulator-verified, looks
+  great); "Search by talking" REMOVED from Settings → pill on the Search
+  screen itself, and the mic pill physically swaps sides of the text box
+  with the toggle; "Skip intros automatically" + "Play the next episode
+  automatically" (+ amber BETA chips); Auto-play first stream wears an
+  accent RECOMMENDED ON chip.
+- **#9 bug-check:** StreamLabelCorpusTest — ~30 real-world label shapes
+  (pennants/bracket listings/HDR tags/codec zoo/emoji/CJK/garbage) swept
+  through every StreamCascade parser entry point, plus targeted
+  expectations. All green.
+- **#1 rollout answer given to owner** (see Round-19 notes + summary):
+  AIOStreams push/create via push_aiostreams.py on his word; AIOMetadata
+  accounts by hand + Import Config File; then push_stremio_bundle.py --all.
+- ⚠️ **EMULATOR HOST MELTDOWN (90 min lost — do not chase as app bug):**
+  GPU context died (black screencaps, launcher ANR-killed too), then QEMU
+  CPU threads hung outright. ALL of today's ANRs were the host. Fallback
+  that worked: cold-restart emulator with `-gpu swiftshader_indirect`
+  (slow but renders). Visual drive passed: Home, Settings list, Poster
+  size + live preview, Anime drawer badges. NOT visually verified (code +
+  gates only): Search toggle/mic-swap, episode-focus fix, CW order (no
+  watch history on emulator), poster fallback.
+⏳ **NEXT ACTION:** (a) Boxes self-offer alpha.57 — owner presses Update
+(dialog focuses Cancel, Update is LEFT). (b) Owner retests: episode → back
+lands on the SAME episode; search → click card → back lands on the card;
+Continue Watching is Home's first row; Settings → Poster size screen;
+Search screen's "Talk to search" pill swaps the mic's side; Discover covers
+that used to be blank now show backdrop or title. (c) On owner's word:
+push_aiostreams.py (push primary/backup + create elfhosted), owner makes
+AIOMetadata accounts + imports configs, then push_stremio_bundle.py --all
+(Rachael excluded by default). (d) Consider upgrading rpdb from t0-free
+(rate-limited artwork = the blank covers). (e) Backlog: 9s bias knob, #16
+skins.
+
 ## ⚠️ OWNER ROUND 20 (2026-07-15, session 29) — FULL LIST, logged before building
 🚨 Log first, build second. Owner also confirmed: **adding English to "Required
 Languages" in AIOStreams on his account fixed Naruto auto-pick** (Round-19 #7
