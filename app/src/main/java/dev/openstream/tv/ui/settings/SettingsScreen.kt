@@ -39,8 +39,6 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.openstream.tv.BuildConfig
 import dev.openstream.tv.data.EpisodeNumbering
-import dev.openstream.tv.data.MAX_POSTER_COLUMNS
-import dev.openstream.tv.data.MIN_POSTER_COLUMNS
 import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
@@ -51,6 +49,7 @@ import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.Hairline
 import dev.openstream.tv.ui.theme.MutedText
+import dev.openstream.tv.ui.theme.SeriesAmber
 import dev.openstream.tv.ui.theme.SurfaceCard
 import dev.openstream.tv.ui.theme.SurfaceCardFocused
 
@@ -66,6 +65,7 @@ import dev.openstream.tv.ui.theme.SurfaceCardFocused
 fun SettingsScreen(
     onBack: () -> Unit,
     onHomeRows: () -> Unit,
+    onPosterSize: () -> Unit,
     onAddons: () -> Unit,
     onAppLog: () -> Unit,
     onReset: () -> Unit,
@@ -82,11 +82,9 @@ fun SettingsScreen(
     val autoSkipCredits by viewModel.autoSkipCredits.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
-    val voiceFirst by viewModel.voiceFirstSearch.collectAsStateWithLifecycle()
     val discoverHideWatched by viewModel.discoverHideWatched.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
     val profileName by viewModel.profileName.collectAsStateWithLifecycle()
-    var pickingDensity by remember { mutableStateOf(false) }
     var pickingPlayer by remember { mutableStateOf(false) }
     var pickingNumbering by remember { mutableStateOf(false) }
     var confirmingReset by remember { mutableStateOf(false) }
@@ -149,8 +147,9 @@ fun SettingsScreen(
             )
             SettingEntry(
                 title = "Poster size",
-                description = "$columns posters per row — smaller posters fit more on screen",
-                onClick = { pickingDensity = true },
+                description = "$columns posters per row — opens a picture that " +
+                    "shows each size before you pick",
+                onClick = onPosterSize,
             )
             SettingEntry(
                 title = "Hide watched shows in Discover",
@@ -171,21 +170,14 @@ fun SettingsScreen(
                 },
                 onClick = { viewModel.setUiSounds(!sounds) },
             )
-            SectionCaption("SEARCH")
-            SettingEntry(
-                title = "Search by talking",
-                description = if (voiceFirst) {
-                    "On — opening Search starts the microphone right away: just " +
-                        "say the show's name. You can still type instead"
-                } else {
-                    "Off — opening Search shows the keyboard; the microphone " +
-                        "button next to the box still works"
-                },
-                onClick = { viewModel.setVoiceFirstSearch(!voiceFirst) },
-            )
+            // "Search by talking" moved ONTO the Search screen (round 20 #7):
+            // the toggle lives above the search bar, where flipping it visibly
+            // swaps which side of the box the microphone sits on.
             SectionCaption("PLAYBACK")
             SettingEntry(
                 title = "Auto-play first stream",
+                badge = "RECOMMENDED ON",
+                badgeColor = Accent,
                 description = if (autoPlay) {
                     "On — picking a movie or episode starts playing right away; " +
                         "a broken stream quietly tries the next server"
@@ -216,22 +208,31 @@ fun SettingsScreen(
                     onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
                 )
                 if (skipIntros) {
+                    // "automatically" wording + BETA marks (round 20 #7): the
+                    // community skip timings aren't perfect yet — say so.
                     SettingEntry(
-                        title = "Skip intros by themselves",
+                        title = "Skip intros automatically",
+                        badge = "BETA",
+                        badgeColor = SeriesAmber,
                         description = if (autoSkipIntros) {
                             "On — the opening skips itself the moment it starts; " +
-                                "you never press anything"
+                                "you never press anything. Still testing: it can " +
+                                "occasionally skip a beat too far"
                         } else {
                             "Off — the “Skip Intro” button waits for you to press OK"
                         },
                         onClick = { viewModel.setAutoSkipIntros(!autoSkipIntros) },
                     )
                     SettingEntry(
-                        title = "Play the next episode by itself",
+                        title = "Play the next episode automatically",
+                        badge = "BETA",
+                        badgeColor = SeriesAmber,
                         description = if (autoSkipCredits) {
                             "On — a little after the ending song starts, a " +
                                 "countdown appears, then the next episode plays. " +
-                                "Press BACK during the countdown to keep watching"
+                                "Press BACK during the countdown to keep watching. " +
+                                "Still testing: the countdown timing may be off " +
+                                "on some shows"
                         } else {
                             "Off — the “Next Episode” button waits for you to press OK"
                         },
@@ -338,7 +339,7 @@ fun SettingsScreen(
                 // (owner request: a way back to "What's your name?" with no
                 // adb — e.g. handing the box to a different person).
                 SettingEntry(
-                    title = "Reset this TV",
+                    title = "Reset this TV to Factory Defaults",
                     description = "Forgets every addon and goes back to the name-setup screen",
                     onClick = { confirmingReset = true },
                 )
@@ -346,16 +347,6 @@ fun SettingsScreen(
         }
     }
 
-    if (pickingDensity) {
-        DensityDialog(
-            current = columns,
-            onPick = { picked ->
-                viewModel.setPosterColumns(picked)
-                pickingDensity = false
-            },
-            onDismiss = { pickingDensity = false },
-        )
-    }
     if (pickingPlayer) {
         PlayerPrefDialog(
             current = playerPref,
@@ -551,6 +542,9 @@ private fun SettingEntry(
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Small colored tag after the title — "BETA", "RECOMMENDED ON" (round 20 #7). */
+    badge: String? = null,
+    badgeColor: Color = Accent,
 ) {
     val shape = RoundedCornerShape(14.dp)
     Surface(
@@ -582,7 +576,22 @@ private fun SettingEntry(
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 // Bigger, couch-readable text (owner Round-16 #2).
-                Text(text = title, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(text = title, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                    if (badge != null) {
+                        Text(
+                            text = badge,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = badgeColor,
+                            modifier = Modifier
+                                .background(badgeColor.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
                 Text(text = description, style = MaterialTheme.typography.bodyMedium, color = MutedText)
             }
             Text(
@@ -595,9 +604,10 @@ private fun SettingEntry(
     }
 }
 
-/** A dialog picker option in the same refined language (selected = accent). */
+/** A picker option in the same refined language (selected = accent);
+ *  shared with the settings sub-screens (PosterSizeScreen). */
 @Composable
-private fun PickerRow(
+internal fun SettingsPickerRow(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -658,7 +668,7 @@ private fun PlayerPrefDialog(
 
     @Composable
     fun option(value: String, label: String) {
-        PickerRow(
+        SettingsPickerRow(
             label = label,
             selected = value == current,
             onClick = { onPick(value) },
@@ -696,59 +706,6 @@ private fun PlayerPrefDialog(
 }
 
 /**
- * Poster-density picker (§5.1, 4–8 columns): trapped-focus Dialog, initial
- * focus on the current value so OK-OK is a no-op — same pattern as
- * Discover's pickers.
- */
-@Composable
-private fun DensityDialog(
-    current: Int,
-    onPick: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val selectedFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { selectedFocus.requestFocus() } }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier
-                .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
-                .padding(28.dp),
-        ) {
-            Text(
-                text = "Poster size",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    // Scroll-axis headroom for focus scale (§5.3).
-                    .padding(vertical = 8.dp),
-            ) {
-                for (columns in MIN_POSTER_COLUMNS..MAX_POSTER_COLUMNS) {
-                    val hint = when (columns) {
-                        MIN_POSTER_COLUMNS -> " · biggest posters"
-                        MAX_POSTER_COLUMNS -> " · most on screen"
-                        else -> ""
-                    }
-                    PickerRow(
-                        label = "$columns per row$hint",
-                        selected = columns == current,
-                        onClick = { onPick(columns) },
-                        modifier = if (columns == current) Modifier.focusRequester(selectedFocus) else Modifier,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
  * Episode-numbering picker (owner request: anime). Two plain-words choices —
  * per-season vs the straight-through absolute count — in the same trapped-focus
  * dialog language as the other pickers, initial focus on the current value.
@@ -764,7 +721,7 @@ private fun EpisodeNumberingDialog(
 
     @Composable
     fun option(value: EpisodeNumbering, label: String) {
-        PickerRow(
+        SettingsPickerRow(
             label = label,
             selected = value == current,
             onClick = { onPick(value) },
@@ -824,7 +781,7 @@ private fun ResetTvDialog(
                 .padding(28.dp),
         ) {
             Text(
-                text = "Reset this TV?",
+                text = "Reset this TV to factory defaults?",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
             )
@@ -840,7 +797,7 @@ private fun ResetTvDialog(
                     onClick = onDismiss,
                     modifier = Modifier.focusRequester(cancelFocus),
                 ) { Text("Cancel") }
-                Button(onClick = onConfirm) { Text("Reset this TV") }
+                Button(onClick = onConfirm) { Text("Reset to factory defaults") }
             }
         }
     }

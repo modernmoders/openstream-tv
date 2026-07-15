@@ -40,6 +40,7 @@ import dev.openstream.tv.ui.player.PlayerScreen
 import dev.openstream.tv.ui.search.SearchScreen
 import dev.openstream.tv.ui.settings.AppLogScreen
 import dev.openstream.tv.ui.settings.HomeRowsScreen
+import dev.openstream.tv.ui.settings.PosterSizeScreen
 import dev.openstream.tv.ui.settings.SettingsScreen
 import dev.openstream.tv.ui.streams.StreamListScreen
 
@@ -55,6 +56,8 @@ object Routes {
     const val ADDONS_ADD = "addons/add"
     const val SETTINGS = "settings"
     const val SETTINGS_HOME_ROWS = "settings/home-rows"
+    /** Poster density with a live preview picture (round 20 #7). */
+    const val SETTINGS_POSTER_SIZE = "settings/poster-size"
     /** Expert-mode diagnostics viewer (MASTER_PLAN §10 "log them"). */
     const val SETTINGS_APP_LOG = "settings/app-log"
     /** Welcome Guide + type-your-name setup (owner directive 2026-07-06). */
@@ -214,6 +217,7 @@ fun AppNavHost(
             SettingsScreen(
                 onBack = goBack,
                 onHomeRows = { navController.navigate(Routes.SETTINGS_HOME_ROWS) },
+                onPosterSize = { navController.navigate(Routes.SETTINGS_POSTER_SIZE) },
                 onAddons = { navController.navigate(Routes.ADDONS) },
                 onAppLog = { navController.navigate(Routes.SETTINGS_APP_LOG) },
                 // "Reset this TV": land on Welcome/Connect with a clean back
@@ -226,6 +230,9 @@ fun AppNavHost(
         }
         composable(Routes.SETTINGS_HOME_ROWS) {
             HomeRowsScreen(onBack = goBack)
+        }
+        composable(Routes.SETTINGS_POSTER_SIZE) {
+            PosterSizeScreen(onBack = goBack)
         }
         composable(Routes.SETTINGS_APP_LOG) {
             AppLogScreen(onBack = goBack)

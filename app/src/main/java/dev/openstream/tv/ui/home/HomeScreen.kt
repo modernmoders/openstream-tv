@@ -82,32 +82,28 @@ private const val RESTORE_FOCUS_FRAMES = 12
 /**
  * Which LazyColumn item holds [targetRowKey], or -1 when it isn't on screen.
  *
- * The column is header, then an optional hero, then the pinned recommendation
- * rows (round 14 #14 — the first [pinnedRowCount] entries of the row list),
- * then an optional Continue Watching row, then the remaining catalog rows —
- * so a catalog's index depends on which of the optional rows exist and which
- * side of Continue Watching it sits on. Pure so the arithmetic is unit-testable.
+ * The column is header, then an optional hero, then an optional Continue
+ * Watching row (round 20 #8 — above EVERY catalog row, recommendations
+ * included), then the catalog rows in ViewModel order — so a catalog's index
+ * depends on which optional rows exist. Pure so the arithmetic is unit-testable.
  */
 internal fun homeRestoreIndex(
     rowKeys: List<String>,
     hasFeatured: Boolean,
     hasContinueWatching: Boolean,
     targetRowKey: String,
-    pinnedRowCount: Int = 0,
 ): Int {
     val featuredIndex = 1 // item 0 is always the header
     if (targetRowKey == HOME_FEATURED_KEY) return if (hasFeatured) featuredIndex else -1
-    val firstPinnedIndex = if (hasFeatured) featuredIndex + 1 else featuredIndex
-    val continueWatchingIndex = firstPinnedIndex + pinnedRowCount
+    val continueWatchingIndex = if (hasFeatured) featuredIndex + 1 else featuredIndex
     if (targetRowKey == HOME_CONTINUE_WATCHING_KEY) {
         return if (hasContinueWatching) continueWatchingIndex else -1
     }
     val offset = rowKeys.indexOf(targetRowKey)
     if (offset < 0) return -1
-    if (offset < pinnedRowCount) return firstPinnedIndex + offset
-    val firstUnpinnedIndex =
+    val firstRowIndex =
         if (hasContinueWatching) continueWatchingIndex + 1 else continueWatchingIndex
-    return firstUnpinnedIndex + (offset - pinnedRowCount)
+    return firstRowIndex + offset
 }
 
 /**
@@ -214,7 +210,6 @@ fun HomeScreen(
                                 hasFeatured = featured != null,
                                 hasContinueWatching = state.continueWatching.isNotEmpty(),
                                 targetRowKey = it,
-                                pinnedRowCount = state.pinnedRowCount,
                             )
                         } ?: -1
                         if (index >= 0) {
@@ -266,23 +261,9 @@ fun HomeScreen(
                             )
                         }
                     }
-                    // Round 14 #14: the pinned recommendation rows render ABOVE
-                    // Continue Watching, everything else below — the ViewModel
-                    // sorted them to the front, this just splits the list.
-                    val pinnedRows = state.rows.take(state.pinnedRowCount)
-                    val unpinnedRows = state.rows.drop(state.pinnedRowCount)
-                    items(pinnedRows, key = { it.ref.key }, contentType = { "catalog-row" }) { row ->
-                        CatalogRow(
-                            row = row,
-                            columns = state.columns,
-                            progressByMeta = state.progressByMeta,
-                            seriesWatchByMeta = state.seriesWatchByMeta,
-                            onItemClick = { openItem(row.ref.key, it) },
-                            restoreItemId = openedItemId
-                                .takeIf { restorePending && openedRowKey == row.ref.key },
-                            restoreFocus = restoreFocus,
-                        )
-                    }
+                    // Round 20 #8: Continue Watching sits ABOVE every catalog
+                    // row — recommendations included (they're still sorted to
+                    // the front of the catalog rows by the ViewModel).
                     if (state.continueWatching.isNotEmpty()) {
                         item(key = HOME_CONTINUE_WATCHING_KEY, contentType = "cw-row") {
                             ContinueWatchingRow(
@@ -295,7 +276,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                    items(unpinnedRows, key = { it.ref.key }, contentType = { "catalog-row" }) { row ->
+                    items(state.rows, key = { it.ref.key }, contentType = { "catalog-row" }) { row ->
                         CatalogRow(
                             row = row,
                             columns = state.columns,

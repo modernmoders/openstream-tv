@@ -1941,3 +1941,62 @@ asks; the non-obvious choices:
    pops the keyboard; not the rail — that's where it used to stick).
    Emulator-verified before/after: lit accent pill while the Google speech
    activity is on top, quiet pill + focus ring after BACK.
+
+## 64. 2026-07-15 (session 29) — Round 20: pointer-restore rule, poster fallback, Settings visuals (alpha.57)
+
+1. **Standing focus rule (owner): backing out to a screen you were already
+   on restores the pointer to where it last was.** Two gaps closed:
+   - **Details episode list** anchored entry focus on the ViewModel's
+     RESUME suggestion, so returning from a stream list landed 3-4 episodes
+     early. A `rememberSaveable` `openedVideoId` (the episode actually
+     clicked) now outranks `resumeVideoId` as the entry anchor
+     (`entryVideoId` param through DetailsContent). Fresh opens are
+     unchanged — the saveable starts null.
+   - **Search** re-focused the text field on every entry. The screen now
+     remembers WHICH result row was opened (`openedRowKey`, saveable) and
+     probes that row's RowEntryMemory card first (same gated
+     restore-probe pattern as Home); the field is the fallback.
+2. **Continue Watching is above EVERYTHING on Home (round 20 #8)** — the
+   round-14 "pinned recommendations above CW" split is gone, and with it
+   `pinnedRowCount` (state + homeRestoreIndex arithmetic + LazyColumn
+   split). Recommendations still sort first among CATALOG rows
+   (withRecommendationsFirst unchanged). HomeRowsScreen's "Continue
+   Watching always comes first" caption is true again.
+3. **Poster fallback chain (round 20 #4 "covers don't load"):** a failed
+   poster falls back to the title's backdrop (same idiom as episode
+   stills); if no artwork loads at all the card shows the TITLE centered —
+   an anonymous dark box never renders. Root cause is upstream (rate-limited
+   artwork CDNs — the owner's rpdb key is the free t0 tier — and dead
+   catalog URLs), so the app degrades gracefully instead.
+4. **Settings that need SEEING get a screen, not a dialog (round 20 #7):**
+   Poster size is now `settings/poster-size` — options left, a live
+   miniature poster wall right that re-lays out per FOCUSED option
+   (weighted boxes, so the math can't drift from the real grid). Picks
+   apply live; BACK returns. The old DensityDialog is deleted; PickerRow
+   became internal `SettingsPickerRow`, shared.
+5. **"Search by talking" lives ON the Search screen** (removed from
+   Settings): a pill next to the title toggles it, and the mic pill
+   physically SWAPS SIDES of the text box (talk-first = before, type-first
+   = after) — the swap is the illustration. SettingsViewModel keeps its
+   setter only for reset-to-defaults.
+6. **Plain-language + honesty markers:** "Skip intros automatically" /
+   "Play the next episode automatically" (+ amber BETA chips — community
+   timings aren't perfect), "Auto-play first stream" wears an accent
+   RECOMMENDED ON chip, "Reset this TV" → "Reset this TV to Factory
+   Defaults". SettingEntry grew an optional badge/badgeColor.
+7. **Bug-check pass = a label-parser corpus test** (round 20 #9,
+   StreamLabelCorpusTest): ~30 real-world label shapes (pennants,
+   bracket language listings, HDR/DV/10-bit tags, codec zoo, emoji
+   clutter, CJK/RTL, degenerate garbage) swept through every StreamCascade
+   entry point in every field — asserts no crashes plus the
+   "never demote what we can't reason about" contract.
+8. **Emulator forensics (cost ~90 min): ALL of today's ANRs were the
+   HOST, not the app.** The Mac's emulator GPU context died mid-session
+   (black screencaps, "Failed to make display surface context current",
+   the Google TV LAUNCHER ANR-killed too), and the final hardware-GPU
+   retry hung QEMU's CPU threads outright. Evidence the app is fine:
+   378 unit tests green; full visual drive (Home, Settings, Poster size
+   incl. live preview, Anime drawer) passed on swiftshader between
+   failures. If future emulator smokes go black or ANR launcher-wide:
+   cold-restart the EMULATOR PROCESS (`-gpu swiftshader_indirect` as the
+   fallback), don't chase the app.

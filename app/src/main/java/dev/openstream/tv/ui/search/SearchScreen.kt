@@ -62,6 +62,18 @@ fun SearchScreen(
     var query by rememberSaveable { mutableStateOf("") }
     val fieldFocus = remember { FocusRequester() }
 
+    // Round 20 #5: BACK from Details must land on the result card you opened,
+    // not the search bar (standing rule: returning to a screen you already
+    // were on restores the pointer). Saveable — this composition is disposed
+    // while Details is up. The card index itself lives in the row's saveable
+    // RowEntryMemory; this only remembers WHICH row to aim the probe at.
+    var openedRowKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val restoreFocus = remember { FocusRequester() }
+    // Restore is live only during the entry probe (same gate as Home): rows
+    // re-compose whenever results refresh, and an ungated requester would
+    // re-yank focus on every recomposition.
+    var restorePending by remember { mutableStateOf(true) }
+
     // Voice-first bookkeeping (owner 2026-07-12): every deliberate click into
     // Search bumps the trigger; each unseen bump fires the mic ONCE. Saved so
     // a BACK-return (same counter) never re-fires, and so the pending fire is
@@ -78,17 +90,29 @@ fun SearchScreen(
     var listening by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val voicePending = state.voiceFirst && voiceRequests > consumedVoiceRequest
-        if (!voicePending) {
-            fieldFocus.requestFocus()
-        } else {
-            // Voice entry: selection lands on the MIC, not back on the rail
-            // (owner 2026-07-12: "the selection stays in the sidebar over the
-            // magnifying glass"). Probe a few frames — the pill composes late.
-            repeat(10) {
-                if (runCatching { micFocus.requestFocus() }.isSuccess) return@LaunchedEffect
-                withFrameNanos { }
+        try {
+            val voicePending = state.voiceFirst && voiceRequests > consumedVoiceRequest
+            if (voicePending) {
+                // Voice entry: selection lands on the MIC, not back on the rail
+                // (owner 2026-07-12: "the selection stays in the sidebar over the
+                // magnifying glass"). Probe a few frames — the pill composes late.
+                repeat(10) {
+                    if (runCatching { micFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                    withFrameNanos { }
+                }
+                return@LaunchedEffect
             }
+            // BACK-return with a card opened earlier: probe the restore target
+            // (its row composes lazily), fall back to the field.
+            if (openedRowKey != null && state.rows.isNotEmpty()) {
+                repeat(12) {
+                    if (runCatching { restoreFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+                    withFrameNanos { }
+                }
+            }
+            fieldFocus.requestFocus()
+        } finally {
+            restorePending = false
         }
     }
 
@@ -103,19 +127,9 @@ fun SearchScreen(
             modifier = Modifier.padding(horizontal = 48.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(
-                    text = "Search",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
-                )
-            }
             // Voice search (§10 backlog "mic"): the system speech recognizer
             // does the listening — no RECORD_AUDIO permission on our side.
-            // The button only appears when a recognizer exists on the device.
+            // Voice UI only appears when a recognizer exists on the device.
             val context = LocalContext.current
             val voiceIntent = remember {
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(
@@ -125,6 +139,42 @@ fun SearchScreen(
             }
             val voiceAvailable = remember {
                 voiceIntent.resolveActivity(context.packageManager) != null
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = "Search",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                )
+                // "Search by talking" lives HERE now, not in Settings (round
+                // 20 #7): flipping it visibly moves the mic to the other side
+                // of the box below — the swap itself shows what the toggle
+                // does. Hidden when the device has no speech recognizer.
+                if (voiceAvailable) {
+                    SurfacePill(
+                        onClick = { viewModel.setVoiceFirstSearch(!state.voiceFirst) },
+                        selected = state.voiceFirst,
+                    ) {
+                        Text(
+                            text = if (state.voiceFirst) "Talk to search: ON" else "Talk to search: OFF",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (state.voiceFirst) Color(0xFF0E0E16) else Color.White,
+                            maxLines = 1,
+                        )
+                    }
+                    Text(
+                        text = if (state.voiceFirst) {
+                            "Opening Search listens right away — the mic sits before the typing box"
+                        } else {
+                            "Type first — the mic moved to the other side, press it to talk"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedText,
+                    )
+                }
             }
             val voiceLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartActivityForResult()
@@ -174,11 +224,13 @@ fun SearchScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Mic on the LEFT of the field (owner Round-15 #9): speaking
-                // is the first-class way in, typing the fallback. `selected`
-                // rides the listening state — the shared pill's solid accent
-                // fill IS the "I'm listening" light.
-                if (voiceAvailable) {
+                // The mic's SIDE follows "Talk to search" (round 20 #7):
+                // talk-first puts it BEFORE the field (speaking is the
+                // first-class way in, Round-15 #9), type-first moves it
+                // AFTER — the swap is the live illustration of the toggle
+                // above. `selected` rides the listening state — the shared
+                // pill's solid accent fill IS the "I'm listening" light.
+                val micPill: @Composable () -> Unit = {
                     SurfacePill(
                         onClick = ::startListening,
                         selected = listening,
@@ -192,6 +244,7 @@ fun SearchScreen(
                         )
                     }
                 }
+                if (voiceAvailable && state.voiceFirst) micPill()
                 Box(Modifier.weight(1f)) {
                     TvTextField(
                         value = query,
@@ -201,6 +254,7 @@ fun SearchScreen(
                         imeAction = ImeAction.Search,
                     )
                 }
+                if (voiceAvailable && !state.voiceFirst) micPill()
             }
         }
 
@@ -217,7 +271,20 @@ fun SearchScreen(
             ),
         ) {
             items(state.rows, key = { it.ref.key }) { row ->
-                SearchRow(row, state.columns, state.progressByMeta, state.seriesWatchByMeta, onItemClick)
+                SearchRow(
+                    row = row,
+                    columns = state.columns,
+                    progressByMeta = state.progressByMeta,
+                    seriesWatchByMeta = state.seriesWatchByMeta,
+                    onItemClick = { item ->
+                        openedRowKey = row.ref.key
+                        onItemClick(item)
+                    },
+                    // The remembered card in THIS row is the entry target while
+                    // the screen-entry probe is live.
+                    restoreFocus = restoreFocus
+                        .takeIf { restorePending && openedRowKey == row.ref.key },
+                )
             }
         }
     }
@@ -230,6 +297,9 @@ private fun SearchRow(
     progressByMeta: Map<String, dev.openstream.tv.domain.WatchProgress>,
     seriesWatchByMeta: Map<String, dev.openstream.tv.domain.SeriesWatch>,
     onItemClick: (dev.openstream.tv.addon.MetaItem) -> Unit,
+    /** Non-null while this row's remembered card is the screen-entry target
+     *  (BACK from Details, round 20 #5) — attached to that card. */
+    restoreFocus: FocusRequester? = null,
 ) {
     Column {
         Row(
@@ -283,6 +353,11 @@ private fun SearchRow(
                                     .then(
                                         if (index == entryIndex) {
                                             Modifier.focusRequester(memory.entryFocus)
+                                        } else Modifier
+                                    )
+                                    .then(
+                                        if (restoreFocus != null && index == entryIndex) {
+                                            Modifier.focusRequester(restoreFocus)
                                         } else Modifier
                                     ),
                                 columns = columns,

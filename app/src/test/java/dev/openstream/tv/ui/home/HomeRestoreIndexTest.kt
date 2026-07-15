@@ -69,49 +69,21 @@ class HomeRestoreIndexTest {
     }
 
     @Test
-    fun `pinned rows sit between hero and continue watching`() {
-        // Round 14 #14: rows[0] is pinned (recommendations); the column is
-        // header, hero, PINNED, Continue Watching, the rest.
+    fun `every catalog row sits below continue watching`() {
+        // Round 20 #8: Continue Watching is above ALL catalog rows — even
+        // rows[0] (the recommendations row the ViewModel sorts to the front)
+        // lands after it.
         assertEquals(
             2,
-            homeRestoreIndex(
-                rows, hasFeatured = true, hasContinueWatching = true,
-                targetRowKey = "addonA:top", pinnedRowCount = 1,
-            ),
+            homeRestoreIndex(rows, hasFeatured = true, hasContinueWatching = true, targetRowKey = HOME_CONTINUE_WATCHING_KEY),
         )
         assertEquals(
             3,
-            homeRestoreIndex(
-                rows, hasFeatured = true, hasContinueWatching = true,
-                targetRowKey = HOME_CONTINUE_WATCHING_KEY, pinnedRowCount = 1,
-            ),
+            homeRestoreIndex(rows, hasFeatured = true, hasContinueWatching = true, targetRowKey = "addonA:top"),
         )
-        // First UNpinned row lands after Continue Watching.
         assertEquals(
             4,
-            homeRestoreIndex(
-                rows, hasFeatured = true, hasContinueWatching = true,
-                targetRowKey = "addonA:new", pinnedRowCount = 1,
-            ),
-        )
-    }
-
-    @Test
-    fun `pinned rows shift up when the optional rows are absent`() {
-        assertEquals(
-            1,
-            homeRestoreIndex(
-                rows, hasFeatured = false, hasContinueWatching = false,
-                targetRowKey = "addonA:top", pinnedRowCount = 1,
-            ),
-        )
-        // No Continue Watching: unpinned rows follow the pinned block directly.
-        assertEquals(
-            2,
-            homeRestoreIndex(
-                rows, hasFeatured = false, hasContinueWatching = false,
-                targetRowKey = "addonA:new", pinnedRowCount = 1,
-            ),
+            homeRestoreIndex(rows, hasFeatured = true, hasContinueWatching = true, targetRowKey = "addonA:new"),
         )
     }
 

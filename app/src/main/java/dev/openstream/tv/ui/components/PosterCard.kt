@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Card
@@ -123,8 +124,18 @@ fun PosterCard(
     ) {
         Box(modifier = Modifier.width(width).height(height)) {
             val indicator = posterIndicatorFor(progress)
+            // Round 20 #4 ("some movie covers aren't loading on Discover"):
+            // a failed poster (rate-limited artwork CDNs answer 429, some
+            // catalogs ship dead URLs) falls back to the title's backdrop —
+            // same idiom as the episode stills — and when no artwork loads at
+            // all, the card shows its NAME instead of an anonymous dark box.
+            var posterFailed by remember(item.poster) { mutableStateOf(false) }
+            var artUnavailable by remember(item.poster) {
+                mutableStateOf(item.poster == null && item.background == null)
+            }
+            val artModel = if (posterFailed) item.background else item.poster ?: item.background
             AsyncImage(
-                model = item.poster,
+                model = artModel,
                 contentDescription = item.name,
                 contentScale = ContentScale.Crop,
                 // Solid placeholder: the grid paints its full layout on the
@@ -132,8 +143,30 @@ fun PosterCard(
                 // arrive — the pop-in itself read as jank on the onn boxes.
                 placeholder = ColorPainter(PosterPlaceholder),
                 error = ColorPainter(PosterPlaceholder),
+                onError = {
+                    if (!posterFailed && item.poster != null && item.background != null) {
+                        posterFailed = true
+                    } else {
+                        artUnavailable = true
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
+            if (artUnavailable) {
+                // No artwork at all: the name IS the card. Centered, always
+                // visible (the focus-reveal title below still layers on top).
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color(0xFFB9CDE4),
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 10.dp),
+                )
+            }
             // Watched artwork recedes behind a dim so unwatched content pops
             // forward (watched-system design principle). Static, no animation.
             if (indicator is PosterIndicator.Watched) {

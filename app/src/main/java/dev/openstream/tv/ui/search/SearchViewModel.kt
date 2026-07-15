@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class SearchViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val catalogRepository: CatalogRepository,
-    viewPrefs: ViewPrefs,
+    private val viewPrefs: ViewPrefs,
     progressRepository: ProgressRepository,
     seriesWatchRepository: SeriesWatchRepository,
     voiceSearchTrigger: VoiceSearchTrigger,
@@ -88,6 +88,12 @@ class SearchViewModel @Inject constructor(
                 _uiState.update { it.copy(voiceFirst = on) }
             }
         }
+    }
+
+    /** The "Search by talking" toggle lives on the Search screen itself
+     *  (round 20 #7) — same pref Settings' reset-to-defaults still covers. */
+    fun setVoiceFirstSearch(enabled: Boolean) {
+        viewModelScope.launch { viewPrefs.setVoiceFirstSearch(enabled) }
     }
 
     fun search(query: String) {

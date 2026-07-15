@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,6 +92,13 @@ fun DetailsScreen(
     // composes visible rows), which the outer scope can't sequence.
     val primaryFocus = remember { FocusRequester() }
 
+    // Round 20 #3: backing out of the stream list must land on the episode
+    // the user actually clicked — NOT the ViewModel's resume suggestion (the
+    // next unwatched episode, usually a few rows earlier). Saveable so it
+    // survives the trip through the back stack; null until a click, so a
+    // fresh Details open still anchors on the resume episode.
+    var openedVideoId by rememberSaveable { mutableStateOf<String?>(null) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -132,7 +140,7 @@ fun DetailsScreen(
                 numbering = state.numbering,
                 absoluteNumbers = state.absoluteNumbers,
                 episodeProgress = episodeProgress,
-                resumeVideoId = state.resumeVideoId,
+                entryVideoId = openedVideoId ?: state.resumeVideoId,
                 onSelectSeason = viewModel::selectSeason,
                 onPlayMovie = {
                     // Movies: video id == meta id (spec)
@@ -142,6 +150,7 @@ fun DetailsScreen(
                     )
                 },
                 onPlayEpisode = { video ->
+                    openedVideoId = video.id
                     onOpenStreams(
                         viewModel.type, video.id, video.displayTitle,
                         viewModel.id, state.meta!!.poster,
@@ -166,7 +175,9 @@ private fun DetailsContent(
     numbering: EpisodeNumbering,
     absoluteNumbers: Map<String, Int>,
     episodeProgress: Map<String, WatchProgress>,
-    resumeVideoId: String?,
+    /** Entry-focus anchor: the episode the user last opened, else the resume
+     *  suggestion — see [DetailsScreen]'s openedVideoId (round 20 #3). */
+    entryVideoId: String?,
     onSelectSeason: (Int) -> Unit,
     onPlayMovie: () -> Unit,
     onPlayEpisode: (Video) -> Unit,
@@ -177,7 +188,7 @@ private fun DetailsContent(
     // otherwise throw) then focus it; otherwise focus the default anchor. Runs
     // once — season changes recompose but must not re-yank focus.
     LaunchedEffect(Unit) {
-        val epIdx = resumeVideoId?.let { id -> episodes.indexOfFirst { it.id == id } } ?: -1
+        val epIdx = entryVideoId?.let { id -> episodes.indexOfFirst { it.id == id } } ?: -1
         if (epIdx >= 0) {
             val headerItems = 1 + if (seasons.isNotEmpty()) 1 else 0 // header (+ sticky seasons)
             listState.scrollToItem(headerItems + epIdx)
@@ -364,10 +375,10 @@ private fun DetailsContent(
                             modifier = Modifier.focusRestorer(selectedChipFocus),
                         ) {
                             items(seasons, key = { it }) { season ->
-                                // With a resume target the episode row owns entry
+                                // With an entry target the episode row owns entry
                                 // focus, not the season chip.
                                 val isEntryChip =
-                                    season == seasons.first() && resumeVideoId == null
+                                    season == seasons.first() && entryVideoId == null
                                 val stats = seasonStats[season]
                                 SurfacePill(
                                     onClick = { onSelectSeason(season) },
@@ -428,11 +439,12 @@ private fun DetailsContent(
                     // the row never renders an empty gray box.
                     fallbackArt = meta.background ?: meta.poster,
                     onClick = { onPlayEpisode(video) },
-                    // Entry focus lands here when this is the resume episode, or
-                    // (no history) on the first episode of a season-less series.
+                    // Entry focus lands here when this is the last-opened or
+                    // resume episode, or (no history) on the first episode of
+                    // a season-less series.
                     modifier = if (
-                        video.id == resumeVideoId ||
-                        (resumeVideoId == null && seasons.isEmpty() && index == 0)
+                        video.id == entryVideoId ||
+                        (entryVideoId == null && seasons.isEmpty() && index == 0)
                     ) {
                         Modifier.focusRequester(primaryFocus)
                     } else Modifier,
