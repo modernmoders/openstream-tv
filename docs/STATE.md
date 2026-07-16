@@ -18,8 +18,11 @@ Round-20 Stremio push only swaps addon URLs, never config contents).**
   match adam (required=[English], preferred=[English,Original,Unknown]);
   verified by re-GET. Pre-write backups: StremioSurfer/config_backups/
   2026-07-15/. Owner's stray MediaFusion URL lived in "[BAK]AIOStreams" on
-  the weebs instance — blanked. ⚠️ Rachael untouched: her required=[] on all
-  3 instances — needs owner's explicit word.
+  the weebs instance — blanked. Rachael: required=[] on all 3 instances →
+  owner gave explicit per-request permission ("Rachael's should be the same,
+  English required") → set required=[English] on primary/backup/nightly,
+  ONLY that field touched, verified by re-GET (her preferred already
+  matched). Pre-write backups in config_backups/2026-07-15/.
 - **⚠️ AIOStreams re-validates configs on save:** a stored deprecated preset
   ("USA TV") blocks ANY save with USER_INVALID_CONFIG. Writers must drop the
   named preset and retry (harmless — it's dead server-side). Also transient
