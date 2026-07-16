@@ -1,4 +1,49 @@
-# STATE — updated 2026-07-15 by session 29
+# STATE — updated 2026-07-15 by session 30
+
+## ⚠️ READ FIRST (session 30 — 2026-07-15 — ROUND 21 (passport/AIOStreams round): RD-key mixup audited + fixed, English required everywhere, toggle_rd.py + RD On/Off buttons)
+**All work in ~/Documents/Claude/StremioSurfer (NOT this repo; not a git repo).
+Owner found ANOTHER USER'S Real-Debrid key inside his own live primary
+AIOStreams config (and a foreign MediaFusion URL). Root cause: saved directly
+on the AIOStreams site (likely wrong-tab save) — NOT our tooling
+(push_aiostreams.py skips the owner by default and was never run at him; the
+Round-20 Stremio push only swaps addon URLs, never config contents).**
+- **Full read-only key sweep of every user × instance via GET /api/v1/user
+  (Basic uuid:password):** everyone carries their own RD key. Owner fixed his
+  primary himself; his backup/elfhosted were already right. Mike Miller's
+  stale (expired) key + Clarence's wrong AIOStreams password → owner fixed
+  both, re-verified clean this session.
+- **Required Languages rollout (owner ask):** every PRIMARY already had
+  required=[English]. Every BACKUP (weebs instance) config had required ↔
+  preferred TRANSPOSED (template bug) — fixed on all 9 non-Rachael users to
+  match adam (required=[English], preferred=[English,Original,Unknown]);
+  verified by re-GET. Pre-write backups: StremioSurfer/config_backups/
+  2026-07-15/. Owner's stray MediaFusion URL lived in "[BAK]AIOStreams" on
+  the weebs instance — blanked. ⚠️ Rachael untouched: her required=[] on all
+  3 instances — needs owner's explicit word.
+- **⚠️ AIOStreams re-validates configs on save:** a stored deprecated preset
+  ("USA TV") blocks ANY save with USER_INVALID_CONFIG. Writers must drop the
+  named preset and retry (harmless — it's dead server-side). Also transient
+  "manifest timed out" errors → retry. Both handled in toggle_rd.py.
+- **NEW toggle_rd.py + passport "RD Off"/"RD On" buttons + /api/toggle_rd:**
+  surgically flips services.realdebrid.enabled across a user's instances
+  (GET-modify-PUT; catalogs/addons preserved). --enable refreshes the apiKey
+  from the passport. Refuses Rachael without --include-rachael (UI can't pass
+  it). Tested: dry-run + REAL disable on Myles Mobile (his RD expired
+  07-13, Round-19 decision = Torbox/Debridio only) — verified on both his
+  instances. Server restarted via autostart.sh (it is NOT under launchd;
+  plain nohup process — kill + autostart.sh to restart).
+- Owner Q&A answered: expired RD key left enabled = dead RD links that fail
+  on click → disable is correct. Owner flipped precacheNextEpisode ON on his
+  own account to test (it was off everywhere = AIOStreams default, never a
+  deliberate choice).
+⏳ **NEXT ACTION:** (a) Owner reloads the passport (hard refresh) and eyeballs
+the new RD Off/RD On buttons in the Subscriptions row. (b) Owner says the
+word on: Rachael required=[English] (needs per-request permission), and the
+big rollout (push_aiostreams.py primary/backup — NOTE this REPLACES whole
+configs incl. Mike's custom catalogs/links, by design streams-only + create
+elfhosted; AIOMetadata accounts by hand + Import Config File). (c) Owner
+reports how precache-next-episode feels. (d) alpha.57 retests from Round 20
+still pending (episode-focus, search back-focus, CW first, poster fallback).
 
 ## ⚠️ READ FIRST (session 29 — 2026-07-15 — ROUND 20 COMPLETE: alpha.57 PUBLISHED OTA + Adam's Stremio account fixed + push_stremio_bundle.py)
 **alpha.57 (versionCode 57) BUILT — gates green (378 tests, 0 failures; 5 new
