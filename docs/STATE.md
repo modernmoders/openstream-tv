@@ -1,4 +1,41 @@
-# STATE — updated 2026-07-15 by session 30
+# STATE — updated 2026-07-16 by session 31
+
+## ⚠️ OWNER ROUND 22 (2026-07-16, session 31) — FULL LIST, logged before building
+🚨 Log first, build second. Owner supplied 3 screenshots: (1) Chrome popup
+"Open Microsoft Edge.app?" when clicking Connect to Trakt from AIOLists
+(URL = api.trakt.tv/oauth/authorize…redirect_uri=urn:ietf…oob — the PIN
+flow); (2) Stremio's Library filter bar (All / Last Watched / A-Z / Z-A /
+Most Watched / Watched / Not Watched); (3) SStreams Discover showing the
+"Trakt Recommendations" movie catalog rendering fine.
+1. **Trakt connect from AIOLists** pops "Open Microsoft Edge.app?" (pic 1) —
+   explain/fix. (Follow-on from the Round-21-era Trakt outage discussion.)
+2. **App: Library section** — "a library section with better addons than in
+   the second pic? but it would show everything you've watched" (a
+   Stremio-Library-like screen: everything watched, with filters).
+3. **APP GLITCH (pic 3):** a catalog/row shows in Discover but "doesn't show
+   in Home when it's showing in Discover. Maybe the ratio of the cards in
+   Discover?" — investigate.
+4. **AIOMetadata: Trakt recommendation catalogs in Movies, Series and
+   Trending types.** Owner ALREADY set up his AIOMetadata 1st instance
+   (Discover) the way he wants — "{First Name}'s Recommendations" — and asks:
+   replicate that setup in everyone's configs "and/or when it's
+   pushed/created if possible". (Q he raised en route: unhide the catalogs
+   behind the merged catalogs, or make 2nd/3rd merged catalogs for
+   movies/series separately — his own setup supersedes the question.)
+5. **Addon management ask:** wanted to test without AIOLists; only removal
+   path was in the app; refreshing lists/catalogs = close app + clear data
+   (which re-syncs and brings AIOLists back). Asks: an on-computer portal to
+   see/add/move/delete people's addons? Or does the passport already do it —
+   "if I removed my AIOLists link from passport and ran the push to SStreams
+   account (do I have that? lol), would it remove AIOLists? Or throw an
+   error? Maybe a toggle on each addon link in the passport would work?"
+6. **Q: what does AIOLists actually give?** which catalogs, anything
+   important — owner notes he gets Trakt recommendations from AIOStreams
+   1st instance at least.
+7. **Search screen wording:** the voice-toggle caption — final wording:
+   "Selecting <icon>Search from the left panel will activate the mic
+   automatically. Keep this ON if you prefer using voice to search." (icon
+   inline before "Search"); must fit even with the sidebar open.
 
 ## ⚠️ READ FIRST (session 30 — 2026-07-15 — ROUND 21 (passport/AIOStreams round): RD-key mixup audited + fixed, English required everywhere, toggle_rd.py + RD On/Off buttons)
 **All work in ~/Documents/Claude/StremioSurfer (NOT this repo; not a git repo).
