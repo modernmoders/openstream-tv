@@ -1,5 +1,63 @@
 # STATE — updated 2026-07-16 by session 31
 
+## ⚠️ READ FIRST (session 31 — 2026-07-16 — ROUND 22 STARTED: questions answered with live data, #7 built; big builds queued)
+**Round 22 logged below. This session answered the investigation items and
+built #7; items #2 (Library), #3 (Home-row glitch), #4 (AIOMetadata
+recommendations rollout), #5 (passport addon toggles) are QUEUED — build
+next.** Findings (all verified live, read-only):
+- **#7 BUILT (gates green: assembleDebug + testDebugUnitTest exit 0, NOT
+  emulator-verified yet):** Search voice caption = owner's wording with the
+  rail's own magnifier drawn INLINE (NavRail's SEARCH glyph extracted as
+  public `SearchGlyph`); caption weighted so it wraps with the sidebar open.
+  Ships with this round's alpha.58 — no OTA publish yet (round incomplete).
+- **#1 root-caused from the screenshot:** the "Open Microsoft Edge.app?"
+  popup = Chrome's external-app prompt — a Trakt PWA/web-app is installed in
+  Edge, so macOS routes trakt.tv links there. This ALSO explains last
+  round's "sign-in just loads": the post-login redirect tries to open the
+  Edge app and the tab looks stuck. Fix: press CANCEL and continue in the
+  page (the AIOLists flow is the oob PIN flow — sign in, copy PIN, paste
+  into AIOLists), and/or uninstall the Trakt app from edge://apps.
+- **#6 ANSWERED with live manifest:** Adam's AIOLists serves ONLY 4
+  search catalogs (Search Movies / Search Series / Merged Search / Anime
+  Search; all required=search) + meta — ZERO Home/Discover rows (his Trakt
+  was never connected inside AIOLists). Safe for him to test without it;
+  other users (e.g. jody) may have real Trakt rows in theirs.
+- **#5 ANSWERED (mechanics):** two surfaces. (a) SStreams boxes follow the
+  HOSTED PROFILE JSON (savoy.click/setup) via ProfileSync on EVERY app
+  launch (15-min throttle): installs in profile order, REMOVES managed
+  addons dropped from the file, re-fetches manifests. So remove-AIOLists =
+  edit his hosted profile JSON + reopen the app — NO data clearing (that
+  nukes the profile link). (b) Stremio accounts: push_stremio_bundle.py
+  rebuilds the whole collection from passport fields and SKIPS empty slots
+  — blanking aiolists_manifest in the passport + rerunning REMOVES it, no
+  error. The asked-for per-addon passport toggles + profile regen/upload =
+  build item (note make_profiles is STALE — 1 meta + 1 stream — needs the
+  8-slot canonical bundle first).
+- **#4 groundwork:** owner's AIOMetadata Discover instance verified live —
+  55 catalogs incl. NEW "Recommended for Adam" in movie/series/Trending
+  types, required=[] (Home-eligible). Rollout = pull Adam's Discover config
+  as the new template in make_user_configs.py, rename catalog per person
+  ("Recommended for <First>"), blank trakt tokens (recs are personal — each
+  user's own Trakt connect required for them to work). ⚠️ He also gets a
+  "Trakt Recommendations" catalog from AIOStreams primary — once the
+  AIOMetadata one is in, that's a duplicate row; suggest disabling it there.
+- **#3 hypothesis (unconfirmed):** Home fetches rows at launch and DROPS a
+  row whose catalog request fails/times out; Discover fetches on demand →
+  intermittent "shows in Discover, missing on Home". Card ratio is not it.
+  Fix direction: placeholder + retry instead of dropping. Repro on emulator
+  next session; confirm WHICH row with the owner if possible.
+⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #3 Home
+row drop fix (repro first), (b) #2 Library screen (rail entry; everything
+watched from local history + Trakt, Stremio-like filters: Last Watched /
+A-Z / Z-A / Most Watched / Watched / Not Watched), (c) emulator-verify #7's
+caption (ON state, sidebar open), then gates → OTA publish alpha.58. Tooling
+(StremioSurfer, no gates): (d) #4 make_user_configs.py template switch to
+Adam's Discover + per-person recommendation rename; (e) #5 passport
+per-addon toggles → regenerate profile JSON (8-slot bundle, fix stale
+make_profiles) → scp to Dreamhost + optional push_stremio_bundle. Owner
+actions were given in chat (Trakt PIN flow via Cancel, export nothing —
+config pulled live).
+
 ## ⚠️ OWNER ROUND 22 (2026-07-16, session 31) — FULL LIST, logged before building
 🚨 Log first, build second. Owner supplied 3 screenshots: (1) Chrome popup
 "Open Microsoft Edge.app?" when clicking Connect to Trakt from AIOLists
