@@ -57,6 +57,24 @@ next.** Findings (all verified live, read-only):
   `GridCells.FixedSize(posterWidth)` (also now matches the skeleton grid's
   geometry). Gates green; NOT yet visually verified — do it in this round's
   emulator pass. No other Adaptive grids exist in the app (grepped).
+- **#4 STEP 1 DONE (2026-07-16, owner said "go"):** make_user_configs.py now
+  grafts the owner's recommendation arrangement into every Discover config —
+  3 merged rows "Recommended for <First>" (movie/series/all=Trending) over
+  the GENERIC trakt.recommendations.* sources, inserted at the template's
+  old "Trakt Recommendations" position, raw sources disabled+mergedInto.
+  Owner's own Discover was NOT made the wholesale template on purpose (his
+  is sfw=false/includeAdult=true + adult rows + personal MAL prefs — the
+  SFW base stays Rachael's). NEW `strip_personal_trakt()`: the
+  custom.org_trakt_* catalogs (account-bound www.strem.io/trakt sourceUrl)
+  had ridden along in EVERY generated kit since Round 18 — now stripped
+  from all AIOMetadata builds. Regenerated all 45 files; verified all 9
+  kits: personalized rows present/enabled, sfw=true/includeAdult=false, no
+  org_trakt, no "Adam" strings, no template-owner key leaks (rpdb is the
+  known all-10-shared key, exempt). MISSING.txt = the 2 standing
+  connect-own-Trakt notes. Owner decision same message: AIOLists' Trakt
+  connect is ABANDONED (Trakt-side breakage) — scrobbling = AIOMetadata
+  Discover (traktWatchTracking=true, verified on owner's live instance) +
+  the app's own check-in; AIOLists stays in the bundle for search only.
 ⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #2 Library
 screen (rail entry; everything watched from local history + Trakt,
 Stremio-like filters: Last Watched / A-Z / Z-A / Most Watched / Watched /
