@@ -232,7 +232,13 @@ fun DiscoverScreen(
             )
             else -> LazyVerticalGrid(
                 state = gridState,
-                columns = GridCells.Adaptive(CardSizeTokens.posterWidth(state.view.columns)),
+                // FixedSize, NOT Adaptive (round 22 #3, "gray lines on the side
+                // of the artwork"): Adaptive stretches every cell with the row's
+                // leftover width and grid cells measure their item with EXACT
+                // width — the Card surface grew past the poster and its gray
+                // background showed as a strip beside the art. FixedSize keeps
+                // each cell exactly one poster wide, like Home's rows.
+                columns = GridCells.FixedSize(CardSizeTokens.posterWidth(state.view.columns)),
                 horizontalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                 verticalArrangement = Arrangement.spacedBy(CardSizeTokens.rowGap),
                 // Scroll-axis headroom for the first/last row's focus scale (§5.3).
