@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -31,13 +33,19 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.ui.components.MicIconImage
+import dev.openstream.tv.ui.components.SearchGlyph
 import dev.openstream.tv.ui.components.SurfacePill
 import dev.openstream.tv.ui.components.PosterCard
 import dev.openstream.tv.ui.components.RowMessage
@@ -51,6 +59,9 @@ import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
 import dev.openstream.tv.ui.theme.CardSizeTokens
 import dev.openstream.tv.ui.theme.MutedText
+
+/** Key for the inline rail-magnifier in the voice caption's annotated string. */
+private const val SearchGlyphInline = "search-glyph"
 
 @Composable
 fun SearchScreen(
@@ -167,12 +178,35 @@ fun SearchScreen(
                     }
                     Text(
                         text = if (state.voiceFirst) {
-                            "Opening Search listens right away — the mic sits before the typing box"
+                            // Owner's wording (round 22 #7), with the rail's own
+                            // magnifier inline so "Search" points at the exact
+                            // left-panel button.
+                            buildAnnotatedString {
+                                append("Selecting ")
+                                appendInlineContent(SearchGlyphInline, "🔍")
+                                append(
+                                    "Search from the left panel will activate the mic " +
+                                        "automatically. Keep this ON if you prefer using " +
+                                        "voice to search."
+                                )
+                            }
                         } else {
-                            "Type first — the mic moved to the other side, press it to talk"
+                            AnnotatedString(
+                                "Type first — the mic moved to the other side, press it to talk"
+                            )
                         },
+                        inlineContent = mapOf(
+                            SearchGlyphInline to InlineTextContent(
+                                Placeholder(18.sp, 18.sp, PlaceholderVerticalAlign.TextCenter),
+                            ) { SearchGlyph(MutedText, Modifier.fillMaxSize()) },
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MutedText,
+                        // Weighted (not measured to its own width) so the caption
+                        // WRAPS to a second line instead of running off-screen
+                        // while the sidebar is open (owner: "make sure it fits
+                        // even with the sidebar open").
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }

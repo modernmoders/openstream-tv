@@ -163,6 +163,31 @@ private fun RailItem(
 /** Glyph/label ink on the focused accent pill — the rail's own background. */
 private val RailInk = Color(0xFF0E0E16)
 
+/**
+ * The rail's magnifying-glass, public so text that tells the user to "select
+ * Search from the left panel" can draw the identical glyph inline instead of
+ * an emoji that looks nothing like the actual button.
+ */
+@Composable
+fun SearchGlyph(tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        drawCircle(
+            tint,
+            radius = w * 0.30f,
+            center = Offset(w * 0.43f, w * 0.43f),
+            style = Stroke(width = w * 0.09f, cap = StrokeCap.Round),
+        )
+        drawLine(
+            tint,
+            Offset(w * 0.66f, w * 0.66f),
+            Offset(w * 0.88f, w * 0.88f),
+            strokeWidth = w * 0.09f,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
 /** Simple drawn glyphs — no font/emoji dependency (see [NavDestination.icon]). */
 @Composable
 private fun RailIcon(kind: RailIconKind, tint: Color) {
@@ -170,6 +195,12 @@ private fun RailIcon(kind: RailIconKind, tint: Color) {
     // the Home header, so "settings" looks the same everywhere (round 14 #10).
     if (kind == RailIconKind.SETTINGS) {
         GearIcon(tint, Modifier.size(24.dp))
+        return
+    }
+    // Search shares its glyph with the Search screen's voice caption, which
+    // points the user at this exact rail button (round 22 #7).
+    if (kind == RailIconKind.SEARCH) {
+        SearchGlyph(tint, Modifier.size(24.dp))
         return
     }
     Canvas(Modifier.size(24.dp)) {
@@ -203,13 +234,10 @@ private fun RailIcon(kind: RailIconKind, tint: Color) {
                 }
                 drawPath(needle, tint, style = stroke)
             }
-            RailIconKind.SEARCH -> {
-                drawCircle(tint, radius = w * 0.30f, center = Offset(w * 0.43f, w * 0.43f), style = stroke)
-                drawLine(tint, Offset(w * 0.66f, w * 0.66f), Offset(w * 0.88f, w * 0.88f), strokeWidth = w * 0.09f, cap = StrokeCap.Round)
-            }
-            // Handled above by the shared GearIcon; the early return means
-            // this arm never draws, it just keeps the when exhaustive.
-            RailIconKind.SETTINGS -> Unit
+            // Handled above by the shared GearIcon/SearchGlyph; the early
+            // returns mean these arms never draw, they just keep the when
+            // exhaustive.
+            RailIconKind.SEARCH, RailIconKind.SETTINGS -> Unit
         }
     }
 }
