@@ -75,6 +75,14 @@ next.** Findings (all verified live, read-only):
   connect is ABANDONED (Trakt-side breakage) — scrobbling = AIOMetadata
   Discover (traktWatchTracking=true, verified on owner's live instance) +
   the app's own check-in; AIOLists stays in the bundle for search only.
+  **Addendum (owner): everyone family-safe EXCEPT Jacob — "NSFW Anime,
+  replace my info with his"** → ANIME_USERS' Discover template is now the
+  owner's Discover WHOLESALE (sfw=false, includeAdult=true, Top Adult
+  Animation, "Recommended for Jacob", keys/tokens swapped/blanked, personal
+  Trakt stripped); Jacob's Streaming was already Adam's anime. Regenerated +
+  re-verified all 9 kits (jacob 188 catalogs NSFW, others 186 SFW, zero
+  leaks). Kits live at ~/Documents/Claude/StremioSurfer/setup_kits/<slug>/
+  configs/ (5 JSONs + MISSING.txt each).
 ⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #2 Library
 screen (rail entry; everything watched from local history + Trakt,
 Stremio-like filters: Last Watched / A-Z / Z-A / Most Watched / Watched /
