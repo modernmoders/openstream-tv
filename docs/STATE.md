@@ -41,16 +41,21 @@ next.** Findings (all verified live, read-only):
   user's own Trakt connect required for them to work). ⚠️ He also gets a
   "Trakt Recommendations" catalog from AIOStreams primary — once the
   AIOMetadata one is in, that's a duplicate row; suggest disabling it there.
-- **#3 hypothesis (unconfirmed):** Home fetches rows at launch and DROPS a
-  row whose catalog request fails/times out; Discover fetches on demand →
-  intermittent "shows in Discover, missing on Home". Card ratio is not it.
-  Fix direction: placeholder + retry instead of dropping. Repro on emulator
-  next session; confirm WHICH row with the owner if possible.
-⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #3 Home
-row drop fix (repro first), (b) #2 Library screen (rail entry; everything
-watched from local history + Trakt, Stremio-like filters: Last Watched /
-A-Z / Z-A / Most Watched / Watched / Not Watched), (c) emulator-verify #7's
-caption (ON state, sidebar open), then gates → OTA publish alpha.58. Tooling
+- **#3 CORRECTED + FIXED (owner clarified: not a missing row — gray strips
+  beside the artwork on Discover cards, absent on Home):** root cause =
+  `GridCells.Adaptive` stretches every cell with the row's leftover width
+  and grid cells measure items with EXACT width, so the Card surface grew
+  wider than its poster → the card's gray background showed as a right-side
+  strip. Home rows measure loosely → never affected. Fix:
+  `GridCells.FixedSize(posterWidth)` (also now matches the skeleton grid's
+  geometry). Gates green; NOT yet visually verified — do it in this round's
+  emulator pass. No other Adaptive grids exist in the app (grepped).
+⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #2 Library
+screen (rail entry; everything watched from local history + Trakt,
+Stremio-like filters: Last Watched / A-Z / Z-A / Most Watched / Watched /
+Not Watched), (b) emulator-verify #7's caption (ON state, sidebar open) AND
+#3's Discover grid (no gray strips at 6 and 8 columns), then gates → OTA
+publish alpha.58. Tooling
 (StremioSurfer, no gates): (d) #4 make_user_configs.py template switch to
 Adam's Discover + per-person recommendation rename; (e) #5 passport
 per-addon toggles → regenerate profile JSON (8-slot bundle, fix stale
@@ -70,9 +75,11 @@ Most Watched / Watched / Not Watched); (3) SStreams Discover showing the
 2. **App: Library section** — "a library section with better addons than in
    the second pic? but it would show everything you've watched" (a
    Stremio-Library-like screen: everything watched, with filters).
-3. **APP GLITCH (pic 3):** a catalog/row shows in Discover but "doesn't show
-   in Home when it's showing in Discover. Maybe the ratio of the cards in
-   Discover?" — investigate.
+3. **APP GLITCH (pic 3):** owner clarified (follow-up message): "gray lines
+   on the side of the artwork, like it's set to fit height instead of fill"
+   — on Discover cards only, never on Home. (First read of "doesn't show in
+   Home when it's showing in Discover" = the glitch itself doesn't show on
+   Home.)
 4. **AIOMetadata: Trakt recommendation catalogs in Movies, Series and
    Trending types.** Owner ALREADY set up his AIOMetadata 1st instance
    (Discover) the way he wants — "{First Name}'s Recommendations" — and asks:
