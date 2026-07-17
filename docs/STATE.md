@@ -10,13 +10,20 @@ next.** Findings (all verified live, read-only):
   rail's own magnifier drawn INLINE (NavRail's SEARCH glyph extracted as
   public `SearchGlyph`); caption weighted so it wraps with the sidebar open.
   Ships with this round's alpha.58 — no OTA publish yet (round incomplete).
-- **#1 root-caused from the screenshot:** the "Open Microsoft Edge.app?"
-  popup = Chrome's external-app prompt — a Trakt PWA/web-app is installed in
-  Edge, so macOS routes trakt.tv links there. This ALSO explains last
-  round's "sign-in just loads": the post-login redirect tries to open the
-  Edge app and the tab looks stuck. Fix: press CANCEL and continue in the
-  page (the AIOLists flow is the oob PIN flow — sign in, copy PIN, paste
-  into AIOLists), and/or uninstall the Trakt app from edge://apps.
+- **#1 re-root-caused (owner: blank page on EVERY browser/PC incl. never-
+  used ones; normal trakt.tv login works fine):** the Edge popup was a side
+  show (a Trakt PWA in Edge). Real cause is TRAKT-SIDE: verified by curl —
+  AIOLists' client_id is valid and /oauth/authorize (both hosts) 200s into
+  Trakt's NEW htmx auth page with signed ba_/PKCE params, but the post-login
+  handoff back to the oob/PIN authorization page is what dies (blank page).
+  Trakt overhauled auth ~May 2026 and broke third-party flows again in
+  July (their forums); AIOLists (v1.2.7, repo dormant since Feb 2026) still
+  uses the oob flow. NOT fixable client-side. Straw to grasp: the blank
+  page's ADDRESS BAR (or view-source) may still carry `code=` — paste that
+  into AIOLists if present. Mitigation: AIOLists is search-only for adam
+  (see #6) and AIOMetadata's own Trakt connect evidently works (his
+  "Recommended for Adam" catalogs exist) → per-user Trakt connects for the
+  rollout are NOT blocked; AIOLists' Trakt can stay unconnected.
 - **#6 ANSWERED with live manifest:** Adam's AIOLists serves ONLY 4
   search catalogs (Search Movies / Search Series / Merged Search / Anime
   Search; all required=search) + meta — ZERO Home/Discover rows (his Trakt
