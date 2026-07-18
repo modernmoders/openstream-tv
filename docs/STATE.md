@@ -83,14 +83,30 @@ next.** Findings (all verified live, read-only):
   re-verified all 9 kits (jacob 188 catalogs NSFW, others 186 SFW, zero
   leaks). Kits live at ~/Documents/Claude/StremioSurfer/setup_kits/<slug>/
   configs/ (5 JSONs + MISSING.txt each).
+**#8 SUPERSEDED (owner, same day — "basically a 360"):** a parallel session
+("Trakt in the claude folder") FIXED AIOMetadata's Trakt auth → AIOLists is
+back OUT; recs come from AIOMetadata everywhere, as the kits already do.
+The #8 app auto-rename is MOOT (AIOMetadata rows are pre-named per person
+and the app already tops "recommend" rows) — dropped from alpha.58. Owner
+set up Clarence + Anna/Jay: BOTH instances each, VERIFIED complete this
+session (read-only): correct addonNames, 186/99 catalogs, 3 enabled
+"Recommended for <Name>" rows, sfw=true/includeAdult=false, Trakt CONNECTED
+on Discover, traktWatchTracking true(discover)/false(streaming), no
+org_trakt, zero template-owner leaks. Their 4 passport aiometadata slots
+lacked uuid → backfilled from the manifest URLs via the :5000 API
+(auto-.bak taken; re-GET verified). OPEN QUESTION for cutover: AIOLists'
+final fate in the 8-slot bundle — owner says "doing away with aiolists";
+it still provides merged search — confirm drop vs keep-for-search before
+push_stremio_bundle runs.
 ⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #2 Library
 screen (rail entry; everything watched from local history + Trakt,
 Stremio-like filters: Last Watched / A-Z / Z-A / Most Watched / Watched /
-Not Watched), (b) #8 auto-rename of recommendation rows to "... for
-<First>" (see #8 design notes; verify hosted profiles' name field first),
-(c) emulator-verify #7's caption (ON state, sidebar open) AND #3's Discover
-grid (no gray strips at 6 and 8 columns), then gates → OTA publish
-alpha.58. Tooling
+Not Watched), (b) emulator-verify #7's caption (ON state, sidebar open) AND
+#3's Discover grid (no gray strips at 6 and 8 columns), then gates → OTA
+publish alpha.58. Meanwhile owner continues per-person AIOMetadata setup
+(remaining 7: Toby, Jody, Mike, Jacob, both Myles, Manuel Momma — same flow
+as Clarence/Anna incl. connecting each person's Trakt on Discover); verify
+each pair on request (uuid backfill included). Tooling
 (StremioSurfer, no gates): (d) #4 make_user_configs.py template switch to
 Adam's Discover + per-person recommendation rename; (e) #5 passport
 per-addon toggles → regenerate profile JSON (8-slot bundle, fix stale
