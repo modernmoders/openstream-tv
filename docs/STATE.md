@@ -1,4 +1,59 @@
-# STATE — updated 2026-07-18 by session 33 (cont.)
+# STATE — updated 2026-07-18 by session 34
+
+## ⚠️ SESSION 34 (2026-07-18) — BLOB SCENE FINISHED + LIVE AIOMETADATA RENAMES (YOU/Bop) + accounts answered
+**Continuation after the prior account hit usage limits mid-turn. All work in
+~/Documents/Claude/StremioSurfer + live addon accounts (owner-requested).**
+- **passport.html blob scene DONE:** prior session left drawBlob() unwired —
+  wired as the 4th BGFX scene (dropdown option, frame dispatch, click →
+  burstBlob shard explosion) + new "Gooey" design preset (midnight/blob/
+  clear/glow/70). Tuned after live look: core radius .07–.095, alpha cap
+  ~.9×(.22+.5a) so mid-screen panels stay readable. The prior session's
+  click-offset fix (canvas needed CSS width/height:100% on retina) was
+  already in. VERIFIED live on :5000: Gooey preset renders, cursor blob lags
+  + gooily merges, click bursts core + ripple lands ON the click point,
+  design persists across reload, zero console errors.
+- **RENAMES (owner ask) — live AIOMetadata configs edited via the REAL
+  AIOMetadata API (v2.8.0, both hosts; discovered from the configure JS):**
+  POST /api/config/load/{uuid} {password} → {success,config};
+  PUT /api/config/update/{uuid} {config,password}; create = POST
+  /api/config/save; manifest URL = {base}/stremio/{uuid}/manifest.json
+  (uuid only); requiresAddonPassword=false both hosts; needs browser UA.
+  Applied + re-load-verified + public-manifest-verified, pre-write backups
+  in StremioSurfer/config_backups/2026-07-18/aiometa-*.pre-rename.json:
+  · Myles Dad: addonName → "AIO - Discover"/"AIO - Streaming" (rows were
+    ALREADY "Recommended for YOU" — owner had renamed them in the UI).
+  · Manuel Momma: rows "Recommended for Manuel" → "Recommended for YOU" ×3,
+    addonName → "AIO - Discover"/"AIO - Streaming".
+  · Clarence: rows → "Recommended for Bop" ×3, addonName → "AIO - Bop -
+    Discover/Streaming".
+  Live AIOStreams configs of all 3 swept read-only: ZERO name occurrences.
+  Kit wrapper metadata.name ("SFW bundle (primary) — <Name>") left on
+  purpose — import-UI label only, never shows on a TV.
+- **make_user_configs.py:** RECS_DISPLAY_NAME → {myles dad: YOU, manuel
+  momma: YOU, clarence savoy: Bop} + new ADDON_DISPLAY_NAME (None = drop
+  name from addonName). Kits regenerated for the 3 users; verified names +
+  no leaks. Answer given to owner: passport name changes do NOT propagate
+  to live addons (only future kit generation); passport entry stays
+  "Clarence Savoy" — renaming it would break the index.php name→file map +
+  tool lookups unless done as its own job.
+- **Accounts question ANSWERED with live data:** Manuel Momma has AIOStreams
+  primary+backup (only elfhosted/nightly missing); Myles Dad has elfhosted
+  (manifest in passport, API-verified reachable; slot uuid EMPTY — backfill
+  from manifest URL before any push so push_user PUTs instead of POSTing a
+  duplicate!) and is missing primary+backup. Both users' AIOMetadata pairs
+  EXIST with Trakt CONNECTED (traktTokenId set; watchTracking discover=true
+  / streaming=false — convention holds; Clarence same). push_aiostreams.py
+  POSTs create accounts → owner needs to create NOTHING; the 3 missing
+  AIOStreams accounts can be created via API on his word (point --users at
+  the live server's users.json, then backfill new uuids/manifests).
+⏳ **NEXT ACTION:** (a) Owner hard-refreshes passport, tries Gooey design
+(Theme → Designs) + Blob background, reports tweaks. (b) On owner's word:
+backfill Myles Dad nightly uuid, then push_aiostreams.py create Myles Dad
+primary+backup + Manuel Momma elfhosted from their kit configs; write new
+uuids/manifests to passport. (c) Round-22 app remainder unchanged: #2
+Library screen, emulator-verify #7 caption + #3 Discover grid, gates → OTA
+alpha.58. (d) #5 passport per-addon toggles → 8-slot profile regen (fix
+stale make_profiles) → scp Dreamhost.
 
 ## ⚠️ SESSION 33 cont. (2026-07-18) — PASSPORT DESIGN SYSTEM v2 ("themes have no umph" fixed)
 Owner liked the redesign but called the theme settings weak (abrupt cycle,
