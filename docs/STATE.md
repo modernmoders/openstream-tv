@@ -1,4 +1,54 @@
-# STATE — updated 2026-07-16 by session 31
+# STATE — updated 2026-07-18 by session 33
+
+## ⚠️ READ FIRST (session 33 — 2026-07-18 — MYLES DAD KIT GENERATED + PASSPORT REDESIGN (tabs/menus/beauty) — StremioSurfer work, no app build)
+**All work in ~/Documents/Claude/StremioSurfer (not this repo). Continuation of
+session 32 (2026-07-18, same day, not in this log): that session added the
+passport's clickable-empty-pill/✎ edit entry points, billing seg-toggle, the
+real trakt_code field (migrate_trakt_codes.py moved codes out of Notes), and a
+first "More tools" collapse.** This session:
+- **MYLES DAD SET UP (owner re-added him; Round 19's "off the list" is DEAD):**
+  his passport entry now carries his own RD (exp 2026-10-17) / gemini / tmdb /
+  tvdb / mdblist keys + Myles' torbox + a trakt_code. Removed "myles dad" from
+  make_user_configs.py SKIP_USERS and added RECS_DISPLAY_NAME override so his
+  rec rows read "Recommended for Myles Dad" (NOT "for Myles" — wrong person).
+  Generated setup_kits/myles-dad/configs/ (5 JSONs + MISSING.txt). VERIFIED:
+  zero template-owner leaks, his keys in all 3 AIOStreams files (RD enabled),
+  sfw=true/includeAdult=false, 186/99 catalogs, no org_trakt, no "Adam"
+  strings, required=[English]/preferred=[English,Original,Unknown] everywhere.
+  MISSING: debridio key (he has none) + the 2 standing connect-own-Trakt notes.
+  AIOLists note absent (Trakt AIO preset disabled in the template — consistent
+  with "doing away with aiolists").
+- **PASSPORT REDESIGNED (passport.html; backup at config_backups/2026-07-18/
+  passport.html.bak2-preredesign):** (a) TABS with a home view — Overview
+  (Account, read-only Real-Debrid card [status/expiry/plan/portal/checked,
+  honors billing.rd_not_needed], Billing, Notes) / API Keys (3-col field
+  grid) / Addon Accounts (5 instance cards + AIOLists); chosen tab persists
+  (localStorage psp_tab). (b) SPACE FIX: rigid 4-col grid → per-tab CSS
+  masonry columns (break-inside:avoid) — no more row-height holes.
+  (c) BUTTONS: everyday actions stay visible (Setup Kit / Check RD / RD Off /
+  RD On + Instance/dry-run); the rest branch into pop-UP category menus
+  AIOStreams▾ / Stremio▾ / More▾ with per-item descriptions, "All users"
+  groups danger-styled; menu per-user items carry .ab-userbtn so the
+  disabled logic still works; replaced session-32's More-tools toggle.
+  (d) BEAUTY: hero header card w/ accent wash + gradient avatar, card sheen/
+  shadows, accent-ticked section titles, sidebar active accent bar, button
+  lift — ALL var-driven so every theme still works. (e) NEW editBuffer:
+  switching tabs mid-edit never loses typing; commitEdit commits the union
+  of all tabs; editField() auto-switches to the field's tab.
+  VERIFIED LIVE on :5000 (browser): all 3 tabs render, menus open/close/Esc,
+  cross-tab edit buffer keeps values, cancel discards, per-user menu items
+  disable with no selection, ocean theme applies, zero console errors,
+  users.json untouched (16:02 pre-session mtime).
+⏳ **NEXT ACTION:** (a) Owner hard-refreshes the passport and eyeballs the
+redesign (tabs, menus, Overview RD card); says what to tweak. (b) Owner does
+Myles Dad's manual account creation same flow as Clarence/Anna: create the 2
+AIOMetadata accounts (elfhosted Discover + viren070 Streaming) + 3rd
+AIOStreams (elfhosted), Import Config File from setup_kits/myles-dad/configs/,
+connect HIS Trakt on the Discover configure page, drop links in passport
+(uuid backfill on request). (c) Round-22 app remainder still queued (unchanged
+from session 31): #2 Library screen, emulator-verify #7 caption + #3 Discover
+grid, gates → OTA alpha.58. (d) #5 passport per-addon toggles → 8-slot
+profile regen (make_profiles still stale) → scp to Dreamhost.
 
 ## ⚠️ READ FIRST (session 31 — 2026-07-16 — ROUND 22 STARTED: questions answered with live data, #7 built; big builds queued)
 **Round 22 logged below. This session answered the investigation items and
