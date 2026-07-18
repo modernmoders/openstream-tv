@@ -1,4 +1,36 @@
-# STATE — updated 2026-07-18 by session 33
+# STATE — updated 2026-07-18 by session 33 (cont.)
+
+## ⚠️ SESSION 33 cont. (2026-07-18) — PASSPORT DESIGN SYSTEM v2 ("themes have no umph" fixed)
+Owner liked the redesign but called the theme settings weak (abrupt cycle,
+invisible glass/glow, color-swap-only themes). Rebuilt in passport.html:
+- **BGFX canvas engine** (fixed layer behind #app, pointer-events:none):
+  3 scenes — aurora (drifting additive color clouds), stars (parallax
+  starfield + twinkle + shooting stars), horizon (retro sun + rolling
+  neon grid). Tinted LIVE from the theme's --accent (hue ±42/±318 palette),
+  colors LERP so palette changes glide; mouse parallax; click ripples;
+  ~30fps cap + DPR 1.5 + visibilitychange pause. body.bg-on shows canvas,
+  .main goes transparent so it breathes through gaps.
+- **Panel styles**: solid / panel-frost (blur16 translucent) / panel-clear
+  ("Clear glass HD": 22%-opacity panes, top-edge highlight, inner sheen,
+  translucent pills). Old psp_eff_glass=1 migrates → frost.
+- **Glow rebuilt with umph**: card halos, accent-tinted borders, avatar/
+  tab/name glows (body.effect-glow).
+- **Smooth theme swap**: .theme-anim (1.05s transitions on everything) is
+  applied for 1.2s around EVERY applyTheme — cycle ticks crossfade now;
+  suppressed on first paint. Old cycle-active CSS removed.
+- **DESIGNS presets** (one-click bundles: palette+bg+panel+glow+intensity):
+  Basic / Aurora Glass / Crystal HD / Deep Space / Synthwave / Greenhouse;
+  touching any knob flips design → custom. Theme modal is now a "Design
+  studio": design cards w/ swatch previews (THEME_SWATCH map must mirror
+  the CSS theme blocks), palette grid w/ color chips, background mode +
+  intensity slider, panel seg-toggle, glow, cycle (unchanged mechanics).
+  Storage: psp_design/psp_bg/psp_bg_int/psp_panel (+ legacy keys).
+- VERIFIED live on :5000: all 6 designs render distinctly (screenshots),
+  cycle crossfades w/ canvas retint, tabs/edit regression clean, zero
+  console errors. users.json untouched.
+⏳ NEXT ACTION addition: owner hard-refreshes, opens Theme → Design studio,
+tries the designs (esp. Crystal HD + Deep Space), reports tweaks (intensity
+default, more scenes, per-design cycle?).
 
 ## ⚠️ READ FIRST (session 33 — 2026-07-18 — MYLES DAD KIT GENERATED + PASSPORT REDESIGN (tabs/menus/beauty) — StremioSurfer work, no app build)
 **All work in ~/Documents/Claude/StremioSurfer (not this repo). Continuation of
