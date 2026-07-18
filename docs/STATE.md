@@ -86,9 +86,11 @@ next.** Findings (all verified live, read-only):
 ⏳ **NEXT ACTION:** build the Round-22 remainder as alpha.58: (a) #2 Library
 screen (rail entry; everything watched from local history + Trakt,
 Stremio-like filters: Last Watched / A-Z / Z-A / Most Watched / Watched /
-Not Watched), (b) emulator-verify #7's caption (ON state, sidebar open) AND
-#3's Discover grid (no gray strips at 6 and 8 columns), then gates → OTA
-publish alpha.58. Tooling
+Not Watched), (b) #8 auto-rename of recommendation rows to "... for
+<First>" (see #8 design notes; verify hosted profiles' name field first),
+(c) emulator-verify #7's caption (ON state, sidebar open) AND #3's Discover
+grid (no gray strips at 6 and 8 columns), then gates → OTA publish
+alpha.58. Tooling
 (StremioSurfer, no gates): (d) #4 make_user_configs.py template switch to
 Adam's Discover + per-person recommendation rename; (e) #5 passport
 per-addon toggles → regenerate profile JSON (8-slot bundle, fix stale
@@ -134,6 +136,31 @@ Most Watched / Watched / Not Watched); (3) SStreams Discover showing the
    "Selecting <icon>Search from the left panel will activate the mic
    automatically. Keep this ON if you prefer using voice to search." (icon
    inline before "Search"); must fit even with the sidebar open.
+8. **(Follow-up message) AIOLists recs via the app:** Trakt auth is now
+   broken in AIOMetadata too; new connects impossible. But existing tokens
+   still work — owner's own AIOMetadata Trakt is fine, and several users'
+   AIOLists still carry live Trakt connections. Ask: surface AIOLists'
+   "Recommended ..." rows AT THE TOP of Home (like the owner's AIOMetadata
+   rows, right after Cinemeta), renamed "Recommended for <FirstName>", and
+   present in Movies + Series as well as Trending types — "maybe the app
+   can do some catalog sorting for us?". Owner also confirmed his own
+   remaining manual step: create the 2 AIOMetadata accounts per person
+   (elfhosted + viren070 hosts), import configs, drop links in passport.
+   FINDINGS (2026-07-16): app ALREADY tops recommendation rows
+   (HomeRowPrefs.withRecommendationsFirst matches title contains
+   "recommend"), so AIOLists rec rows sort first today. AIOLists manifest
+   inventory: ONLY 4 of 10 users' AIOLists serve rec rows (Myles Manuel,
+   Myles Mobile, Manuel Momma both types; Anna/Jay movies-only); Jody/Mike/
+   Jacob/Toby = search-only, Clarence/Rachael rows-but-no-recs — enabling
+   recs there would need the broken Trakt auth, so those users' recs wait
+   for the AIOMetadata rows to light up post-Trakt-fix. BUILD (alpha.58):
+   auto display-rename rec rows to carry the profile's first name (append
+   " for <First>"; manual renames in the row manager always win; name from
+   ProfileSync's profileName — VERIFY what the hosted profiles carry as
+   name first). Discover already lists AIOLists recs under Movie/Series
+   types; a synthesized all/Trending rec catalog for AIOLists users =
+   decided AGAINST for now (app-side merged catalogs are a big feature;
+   AIOMetadata configs already provide all three types once Trakt works).
 
 ## ⚠️ READ FIRST (session 30 — 2026-07-15 — ROUND 21 (passport/AIOStreams round): RD-key mixup audited + fixed, English required everywhere, toggle_rd.py + RD On/Off buttons)
 **All work in ~/Documents/Claude/StremioSurfer (NOT this repo; not a git repo).
