@@ -1,4 +1,50 @@
-# STATE — updated 2026-07-18 by session 34
+# STATE — updated 2026-07-18 by session 35
+
+## ⚠️ SESSION 35 (2026-07-18) — 3 MISSING AIOSTREAMS ACCOUNTS CREATED VIA API (owner gave the word)
+**Ops session in ~/Documents/Claude/StremioSurfer; no app build. Executed
+session 34's NEXT ACTION (b) end-to-end:**
+- **Myles Dad nightly uuid BACKFILLED** from his manifest URL (uuid +
+  encrypted_password segments); his elfhosted plaintext password probed
+  read-only via GET /api/v1/user = his top-level passport password —
+  recorded in the slot.
+- **3 ACCOUNTS CREATED via push_aiostreams.py POST** (each user's own kit
+  config as --template, live users.json as --users; pre-write backup at
+  config_backups/2026-07-18/users.json.pre-aiostreams-create-s35):
+  · Myles Dad PRIMARY (fortheweak.cloud) — first attempt hit
+    USER_INVALID_CONFIG "Debridio addons need an API key": his kit had
+    Debridio TMDB/TVDB/Watchtower ENABLED with empty keys (kit-gen bug;
+    he has no debridio). Fixed in all 3 of his aiostreams kit files
+    (presets disabled; pre-fix copies in config_backups/2026-07-18/).
+    Second blocker was the KNOWN transient upstream-manifest 502 → retry
+    succeeded.
+  · Myles Dad BACKUP (fortheweebs) — created clean.
+  · Manuel Momma NIGHTLY (elfhosted) — created clean. (Her nightly slot was
+    literally {} — push_user would KeyError; slot skeleton pre-filled, and
+    her slot password kept consistent with her other two instances.)
+  Plaintext slot passwords re-added after the run (push_user's returned
+  slot dict drops them — known tool quirk, worth fixing someday).
+- **VERIFIED all 3:** GET /api/v1/user 200 with stored uuid:password; RD
+  enabled with each user's OWN passport RD key (no Round-21-style mixup);
+  public manifest.json 200. Passport server :5000 reflects it (reads disk).
+  BOTH users now have all 3 AIOStreams + both AIOMetadata (Trakt connected).
+- **FINDING for owner:** Myles Dad's LIVE elfhosted config carries Myles
+  Manuel/Mobile's debridio key (cec32a…) with Watchtower enabled — rode in
+  from whatever the owner imported. Passport says Myles Dad has no debridio.
+  Left untouched; owner to bless or remove.
+- Housekeeping (owner ask): audited local Claude config for token drains;
+  disabled the superpowers plugin for this project (.claude/settings.json,
+  untracked/local). The heavier per-session cost is the desktop-app MCP
+  connectors (ClickUp/Figma/Notion/Gmail/Drive/browser/computer-use) —
+  only toggleable in the app's connector settings, not from a session.
+⏳ **NEXT ACTION:** (a) Owner: bless/remove Myles' debridio key in Myles
+Dad's live elfhosted; hard-refresh passport (Gooey design feedback still
+open); DECIDE AIOLists' fate in the final bundle (drop vs keep-for-search)
+— this gates (c). (b) Both Myles Dad + Manuel Momma are account-complete →
+when owner says go: regenerate their profiles (make_profiles still STALE —
+needs the 8-slot/endgame bundle first) + scp to Dreamhost, and/or
+push_stremio_bundle.py for their Stremio accounts. (c) Round-22 app
+remainder unchanged: #2 Library screen, emulator-verify #7 caption + #3
+Discover grid, gates → OTA alpha.58. (d) #5 passport per-addon toggles.
 
 ## ⚠️ SESSION 34 (2026-07-18) — BLOB SCENE FINISHED + LIVE AIOMETADATA RENAMES (YOU/Bop) + accounts answered
 **Continuation after the prior account hit usage limits mid-turn. All work in
