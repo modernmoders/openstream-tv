@@ -14,8 +14,7 @@ This script therefore writes into the gitignored private folder by default
 and never prints a URL. THE GENERATED FILES MUST NEVER BE COMMITTED.
 
 Usage:
-    python3 tools/make_profiles.py                      # all users, primary instance
-    python3 tools/make_profiles.py --instance backup    # use backup AIOStreams
+    python3 tools/make_profiles.py                      # all users
     python3 tools/make_profiles.py --users path/to/users.json --out /tmp/profiles
 """
 import argparse
@@ -31,11 +30,15 @@ DEFAULT_USERS = Path(__file__).resolve().parent.parent / "docs/reference/Stremio
 # Owner's own per-person custom addons (2026-07-07 finalize/trim decision):
 # MediaFusion and TMDB duplicate scrapers/catalogs AIOStreams already wraps
 # internally (Service Wrap) — excluded from the generated profile by default.
+# trakt_scrobble (the strem.io account-bound Trakt addon) is excluded too:
+# the canonical bundle's scrobbler is AIOMetadata Discover (one-scrobbler-
+# per-person convention, 2026-07-18) and the app has its own check-in — a
+# second scrobbler would double-report.
 # This does NOT touch users.json: the manifest URLs stay there untouched,
 # just unused when assembling a profile. Override per-run via
 # profiles.config.json's "exclude_addon_keys" (fully replaces this default
 # when that key is present, even if set to an empty list).
-DEFAULT_EXCLUDED_ADDON_KEYS = {"mediafusion_manifest", "tmdb_manifest"}
+DEFAULT_EXCLUDED_ADDON_KEYS = {"mediafusion_manifest", "tmdb_manifest", "trakt_scrobble"}
 
 
 def is_manifest_url(value):
@@ -43,54 +46,65 @@ def is_manifest_url(value):
         and value.endswith("manifest.json")
 
 
-def profile_for(user, instance, pulled=None, exclude_addon_keys=None):
-    """Addon order is meaningful (§4.1.7: install order = stream-group order):
-    metadata sources first (Cinemeta fallback, then AIOMetadata), then the
-    person's live Stremio collection (tools/pull_stremio_addons.py) or the
-    assembled AIOStreams URL — both come BEFORE the supplementary catalog
-    addons below (2026-07-07: owner reordered so AIOStreams' own catalogs
-    lead Home instead of trailing behind them). Union, deduped by URL: the
-    live account is truth for stream addons, but the curated catalog addons
-    in users.json aren't in those accounts and would be lost otherwise
-    (DECISIONS #15)."""
+def disabled_slots(user):
+    """Passport per-addon toggles: user.disabled_addons lists slot keys the
+    owner switched off. The passport writes 'aiostreams.nightly' (the
+    users.json key); accept the display alias 'aiostreams.elfhosted' too."""
+    off = set(user.get("disabled_addons") or [])
+    if "aiostreams.elfhosted" in off:
+        off.add("aiostreams.nightly")
+    return off
+
+
+def profile_for(user, exclude_addon_keys=None):
+    """The canonical bundle (owner's 2026-07-18 cutover decision), in order:
+
+        Cinemeta, AIOMetadata Discover, AIOMetadata Streaming,
+        AIOStreams primary/backup/nightly, other catalog addons,
+        AIOLists LAST (kept for search only — its rows should never
+        outrank the AIOMetadata recommendation rows above it).
+
+    Addon order is meaningful (§4.1.7: install order = stream-group order,
+    and Home row order follows it too). Slots with no URL are skipped, as
+    are slots toggled off in the passport (user.disabled_addons)."""
     exclude_addon_keys = DEFAULT_EXCLUDED_ADDON_KEYS if exclude_addon_keys is None else exclude_addon_keys
+    off = disabled_slots(user)
     addons = [{"name": "Cinemeta", "url": CINEMETA}]
 
-    # --- AIOMetadata: the 5-instance layout uses TWO metadata instances
-    # (aiometadata.discover + aiometadata.streaming). Emit both, Discovery
-    # first (it's the meta authority + Trakt scrobbler). Fall back to the older
-    # single flat `aiometadata.manifest_url` for users not yet migrated. ---
+    # --- AIOMetadata: TWO instances, Discovery first (meta authority +
+    # Trakt scrobbler). Fall back to the older single flat
+    # `aiometadata.manifest_url` for users not yet migrated. ---
     aiometa = user.get("aiometadata") or {}
     added_meta = False
     for slot, label in (("discover", "AIOMetadata (Discovery)"),
                         ("streaming", "AIOMetadata (Streaming)")):
         url = (aiometa.get(slot) or {}).get("manifest_url")
-        if is_manifest_url(url):
+        if is_manifest_url(url) and f"aiometadata.{slot}" not in off:
             addons.append({"name": label, "url": url})
             added_meta = True
     if not added_meta and is_manifest_url(aiometa.get("manifest_url")):
         addons.append({"name": "AIOMetadata", "url": aiometa["manifest_url"]})
 
-    account = (pulled or {}).get(user.get("email") or "")
-    if account and account.get("addons"):
-        addons.extend(account["addons"])  # live collection, account order
-    else:
-        # Emit EVERY AIOStreams instance that has a URL (primary + backup +
-        # nightly = 3 stream sources for redundancy), preferred order first.
-        # `--instance` no longer selects one; it just leads the ordering.
-        aiostreams = user.get("aiostreams") or {}
-        order = [instance] + [k for k in ("primary", "backup", "nightly") if k != instance]
-        order += [k for k in aiostreams if k not in order]
-        for inst in order:
-            url = (aiostreams.get(inst) or {}).get("manifest_url")
-            if is_manifest_url(url):
-                addons.append({"name": f"AIOStreams ({inst})", "url": url})
+    # --- AIOStreams: all three instances, fixed canonical order. ---
+    aiostreams = user.get("aiostreams") or {}
+    for inst, label in (("primary", "AIOStreams (Primary)"),
+                        ("backup", "AIOStreams (Backup)"),
+                        ("nightly", "AIOStreams (Elfhosted)")):
+        url = (aiostreams.get(inst) or {}).get("manifest_url")
+        if is_manifest_url(url) and f"aiostreams.{inst}" not in off:
+            addons.append({"name": label, "url": url})
 
-    for key, value in sorted((user.get("addons") or {}).items()):
+    # --- Supplementary catalog addons, AIOLists forced LAST. ---
+    extras = sorted((user.get("addons") or {}).items(),
+                    key=lambda kv: (kv[0] == "aiolists_manifest", kv[0]))
+    for key, value in extras:
         if key in exclude_addon_keys:
             continue
+        if key == "aiolists_manifest" and "aiolists" in off:
+            continue
         if is_manifest_url(value):
-            pretty = re.sub(r"_manifest$", "", key).replace("_", " ").title()
+            pretty = "AIOLists" if key == "aiolists_manifest" \
+                else re.sub(r"_manifest$", "", key).replace("_", " ").title()
             addons.append({"name": pretty, "url": value})
 
     seen, unique = set(), []
@@ -106,8 +120,6 @@ def main():
     parser.add_argument("--users", type=Path, default=DEFAULT_USERS)
     parser.add_argument("--out", type=Path, default=None,
                         help="output dir (default: <users.json dir>/profiles)")
-    parser.add_argument("--instance", default="primary",
-                        choices=["primary", "backup", "nightly"])
     args = parser.parse_args()
 
     if not args.users.exists():
@@ -127,16 +139,13 @@ def main():
     exclude_addon_keys = set(config["exclude_addon_keys"]) if "exclude_addon_keys" in config \
         else DEFAULT_EXCLUDED_ADDON_KEYS
 
-    pulled_path = args.users.parent / "stremio_addons.json"
-    pulled = json.loads(pulled_path.read_text()) if pulled_path.exists() else {}
-
     data = json.loads(args.users.read_text())
     for user in data.get("users", []):
         name = user.get("name", "")
         if name.lower() in skip:
             print(f"(skipped {name})")
             continue
-        profile = profile_for(user, args.instance, pulled, exclude_addon_keys)
+        profile = profile_for(user, exclude_addon_keys)
         filename = config["links"].get(name)
         if not filename:
             slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "user"

@@ -2000,3 +2000,32 @@ asks; the non-obvious choices:
    failures. If future emulator smokes go black or ANR launcher-wide:
    cold-restart the EMULATOR PROCESS (`-gpu swiftshader_indirect` as the
    fallback), don't chase the app.
+
+## 65. 2026-07-18 (session 36) — Profile cutover: canonical bundle, passport toggles, no second scrobbler
+
+1. **Hosted profiles now ARE the canonical bundle** (same layout
+   push_stremio_bundle.py sends to Stremio accounts): Cinemeta →
+   AIOMetadata Discover → AIOMetadata Streaming → AIOStreams
+   Primary/Backup/Elfhosted → AIOLists **last** (owner: keep for search
+   only — its rows must never outrank the AIOMetadata recommendation
+   rows). make_profiles.py no longer unions in the person's live Stremio
+   collection (old DECISIONS #15 behavior): the profile is deterministic
+   from the passport, which is what "the passport is the source of truth"
+   should have meant all along.
+2. **trakt_scrobble excluded from profiles by default** (joins
+   mediafusion/tmdb in DEFAULT_EXCLUDED_ADDON_KEYS): the strem.io
+   account-bound Trakt addon would be a SECOND scrobbler next to
+   AIOMetadata Discover's traktWatchTracking (one-scrobbler-per-person
+   convention) and the app's own check-in. URLs stay in users.json,
+   just unused.
+3. **Per-addon passport toggles (Round-22 #5):** user.disabled_addons
+   (list of slot keys) in users.json; passport Addon Accounts cards get
+   an instant-save "On their TV"/"Left out" switch; make_profiles.py and
+   push_stremio_bundle.py both skip toggled-off slots. Chosen over
+   per-slot `enabled` fields because addons.* values are plain strings —
+   a sidecar list touches nothing that exists.
+4. **Filename discipline:** the server's live profile filenames (verified
+   by ssh ls) are the contract — boxes hold those URLs. The stray
+   regenerated token set that was sitting in the live profiles.config.json
+   was reconciled back to server truth before regeneration. Rachael's
+   hosted profile is skip-listed (live-user rule); her file untouched.
