@@ -48,7 +48,11 @@ ssh "$HOST" "mkdir -p $REMOTE_DIR"
 scp "$APK" "$HOST:$REMOTE_DIR/sstreams-$CODE.apk"
 scp "$MANIFEST" "$HOST:$REMOTE_DIR/version.json.tmp"
 # chmod: mktemp makes 0600 and scp preserves it — Apache needs world-read.
-ssh "$HOST" "chmod 644 $REMOTE_DIR/sstreams-$CODE.apk $REMOTE_DIR/version.json.tmp && mv $REMOTE_DIR/version.json.tmp $REMOTE_DIR/version.json"
+# sstreams-latest.apk: stable alias behind https://savoy.click/app (the
+# family's Downloader/TVBro install URL) — refreshed on every publish so
+# that link never goes stale. cp (not mv): the versioned APK must survive,
+# version.json points at it.
+ssh "$HOST" "chmod 644 $REMOTE_DIR/sstreams-$CODE.apk $REMOTE_DIR/version.json.tmp && cp $REMOTE_DIR/sstreams-$CODE.apk $REMOTE_DIR/sstreams-latest.apk && chmod 644 $REMOTE_DIR/sstreams-latest.apk && mv $REMOTE_DIR/version.json.tmp $REMOTE_DIR/version.json"
 
 echo "Verifying…"
 curl -sf "$BASE_URL/version.json" | grep -q "\"versionCode\":$CODE" \
