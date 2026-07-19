@@ -31,3 +31,15 @@ data class SubtitleTrack(
     /** Language code or free-text label, shown as-is. */
     val lang: String,
 )
+
+/**
+ * Merge two subtitle-track lists, de-duped by URL (MASTER_PLAN §4.1 "subtitles
+ * fan-out" gap): [base] wins ties — a stream's own embedded track is never
+ * shadowed by an addon-fetched duplicate of the same file — so addons only
+ * ever ADD tracks a stream didn't already carry.
+ */
+fun mergeSubtitleTracks(base: List<SubtitleTrack>, extra: List<SubtitleTrack>): List<SubtitleTrack> {
+    if (extra.isEmpty()) return base
+    val seen = base.mapTo(mutableSetOf()) { it.url.trim().lowercase() }
+    return base + extra.filter { it.url.isNotBlank() && seen.add(it.url.trim().lowercase()) }
+}

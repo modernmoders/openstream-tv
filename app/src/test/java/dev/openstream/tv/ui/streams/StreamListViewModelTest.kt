@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import dev.openstream.tv.addon.AddonRepository
 import dev.openstream.tv.addon.OkHttpAddonClient
 import dev.openstream.tv.addon.StreamRepository
+import dev.openstream.tv.addon.SubtitleRepository
 import dev.openstream.tv.autoplay.AutoplayController
 import dev.openstream.tv.autoplay.AutoplayGateway
 import dev.openstream.tv.autoplay.AutoplayOriginHolder
@@ -42,6 +43,7 @@ class StreamListViewModelTest {
     private lateinit var server: MockAddonServer
     private lateinit var addonRepository: AddonRepository
     private lateinit var streamRepository: StreamRepository
+    private lateinit var subtitleRepository: SubtitleRepository
     private lateinit var progressRepository: ProgressRepository
     private lateinit var currentPlayback: CurrentPlayback
 
@@ -54,6 +56,7 @@ class StreamListViewModelTest {
         )
         addonRepository = AddonRepository(client, FakeInstalledAddonDao())
         streamRepository = StreamRepository(client, addonRepository)
+        subtitleRepository = SubtitleRepository(client, addonRepository)
         progressRepository =
             ProgressRepository(FakeWatchProgressDao(), CoroutineScope(Dispatchers.Unconfined))
         currentPlayback = CurrentPlayback()
@@ -82,6 +85,7 @@ class StreamListViewModelTest {
         playbackPrefs: FakePlaybackPrefs = FakePlaybackPrefs(),
     ) = StreamListViewModel(
         streamRepository,
+        subtitleRepository,
         currentPlayback,
         progressRepository,
         autoplayOrigin,

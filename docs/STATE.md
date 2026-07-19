@@ -1,4 +1,41 @@
-# STATE — updated 2026-07-19 by session 37
+# STATE — updated 2026-07-19 by session 38
+
+## ⚠️ SESSION 38 (2026-07-19) — Subtitles fan-out built (§4.1 gap closed for the main video)
+- **Owner noticed the auto-picked subtitle track sometimes doesn't match**
+  (no one complained; owner's own observation). Already-known gap
+  (MASTER_PLAN §4.1): the player only ever used subtitles embedded in the
+  chosen stream, never queried installed addons' `subtitles` resource
+  (AIOMetadata + AIOStreams both declare it, backed by owner's
+  OpenSubtitles + OpenSubtitlesV3+ instances) — more/better-tagged tracks
+  in the pool should reduce mismatches from the language-preference picker.
+- **Built:** `SubtitleRepository` (mirrors `StreamRepository`), fanned out
+  in parallel with the stream fan-out in `StreamListViewModel.init`, merged
+  into the chosen stream's own subtitles via `mergeSubtitleTracks` (URL
+  dedupe, embedded tracks win ties) — see DECISIONS #66 for the full
+  design. Covers: initial playback, "Play with…" external launch, "try
+  another server" (all reuse one fetch per video via the new
+  `PlaybackRequest.addonSubtitles` field). No UI changes needed — the
+  existing `TracksDialog`/ExoPlayer sideload path already renders whatever
+  lands in `PlayableSource.subtitles`.
+- **Scoped OUT on purpose (not a regression):** the autoplay next-episode
+  chain still uses stream-embedded subtitles only — each episode is a
+  different video id and prefetching wasn't in scope this session.
+- **Verified:** `./gradlew assembleDebug testDebugUnitTest` — BUILD
+  SUCCESSFUL, all unit tests pass (added 3 new tests for the merge/mapping
+  helpers). NOT yet emulator/on-device verified against real addon
+  responses — no owner directive to test this specific session, and no
+  behavior change is visible without a title that has non-matching addon
+  subtitles.
+⏳ **NEXT ACTION:** (a) Owner: next time a stream's subtitle auto-pick
+looks wrong, check the tracks dialog (UP → subtitle track picker) — it
+should now show extra OpenSubtitles-sourced options alongside the
+stream's own. If it still doesn't help, that's a picker/preference-logic
+issue, not a "no options" issue, and worth a follow-up session. (b) Rest
+of session-37 NEXT ACTION below still stands: alpha.58→59 update on the 2
+boxes (LEFT then OK); savoy.click/app installs whenever owner visits/ships
+a box; backlog: 9s bias knob, #16 skins, adam's streaming-config 401
+(cosmetic), optional Downloader code, autoplay next-episode subtitle
+fan-out (DECISIONS #66 follow-up).
 
 ## ⚠️ SESSION 37 cont. (2026-07-19) — ROLLOUT COMPLETE: Manuel Momma pushed + Myles Dad AIOLists built/pushed/hosted
 - **MANUEL MOMMA PUSHED (8 addons, read-back verified).** Owner set her

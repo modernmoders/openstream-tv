@@ -17,7 +17,7 @@ fun Stream.toPlayableSource(title: String): PlayableSource? {
         headers = behaviorHints.proxyHeaders?.request.orEmpty(),
         subtitles = subtitles
             .filter { it.url.isNotBlank() }
-            .map { SubtitleTrack(it.url, it.lang) },
+            .map { it.toSubtitleTrack() },
         bingeGroup = behaviorHints.bingeGroup,
         // StreamCascade's label heuristics are pure — reaching into autoplay
         // here is a convenience import, not a flow dependency (§8.2 intact:
@@ -25,3 +25,6 @@ fun Stream.toPlayableSource(title: String): PlayableSource? {
         videoCodec = StreamCascade.videoCodecOf(this),
     )
 }
+
+/** The addon-protocol subtitle object → the player-world track (§8.2 boundary). */
+fun Subtitle.toSubtitleTrack(): SubtitleTrack = SubtitleTrack(url, lang)

@@ -2029,3 +2029,29 @@ asks; the non-obvious choices:
    regenerated token set that was sitting in the live profiles.config.json
    was reconciled back to server truth before regeneration. Rachael's
    hosted profile is skip-listed (live-user rule); her file untouched.
+
+## 66. 2026-07-19 (session 38) — Subtitles fan-out (§4.1 gap closed for the main video)
+
+1. **`SubtitleRepository` mirrors `StreamRepository`:** same
+   `declares("subtitles", type, id)` filter, same per-addon `Result` +
+   diagnostics-on-failure shape, plus a `fetchAll` that fans out to every
+   declaring addon in parallel and flattens in addon order. Queried
+   alongside the stream fan-out in `StreamListViewModel.init` — a broken
+   subtitle addon must never delay the stream list.
+2. **Merge, don't replace:** `mergeSubtitleTracks(base, extra)`
+   (domain/PlayableSource.kt) de-dupes by URL with `base` (the stream's
+   own embedded tracks) winning ties, so an addon-fetched duplicate of
+   the same file never shadows the copy the release already carried.
+   Addon subtitles (OpenSubtitles/OpenSubtitlesV3+, via AIOMetadata +
+   AIOStreams) only ever ADD tracks, never remove them.
+3. **Fetched once per video, reused across server switches:**
+   `PlaybackRequest` grew an `addonSubtitles: List<SubtitleTrack>` field
+   so "try another server" (`PlayerViewModel.tryNextStream`) re-merges
+   the SAME addon-fetched pool against the new stream's own embedded
+   tracks, instead of re-querying every addon on every server switch.
+4. **Scoped out (follow-up, not a regression):** the autoplay next-episode
+   chain (`PlayerViewModel.playNext`, `StreamListViewModel.launchNextExternally`)
+   still plays with stream-embedded subtitles only — each episode is a
+   different video id, and prefetching its addon subtitles ahead of the
+   Up Next countdown wasn't in scope for this pass. Behavior there is
+   unchanged from before this session, not worse.

@@ -1,7 +1,9 @@
 package dev.openstream.tv.addon
 
 import dev.openstream.tv.addon.fixtures.Fixtures
+import dev.openstream.tv.domain.SubtitleTrack
 import dev.openstream.tv.domain.VideoCodec
+import dev.openstream.tv.domain.mergeSubtitleTracks
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -49,5 +51,32 @@ class StreamMappingTest {
     fun `non-url sources refuse to map`() {
         assertNull(streams[2].toPlayableSource("Torrent"))  // infoHash only
         assertNull(streams[3].toPlayableSource("External")) // externalUrl only
+    }
+
+    @Test
+    fun `addon subtitles extend the embedded list without shadowing it`() {
+        val embedded = listOf(SubtitleTrack("https://cdn/embedded.srt", "eng"))
+        val addonProvided = listOf(
+            SubtitleTrack("https://cdn/opensubtitles-fr.srt", "fre"),
+            SubtitleTrack("https://cdn/opensubtitles-en.srt", "eng"),
+        )
+        val merged = mergeSubtitleTracks(embedded, addonProvided)
+        assertEquals(3, merged.size)
+        assertEquals(embedded[0], merged[0])
+    }
+
+    @Test
+    fun `addon subtitles dedupe by url against the embedded list`() {
+        val embedded = listOf(SubtitleTrack("https://cdn/same.srt", "eng"))
+        val addonProvided = listOf(SubtitleTrack("https://cdn/SAME.srt", "eng"))
+        assertEquals(embedded, mergeSubtitleTracks(embedded, addonProvided))
+    }
+
+    @Test
+    fun `subtitle object maps to a subtitle track`() {
+        val subtitle = Subtitle(id = "1", url = "https://cdn/x.srt", lang = "eng")
+        val track = subtitle.toSubtitleTrack()
+        assertEquals("https://cdn/x.srt", track.url)
+        assertEquals("eng", track.lang)
     }
 }

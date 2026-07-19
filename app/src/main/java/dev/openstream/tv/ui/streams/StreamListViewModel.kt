@@ -8,8 +8,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.InstalledAddon
 import dev.openstream.tv.addon.Stream
 import dev.openstream.tv.addon.StreamRepository
+import dev.openstream.tv.addon.SubtitleRepository
 import dev.openstream.tv.addon.Video
 import dev.openstream.tv.addon.toPlayableSource
+import dev.openstream.tv.addon.toSubtitleTrack
 import dev.openstream.tv.autoplay.AutoplayController
 import dev.openstream.tv.autoplay.AutoplayOriginHolder
 import dev.openstream.tv.autoplay.AutoplayStateMachine
@@ -18,8 +20,10 @@ import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.MediaRef
+import dev.openstream.tv.domain.SubtitleTrack
 import dev.openstream.tv.domain.VideoCodec
 import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.domain.mergeSubtitleTracks
 import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.player.DecoderCapabilities
 import dev.openstream.tv.player.ExternalOutcome
@@ -52,6 +56,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class StreamListViewModel @Inject constructor(
     private val streamRepository: StreamRepository,
+    private val subtitleRepository: SubtitleRepository,
     private val currentPlayback: CurrentPlayback,
     private val progressRepository: ProgressRepository,
     private val autoplayOrigin: AutoplayOriginHolder,
@@ -150,6 +155,13 @@ class StreamListViewModel @Inject constructor(
     private var lastExternalChoice: ExternalPlayerPort.Choice? = null
 
     /**
+     * Addon-fetched subtitles for THIS video (MASTER_PLAN §4.1 fan-out gap),
+     * populated once by the init fan-out below; empty until it resolves (and
+     * forever, if no installed addon declares `subtitles` for this id).
+     */
+    private var addonSubtitles: List<SubtitleTrack> = emptyList()
+
+    /**
      * Stage the stream for the internal player screen; returns false for
      * sources v1 can't play (the UI shows those as notes, so this is
      * belt-and-braces).
@@ -158,11 +170,15 @@ class StreamListViewModel @Inject constructor(
         val source = stream.toPlayableSource(title.ifBlank { stream.name ?: "Stream" })
             ?: return false
         currentPlayback.request = PlaybackRequest(
-            source = source.copy(startPositionMs = startPositionMs),
+            source = source.copy(
+                startPositionMs = startPositionMs,
+                subtitles = mergeSubtitleTracks(source.subtitles, addonSubtitles),
+            ),
             mediaRef = mediaRef,
             metaId = metaId,
             metaType = type,
             poster = poster,
+            addonSubtitles = addonSubtitles,
         )
         // Autoplay's tier-1/2 ranking context (§7.1) — which addon, which stream
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
@@ -186,8 +202,12 @@ class StreamListViewModel @Inject constructor(
         startPositionMs: Long = 0,
     ): Intent? {
         val playTitle = title.ifBlank { stream.name ?: "Stream" }
-        val source = stream.toPlayableSource(playTitle)?.copy(startPositionMs = startPositionMs)
-            ?: return null
+        val source = stream.toPlayableSource(playTitle)?.let {
+            it.copy(
+                startPositionMs = startPositionMs,
+                subtitles = mergeSubtitleTracks(it.subtitles, addonSubtitles),
+            )
+        } ?: return null
         playbackStarted = true
         _uiState.update { it.copy(autoStarting = false) }
         pendingExternal = PendingExternal(choice, mediaRef, playTitle)
@@ -333,6 +353,11 @@ class StreamListViewModel @Inject constructor(
                     )
                 }
             }
+        }
+        viewModelScope.launch {
+            // Same fan-out shape as streams, queried in parallel with them —
+            // a slow/broken subtitle addon must never delay the stream list.
+            addonSubtitles = subtitleRepository.fetchAll(type, videoId).map { it.toSubtitleTrack() }
         }
         viewModelScope.launch {
             val addons = streamRepository.streamAddons(type, videoId)

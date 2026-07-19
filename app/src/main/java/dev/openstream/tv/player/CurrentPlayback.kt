@@ -2,6 +2,7 @@ package dev.openstream.tv.player
 
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.PlayableSource
+import dev.openstream.tv.domain.SubtitleTrack
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,6 +18,13 @@ data class PlaybackRequest(
     val metaId: String,
     val metaType: String,
     val poster: String?,
+    /**
+     * Addon-fetched subtitles for THIS video (MASTER_PLAN §4.1 fan-out gap),
+     * already merged into [source]'s own subtitle list once. Carried
+     * separately so "try another server" (a fresh [PlayableSource] from a
+     * different stream) can re-merge them without a second addon round-trip.
+     */
+    val addonSubtitles: List<SubtitleTrack> = emptyList(),
 )
 
 /**

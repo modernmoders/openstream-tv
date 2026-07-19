@@ -454,10 +454,17 @@ Owner asks 2026-07-06 (session 12 continued):
   code OAuth, scrobble start/pause/stop (watched at ~80%), pairs with the
   watched-history row. Until then: installing the scrobble addon is
   harmless (catalogs work in any client, no Stremio app needed).
-- [ ] **Subtitles fan-out (§4.1 gap).** The player only uses subtitles
+- [x] **Subtitles fan-out (§4.1 gap).** The player only used subtitles
   embedded in the chosen stream object; installed addons' `subtitles`
-  resource is never queried (AIOMetadata + AIOStreams both declare it).
-  Fan out at playback like streams, merge with stream-embedded tracks.
+  resource was never queried (AIOMetadata + AIOStreams both declare it).
+  *(BUILT session 38, DECISIONS #66: `SubtitleRepository` fans out to every
+  declaring addon in parallel alongside the stream fan-out, merges by URL
+  with stream-embedded tracks winning ties. Covers initial playback, "Play
+  with…" external launch, and "try another server" — all reuse one fetch
+  per video via `PlaybackRequest.addonSubtitles`. NOT yet wired into the
+  autoplay next-episode chain (`playNext`/`launchNextExternally`) — each
+  episode is a different video id and prefetching wasn't in scope; that
+  path still plays stream-embedded subtitles only, unchanged from before.)*
 
 Owner asks 2026-07-06 (session 13):
 - [x] **One-step name setup (no link copying).** People type ONLY their name

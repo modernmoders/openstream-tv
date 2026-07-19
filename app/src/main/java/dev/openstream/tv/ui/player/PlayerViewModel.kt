@@ -22,6 +22,7 @@ import dev.openstream.tv.diagnostics.DiagnosticsSink
 import dev.openstream.tv.data.SUBTITLES_OFF
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.domain.mergeSubtitleTracks
 import dev.openstream.tv.player.CurrentPlayback
 import dev.openstream.tv.player.ExoPlayerEngine
 import dev.openstream.tv.player.ExternalPlayerPort
@@ -642,7 +643,15 @@ class PlayerViewModel @Inject constructor(
             // the original start (e.g. the auto-resume point) carries over.
             val position = engine.exoPlayer.currentPosition.takeIf { it > 0 }
                 ?: req.source.startPositionMs
-            val newRequest = req.copy(source = source.copy(startPositionMs = position))
+            val newRequest = req.copy(
+                source = source.copy(
+                    startPositionMs = position,
+                    // Re-merge the addon subtitles fetched for this video (§4.1
+                    // fan-out gap) — the new stream brings its own embedded
+                    // tracks only, the addon pool doesn't depend on which one.
+                    subtitles = mergeSubtitleTracks(source.subtitles, req.addonSubtitles),
+                ),
+            )
             request = newRequest
             currentPlayback.request = newRequest
             autoplayOrigin.origin = StreamCascade.CurrentStream(alt.addonUrl, alt.stream)
