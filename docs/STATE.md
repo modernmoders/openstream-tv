@@ -1,4 +1,69 @@
-# STATE — updated 2026-07-18 by session 35
+# STATE — updated 2026-07-18 by session 36
+
+## ⚠️ SESSION 36 (2026-07-18) — THE CUTOVER SHIPPED: toggles + canonical profiles LIVE on Dreamhost + Library + alpha.58 PUBLISHED OTA + savoy.click/app install link
+**The whole cutover from session 35's NEXT ACTION, end to end:**
+- **#5 PASSPORT PER-ADDON TOGGLES BUILT + verified live on :5000.** Each
+  Addon Accounts card (3 AIOStreams, 2 AIOMetadata, AIOLists) wears an
+  instant-save "On their TV"/"Left out" switch. Storage:
+  `user.disabled_addons` = list of slot keys ("aiostreams.nightly",
+  "aiolists", …), absent = everything ships; users.schema.json updated.
+  make_profiles.py AND push_stremio_bundle.py both skip toggled-off slots
+  (elfhosted/nightly alias accepted). Tested on adam: toggle → users.json
+  written → toggle back → key removed clean; zero console errors.
+- **make_profiles.py REBUILT to the canonical bundle** (DECISIONS #65):
+  Cinemeta → AIOMeta Discover → AIOMeta Streaming → AIOStreams
+  Primary/Backup/Elfhosted → **AIOLists LAST** (search-only decision).
+  Dropped the live-Stremio-collection union (profile = passport, period)
+  and **excluded addons.trakt_scrobble** (strem.io account addon = a 2nd
+  scrobbler next to AIOMetadata Discover; owner can veto — URLs still in
+  users.json untouched).
+- **PROFILES REGENERATED + LIVE ON DREAMHOST.** ⚠️ Found the live
+  StremioSurfer/profiles.config.json carried a STRAY token set that was
+  never uploaded — reconciled to server truth (ssh ls) so every box's
+  stored URL keeps working; backup at config_backups/2026-07-18/
+  profiles.config.json.pre-cutover. Uploaded 11 profiles (10 users +
+  NEW myles-dad-AJGYmhvwOXE.json; Manuel Momma's file now actually
+  hosted) + regenerated index.php (Myles Dad + Manuel Momma in the name
+  map now; brand SStreams). Rachael SKIPPED everywhere (live-user rule;
+  her files untouched, verified by timestamps). Live .htaccess kept (it
+  carries the no-cache rule from the box-.117 incident). VERIFIED:
+  hosted-vs-local sha256 match, name-lookup api answers "myles d", and
+  ALL 65 unique manifest URLs across the hosted profiles return 200.
+  Boxes pick the new bundle up on next app launch (ProfileSync).
+- **#2 LIBRARY SCREEN BUILT → alpha.58 PUBLISHED OTA** (versionCode 58,
+  readback verified). New rail section (bookmark glyph, between Discover
+  and Search): everything watched from local history, one tile per title,
+  Stremio's exact filter bar (All / Last Watched / A–Z / Z–A / Most
+  Watched / Watched / Not Watched) + All types/Movies/Series lens in the
+  header. Series tiles get their show's REAL name/poster from the meta
+  cache (progress rows only store the episode label); offline falls back
+  to that label. 387 tests green (9 new LibraryModelTest). EMULATOR
+  VERIFIED with real playback via tools/test_addon_server.py: watched ✓
+  and 20%-ring indicators, Watched/Not-Watched splits, name enrichment —
+  plus the round-22 leftovers: **#7 caption** (owner wording + inline
+  magnifier, fits with rail open AND closed) and **#3 grid** (no gray
+  strips at 6 or 8 columns). Two emulator GPU meltdowns mid-session
+  (DECISIONS #64 pattern) — cold-restarts fixed, not app bugs. One
+  HomeViewModelTest flake under emulator CPU load — passes clean solo
+  and in the full run once the emulator was killed.
+- **NEW: https://savoy.click/app — the one install link, forever.**
+  302 → setup/app/sstreams-latest.apk; publish_update.sh now refreshes
+  the latest alias on every OTA publish, so the link never goes stale.
+  For NEW installs/recovery on a box: open Downloader or TVBro, type
+  savoy.click/app, install. sha256 of hosted latest == local release.
+  Recommendation logged: skip Play/Amazon stores (policy risk for a
+  streaming-addon app, and Play App Signing would REKEY the app —
+  breaking OTA for every existing box). Downloader code optional later
+  (aftvnews.com/code → point it at savoy.click/app).
+⏳ **NEXT ACTION:** (a) Owner: hard-refresh passport → Addon Accounts →
+eyeball the new toggles (they now really control profile regen + Stremio
+pushes). (b) Boxes self-offer alpha.58 — press Update (dialog focuses
+Cancel; Update is LEFT). Try the new Library tab. (c) On owner's word:
+push_stremio_bundle.py --all (Rachael excluded by default) to align
+Stremio accounts with the same canonical bundle. (d) Owner blesses/vetoes
+the trakt_scrobble exclusion from profiles (one-scrobbler convention).
+(e) Backlog: 9s bias knob, #16 skins; adam's own streaming-config 401
+(cosmetic); make_user_configs kit for Myles Dad debridio done in s35.
 
 ## ⚠️ SESSION 35 cont.2 (2026-07-18) — THE 8 ELFHOSTED ACCOUNTS CREATED: ACCOUNT SETUP IS COMPLETE FOR EVERYONE
 **Owner said "Create the 8" → all 8 remaining elfhosted/nightly AIOStreams
