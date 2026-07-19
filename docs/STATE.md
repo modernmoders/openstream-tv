@@ -23,9 +23,16 @@
   AIOMetadata manifests are uuid-only URLs, uuid derivable — session
   31's "uuid backfill" isn't a separate field, don't re-chase). All 8
   have kit configs → one push_aiostreams.py --instance nightly run per
-  user creates them on the owner's word. Per-person Trakt-connect status
-  on the 6 non-verified users' Discover configs = unverified (verify on
-  request); Trakt connects remain each person's own PIN step.
+  user creates them on the owner's word.
+- **TRAKT SWEEP (read-only, all 12 users × both AIOMetadata configs):
+  NOBODY needs a Trakt connect.** Every Discover = CONNECTED
+  (apiKeys.traktTokenId set — NOTE it's nested under apiKeys, not
+  top-level) with traktWatchTracking=true; every streaming = not
+  connected + false. Exactly the one-scrobbler-per-person convention.
+  Gotchas learned: config/load needs the user's top-level passport
+  password when the aiometadata slot's password field is empty (most
+  are). One loose end: adam's OWN streaming config rejects both stored
+  passwords (401) — passport password gap on his slot only, cosmetic.
 
 ## ⚠️ SESSION 35 (2026-07-18) — 3 MISSING AIOSTREAMS ACCOUNTS CREATED VIA API (owner gave the word)
 **Ops session in ~/Documents/Claude/StremioSurfer; no app build. Executed
