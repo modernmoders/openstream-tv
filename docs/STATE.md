@@ -1,4 +1,36 @@
-# STATE — updated 2026-07-18 by session 36
+# STATE — updated 2026-07-19 by session 37
+
+## ⚠️ SESSION 37 (2026-07-19) — STREMIO ROLLOUT: 7 of the remaining 8 pushed; Manuel Momma blocked on password
+- **push_stremio_bundle.py RUN (owner: "push to the remaining 8"):** Myles
+  Manuel (7 — no Local Files in account), Myles Mobile (7 — same), Myles
+  Dad (7 — no aiolists_manifest in his passport, slot skipped as WARNed),
+  Jody Miller (8), Mike Miller (8), Jacob Savoy (8), Toby Savoy (8) all
+  carry the canonical bundle now, AIOLists LAST, read-back verified by the
+  tool. Run from ~/Documents/Claude/StremioSurfer against the LIVE
+  users.json (same file server :5000 reads). Stale addons dropped as
+  designed (old fortheweak/weebs AIOStreams URLs; Jacob's strem.io Trakt
+  scrobbler; Myles Dad's pile of legacy addons — torrentio, comet,
+  mediafusion, opensubtitles ×3, usatv, netflix-catalog, imdb-catalogs,
+  tmdb, caching.stremio.net). Pre-push backups:
+  StremioSurfer/stremio-addons-backup-<slug>-2026-07-19.json (all 7 on
+  disk, verified).
+- **⚠️ MANUEL MOMMA BLOCKED: Stremio login fails** for
+  manuelmomma@gmail.com — API says wrongPass. Her top-level passport
+  password is a clean ASCII string (no whitespace), so the account's real
+  password simply differs from the passport convention. NOTHING pushed to
+  her account. Owner must recover/reset her Stremio password (or supply
+  the right one), update her passport entry, then one command finishes
+  the rollout: `python3 push_stremio_bundle.py --user "Manuel Momma"`.
+- Stremio-account rollout status: 11 of 12 done (adam s29, Anna/Jay +
+  Clarence s36, these 7 now); Rachael excluded by standing rule; Manuel
+  Momma pending password.
+⏳ **NEXT ACTION:** (a) Owner: fix Manuel Momma's Stremio password in the
+passport → rerun push_stremio_bundle.py --user "Manuel Momma". (b) Owner
+decides: Myles Dad has NO AIOLists account — create one (search-only) or
+leave him without merged search. (c) Session-36 leftovers stand: owner
+eyeballs passport toggles, alpha.58→59 update on the 2 boxes, blesses/
+vetoes the trakt_scrobble exclusion. (d) Per-box app installs via
+savoy.click/app whenever owner visits/ships a box.
 
 ## ⚠️ SESSION 36 cont. (2026-07-18) — Anna/Jay + Bop Stremio pushed, alpha.59 (install-screen coaching)
 - **push_stremio_bundle.py RUN (owner: "Push to anna and bop's Stremio"):**
