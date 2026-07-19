@@ -44,17 +44,11 @@ android {
             "\"${localProps.getProperty("setup.brand") ?: "OpenStream TV"}\"",
         )
 
-        // Launcher name follows the same owner-private brand as the in-app
-        // title (setup.brand): the public repo stays neutral ("OpenStream TV"),
-        // the owner's local.properties makes both say "Streams".
-        val brand = localProps.getProperty("setup.brand") ?: "OpenStream TV"
-        manifestPlaceholders["appLabel"] = brand
-        // The TV launcher shows the banner INSTEAD of the label, so the brand
-        // must live in the art itself: Streams builds get the wordmark
-        // banner, everything else the neutral "S" mark.
-        manifestPlaceholders["appBanner"] =
-            if (brand == "Streams") "@drawable/tv_banner_streams"
-            else "@drawable/tv_banner"
+        // Launcher name and banner are the OpenStream brand for EVERY build
+        // (owner 2026-07-19): the old per-owner "Streams" label/banner split
+        // is gone — the wordmark lives in the banner art itself, which is
+        // what the TV launcher shows instead of the label. setup.brand in
+        // local.properties still only feeds SETUP_BRAND (in-app setup text).
     }
 
     buildTypes {
