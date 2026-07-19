@@ -44,7 +44,7 @@ import dev.openstream.tv.ui.theme.MutedText
  *  (the search mic was already swapped from an emoji to a vector). */
 data class NavDestination(val route: String, val label: String, val icon: RailIconKind)
 
-enum class RailIconKind { HOME, DISCOVER, SEARCH, SETTINGS }
+enum class RailIconKind { HOME, DISCOVER, LIBRARY, SEARCH, SETTINGS }
 
 private val COLLAPSED_WIDTH = 78.dp
 private val EXPANDED_WIDTH = 210.dp
@@ -233,6 +233,18 @@ private fun RailIcon(kind: RailIconKind, tint: Color) {
                     close()
                 }
                 drawPath(needle, tint, style = stroke)
+            }
+            RailIconKind.LIBRARY -> {
+                // bookmark ribbon — "your saved shelf"
+                val ribbon = Path().apply {
+                    moveTo(w * 0.28f, w * 0.12f)
+                    lineTo(w * 0.72f, w * 0.12f)
+                    lineTo(w * 0.72f, w * 0.88f)
+                    lineTo(w * 0.50f, w * 0.70f)
+                    lineTo(w * 0.28f, w * 0.88f)
+                    close()
+                }
+                drawPath(ribbon, tint, style = stroke)
             }
             // Handled above by the shared GearIcon/SearchGlyph; the early
             // returns mean these arms never draw, they just keep the when

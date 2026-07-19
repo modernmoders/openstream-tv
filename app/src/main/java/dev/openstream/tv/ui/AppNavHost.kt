@@ -36,6 +36,7 @@ import dev.openstream.tv.ui.connect.ConnectScreen
 import dev.openstream.tv.ui.details.DetailsScreen
 import dev.openstream.tv.ui.discover.DiscoverScreen
 import dev.openstream.tv.ui.home.HomeScreen
+import dev.openstream.tv.ui.library.LibraryScreen
 import dev.openstream.tv.ui.player.PlayerScreen
 import dev.openstream.tv.ui.search.SearchScreen
 import dev.openstream.tv.ui.settings.AppLogScreen
@@ -51,6 +52,8 @@ import dev.openstream.tv.ui.streams.StreamListScreen
 object Routes {
     const val HOME = "home"
     const val DISCOVER = "discover"
+    /** Everything watched, Stremio-style filters (round 22 #2). */
+    const val LIBRARY = "library"
     const val SEARCH = "search"
     const val ADDONS = "addons"
     const val ADDONS_ADD = "addons/add"
@@ -137,6 +140,7 @@ fun AppNavHost(
         listOf(
             NavDestination(Routes.HOME, "Home", RailIconKind.HOME),
             NavDestination(Routes.DISCOVER, "Discover", RailIconKind.DISCOVER),
+            NavDestination(Routes.LIBRARY, "Library", RailIconKind.LIBRARY),
             NavDestination(Routes.SEARCH, "Search", RailIconKind.SEARCH),
             NavDestination(Routes.SETTINGS, "Settings", RailIconKind.SETTINGS),
         )
@@ -239,6 +243,9 @@ fun AppNavHost(
         }
         composable(Routes.DISCOVER) {
             DiscoverScreen(onBack = goBack, onItemClick = openDetails)
+        }
+        composable(Routes.LIBRARY) {
+            LibraryScreen(onItemClick = openDetails)
         }
         composable(Routes.SEARCH) {
             SearchScreen(onBack = goBack, onItemClick = openDetails)

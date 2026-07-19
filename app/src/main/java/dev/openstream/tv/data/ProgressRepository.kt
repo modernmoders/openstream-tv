@@ -28,6 +28,11 @@ class ProgressRepository @Inject constructor(
     fun observeContinueWatching(): Flow<List<WatchProgress>> =
         dao.observeAll().map { entities -> continueWatching(entities.map { it.toDomain() }) }
 
+    /** Every raw progress row — the Library screen's whole world (its
+     *  grouping/filtering are pure functions in LibraryModel). */
+    fun observeAllProgress(): Flow<List<WatchProgress>> =
+        dao.observeAll().map { entities -> entities.map { it.toDomain() } }
+
     /**
      * Every stored progress row, keyed by [MediaRef.externalId] — for the
      * Details episode list, which shows a progress bar for a partly-watched

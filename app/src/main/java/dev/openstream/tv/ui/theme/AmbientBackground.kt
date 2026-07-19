@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Color
  *    blend to the flat [AppBackground] and the artwork already provides the
  *    color there.
  */
-enum class AmbientSection { HOME, DISCOVER, SEARCH, SETTINGS, CONNECT }
+enum class AmbientSection { HOME, DISCOVER, LIBRARY, SEARCH, SETTINGS, CONNECT }
 
 /**
  * One section's wash: a top→bottom gradient with a soft glow anchored at a
@@ -46,6 +46,12 @@ private fun paletteFor(section: AmbientSection): AmbientPalette = when (section)
     AmbientSection.DISCOVER -> AmbientPalette(
         top = Color(0xFF0F1B20), bottom = Color(0xFF0D0D13),
         glow = Color(0xFF3FD8C7).copy(alpha = 0.07f), glowX = 0.85f, glowY = 0.05f,
+    )
+    // Library — a warm amber cast (the "your shelf" room), glow up-left
+    // behind the header, distinct from Discover's teal next door on the rail.
+    AmbientSection.LIBRARY -> AmbientPalette(
+        top = Color(0xFF1C1712), bottom = Color(0xFF0D0D13),
+        glow = Color(0xFFFFC46B).copy(alpha = 0.07f), glowX = 0.15f, glowY = 0.05f,
     )
     // Search — violet, glow behind the centered query field.
     AmbientSection.SEARCH -> AmbientPalette(
