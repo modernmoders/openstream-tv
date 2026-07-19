@@ -1,5 +1,32 @@
 # STATE — updated 2026-07-18 by session 35
 
+## ⚠️ SESSION 35 cont. (2026-07-18) — OWNER DECISIONS LANDED + Myles Dad debridio everywhere + rollout audit
+- **DECISION (owner): AIOLists STAYS in the bundle, search-only, ordered
+  LAST.** The 8-slot bundle order for make_profiles/push_stremio_bundle:
+  AIOLists moves to the bottom (was Rachael's-order position). Apply when
+  building #5/profile regen.
+- **DECISION (owner): Myles Dad keeps Myles' debridio ("add it to the
+  rest").** Done: passport keys.debridio = Myles Manuel/Mobile's key;
+  all 3 of his kit aiostreams files re-enabled per template pattern
+  (primary: TMDB/TVDB/Watchtower on; backup/elfhosted: Watchtower on)
+  with the key filled; LIVE primary+backup updated via surgical
+  GET-modify-PUT and re-GET verified (pre-write copies in
+  config_backups/2026-07-18/myles-dad-live-*.pre-debridio.json). Live
+  elfhosted already had it.
+- **Gooey design: owner approves ("it's cool").** Connectors trimmed by
+  owner in the app (ClickUp/Figma/Notion/Gmail MCP now disconnected).
+- **ROLLOUT AUDIT (who's left for full build push):** account-complete =
+  adam, Rachael, Manuel Momma, Myles Dad. The other 8 (Anna/Jay, Myles
+  Manuel, Myles Mobile, Jody, Mike, Clarence, Jacob, Toby) are each
+  missing ONLY the elfhosted/nightly AIOStreams account — their
+  AIOMetadata pairs all exist (manifest_url+password per slot; NOTE
+  AIOMetadata manifests are uuid-only URLs, uuid derivable — session
+  31's "uuid backfill" isn't a separate field, don't re-chase). All 8
+  have kit configs → one push_aiostreams.py --instance nightly run per
+  user creates them on the owner's word. Per-person Trakt-connect status
+  on the 6 non-verified users' Discover configs = unverified (verify on
+  request); Trakt connects remain each person's own PIN step.
+
 ## ⚠️ SESSION 35 (2026-07-18) — 3 MISSING AIOSTREAMS ACCOUNTS CREATED VIA API (owner gave the word)
 **Ops session in ~/Documents/Claude/StremioSurfer; no app build. Executed
 session 34's NEXT ACTION (b) end-to-end:**
