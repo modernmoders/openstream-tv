@@ -1,5 +1,52 @@
 # STATE — updated 2026-07-19 by session 37
 
+## ⚠️ SESSION 37 cont. (2026-07-19) — ROLLOUT COMPLETE: Manuel Momma pushed + Myles Dad AIOLists built/pushed/hosted
+- **MANUEL MOMMA PUSHED (8 addons, read-back verified).** Owner set her
+  passport password to match her metadata passwords — Stremio login now
+  works. Her old strem.io Trakt scrobbler dropped with the push (bundle
+  excludes it). **STREMIO ROLLOUT = 11/11 DONE** (Rachael excluded by
+  standing rule).
+- **MYLES DAD AIOLISTS CREATED (owner: "make him one and include it").**
+  AIOLists has no accounts — config is gzip+base64url-encoded INSIDE the
+  manifest URL (https://aiolists.elfhosted.com/<cfg>/manifest.json).
+  Built from Toby's search-only template: apiKey = Myles Dad's OWN
+  mdblist key, tmdbBearerToken = his OWN tmdb_read (others share one;
+  he has his own), TMDB session/account/username + Trakt username/uuid
+  nulled (no SStreams TMDB session for him; Trakt tokens were null in
+  template anyway — search needs neither), tmdb_watchlist/favorites
+  dropped from listOrder (account-bound), upstash cache = the shared
+  dominant-civet pool (4 users already share it; Jody==Mike token
+  verified). LIVE manifest verified: exactly 4 search-required catalogs
+  (Search Movies/Series/Merged/Anime) + meta — same shape as adam's.
+  Written to live users.json (backup: config_backups/2026-07-19/
+  users.json.pre-mylesdad-aiolists) → re-pushed his Stremio: 8 addons,
+  AIOLists LAST, read back.
+- **His hosted profile updated too:** make_profiles.py --users <live>
+  regenerated all (diff vs hosting/ = ONLY myles-dad changed, AIOLists
+  appended); scp'd his one file to Dreamhost, chmod 644, hosted sha256
+  == local, hosting/ copy synced.
+- **TRAKT SCROBBLE (owner: "don't keep it") — NOTHING TO DO:** the
+  canonical bundle already excludes it and every pushed account had it
+  removed (Jacob/Anna-Jay/Manuel Momma had it; rest never did). Owner
+  does NOT need to touch anyone's settings. Only Rachael still has hers
+  (untouched, live-user rule). trakt_scrobble URLs stay in users.json.
+- **Tool fix:** push_stremio_bundle.py backup filename now carries
+  date+TIME — today's Myles Dad re-push overwrote the morning backup
+  (same-day name collision); can't happen again. (His pre-cleanup addon
+  list survives in the dry-run log only; owner wanted those addons gone.)
+- **Update-dialog Q answered (owner: "why not auto-accept / just OK?"):**
+  Android blocks silent installs for sideloaded apps — only privileged
+  store apps (Play) may auto-update; the confirm screen is the OS's, apps
+  can't restyle/refocus it, and onn firmware highlights Cancel. LEFT+OK
+  coaching stays. (True silent updates would need device-owner
+  provisioning = factory reset per box; not worth it.)
+⏳ **NEXT ACTION:** (a) Owner leftovers: alpha.58→59 update on the 2
+boxes (LEFT then OK). Toggles already approved ("looks ok"); scrobbler
+exclusion blessed this session. (b) Per-box app installs via
+savoy.click/app whenever owner visits/ships a box. (c) Backlog: 9s bias
+knob, #16 skins, adam's streaming-config 401 (cosmetic), optional
+Downloader code (aftvnews.com/code → savoy.click/app).
+
 ## ⚠️ SESSION 37 (2026-07-19) — STREMIO ROLLOUT: 7 of the remaining 8 pushed; Manuel Momma blocked on password
 - **push_stremio_bundle.py RUN (owner: "push to the remaining 8"):** Myles
   Manuel (7 — no Local Files in account), Myles Mobile (7 — same), Myles
