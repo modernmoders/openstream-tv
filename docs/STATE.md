@@ -1,4 +1,40 @@
-# STATE — updated 2026-07-19 by session 38
+# STATE — updated 2026-07-19 by session 39
+
+## ⚠️ SESSION 39 (2026-07-19) — Guide APK refreshed: OpenStream alpha.60 live at savoy.click/OpenStreams.apk (NOT OTA-published)
+- **Owner asked to update the guide's APK.** Facts established: the picture
+  guide at savoy.click/index.html installs via Downloader short code
+  **5603325** → https://savoy.click/OpenStreams.apk (note the S — owner
+  says "OpenStream.apk" but the hosted file/code use OpenStreams.apk).
+  That file was a byte-copy of pre-rebrand sstreams-59.apk.
+- **Built alpha.60 (versionCode 60) from feat/openstream-rebrand** (bump
+  committed — the rebranded build must outrank installed alpha.59). Gates
+  green (assembleDebug + testDebugUnitTest), assembleRelease, badging
+  verified: dev.openstream.tv / 60 / 0.3.0-alpha.60 / label "OpenStream".
+  scp'd atomically (.tmp → mv) to savoy.click/OpenStreams.apk, chmod 644,
+  hosted sha256 == local, HTTPS 200. Dreamhost key auth works from this
+  Mac (no password needed — owner pasted one in chat; unused).
+- **OTA channel deliberately NOT touched:** setup/app/version.json still
+  offers alpha.59, sstreams-latest.apk (savoy.click/app) still = 59. The
+  2 live boxes have not been offered the rebrand — publishing alpha.60
+  OTA (tools/publish_update.sh after this branch's release build) is the
+  owner-blessed next step, not assumed. versionCode 60 is now CONSUMED
+  by this build; any future OTA alpha.60 must be built from this same
+  branch state or bump to 61.
+- **Owner Qs answered from live users.json:** Myles Dad logs in as
+  mylesdad@savoy.solutions (personal gmail on file:
+  triparishelectrical@gmail.com); Manuel Momma = manuelmomma@gmail.com.
+  Passport rename question: NO button propagates a name change (Save Now
+  only writes users.json); index.php name→file map + profile slugs + tool
+  lookups depend on the name — rename = its own job (session-34 answer
+  stands). Their TV-visible rec rows already say "YOU", unaffected.
+⏳ **NEXT ACTION:** (a) Owner: test a fresh install via the guide (code
+5603325) — should land "OpenStream" 0.3.0-alpha.60. (b) On owner's word:
+publish alpha.60 OTA (assembleRelease already done on this branch →
+tools/publish_update.sh) so the 2 boxes + savoy.click/app get the rebrand;
+consider merging feat/openstream-rebrand → main first. (c) If owner
+renames Myles Dad / Manuel Momma in the passport: run the rename job
+(index.php map + keep hosted profile filenames stable). (d) Session-38
+backlog unchanged.
 
 ## ⚠️ SESSION 38 (2026-07-19) — Subtitles fan-out built (§4.1 gap closed for the main video)
 - **Owner noticed the auto-picked subtitle track sometimes doesn't match**
