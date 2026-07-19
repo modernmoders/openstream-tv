@@ -63,9 +63,16 @@ fun UpdatePrompt(
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                     )
+                    // Our own dialog already lands focus on "Update now"; the
+                    // screen after this one is ANDROID'S install confirmation,
+                    // which apps cannot restyle or pre-focus — and on the
+                    // household's onn boxes it comes up highlighting Cancel.
+                    // Best we can do is say exactly what to press (owner
+                    // 2026-07-18: "why not just put ok as default").
                     Text(
                         text = "Version ${ui.versionName} is ready. Updating takes " +
-                            "under a minute — Android will ask you to confirm.",
+                            "under a minute. On the next screen, press LEFT to pick " +
+                            "Update, then OK.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MutedText,
                     )
