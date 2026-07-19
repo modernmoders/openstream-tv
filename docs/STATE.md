@@ -1,5 +1,33 @@
 # STATE — updated 2026-07-18 by session 36
 
+## ⚠️ SESSION 36 cont. (2026-07-18) — Anna/Jay + Bop Stremio pushed, alpha.59 (install-screen coaching)
+- **push_stremio_bundle.py RUN (owner: "Push to anna and bop's Stremio"):**
+  Anna/Jay (7 addons — no Local Files in their account) + Clarence Savoy
+  (8 incl. Local Files) now carry the canonical bundle, AIOLists LAST,
+  read-back verified in exact order. Their stale AIOStreams URLs + the
+  strem.io Trakt scrobbler were dropped (expected). Pre-push backups:
+  StremioSurfer/stremio-addons-backup-{anna-jay,clarence-savoy}-2026-07-18
+  .json. Tool fix en route: backup slug now filesystem-safe ("Anna/Jay"
+  used to crash on the '/').
+- **alpha.59 PUBLISHED (versionCode 59):** owner asked "why not just put
+  ok as default" on the update dialog — OUR dialog already focuses
+  Update now; the confusing screen is ANDROID'S system installer (apps
+  can't restyle/pre-focus it; highlights Cancel on the onn boxes). Fix =
+  the prompt now coaches: "On the next screen, press LEFT to pick
+  Update, then OK." Gates green (387/0), published, savoy.click/app
+  alias auto-refreshed by the new publish script (verified live).
+- Context from owner: ONLY 2 boxes run the app today (his + Rachael's);
+  everyone else is Stremio-on-their-own-box → the Stremio bundle pushes
+  ARE the rollout for them, box-by-box app installs come later via
+  savoy.click/app. Toggles: owner approves ("very nice").
+⏳ **NEXT ACTION:** on owner's word, push_stremio_bundle.py for the
+REMAINING Stremio users (myles manuel/mobile/dad, jody, mike, jacob,
+toby, manuel momma — Rachael excluded by default; adam already done
+s29/s36); then per-box app installs via savoy.click/app whenever he
+visits/ships a box. Rest of session-36 NEXT ACTION below still stands
+(owner eyeballs toggles, alpha.58→59 update on the 2 boxes, trakt_
+scrobble bless/veto).
+
 ## ⚠️ SESSION 36 (2026-07-18) — THE CUTOVER SHIPPED: toggles + canonical profiles LIVE on Dreamhost + Library + alpha.58 PUBLISHED OTA + savoy.click/app install link
 **The whole cutover from session 35's NEXT ACTION, end to end:**
 - **#5 PASSPORT PER-ADDON TOGGLES BUILT + verified live on :5000.** Each
