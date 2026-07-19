@@ -457,7 +457,8 @@ Owner asks 2026-07-06 (session 12 continued):
 - [x] **Subtitles fan-out (§4.1 gap).** The player only used subtitles
   embedded in the chosen stream object; installed addons' `subtitles`
   resource was never queried (AIOMetadata + AIOStreams both declare it).
-  *(BUILT session 38, DECISIONS #66: `SubtitleRepository` fans out to every
+  *(BUILT + EMULATOR-VERIFIED against the owner's live addons session 38,
+  DECISIONS #66: `SubtitleRepository` fans out to every
   declaring addon in parallel alongside the stream fan-out, merges by URL
   with stream-embedded tracks winning ties. Covers initial playback, "Play
   with…" external launch, and "try another server" — all reuse one fetch

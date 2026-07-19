@@ -22,15 +22,23 @@
   different video id and prefetching wasn't in scope this session.
 - **Verified:** `./gradlew assembleDebug testDebugUnitTest` — BUILD
   SUCCESSFUL, all unit tests pass (added 3 new tests for the merge/mapping
-  helpers). NOT yet emulator/on-device verified against real addon
-  responses — no owner directive to test this specific session, and no
-  behavior change is visible without a title that has non-matching addon
-  subtitles.
-⏳ **NEXT ACTION:** (a) Owner: next time a stream's subtitle auto-pick
-looks wrong, check the tracks dialog (UP → subtitle track picker) — it
-should now show extra OpenSubtitles-sourced options alongside the
-stream's own. If it still doesn't help, that's a picker/preference-logic
-issue, not a "no options" issue, and worth a follow-up session. (b) Rest
+  helpers). **EMULATOR-VERIFIED same session against the REAL addons:**
+  the AVD's app DB had lost the owner's addons (only Cinemeta + local test
+  addon remained), so adam's LIVE hosted profile (savoy.click/setup, the
+  canonical 6-addon bundle) was fetched and its manifests injected into
+  the app DB (local test addon kept, now sortOrder 6). Then: Discover →
+  "The Invite" (2026 movie) → auto-play → real debrid stream → Audio &
+  subtitles dialog shows the merged pool — the stream's own embedded
+  tracks (English [SRT]/[SDH], French · Metropolitan, Spanish · Latin
+  American, German, Dutch) PLUS the addon-fetched OpenSubtitles tail
+  (English, English (2)…(7)+) — picked an addon track and the captions
+  RENDERED in sync. Emulator navigation gotcha for future sessions: the
+  player control bar auto-hides after 5s and the FIRST press only re-wakes
+  it — screenshot-paced key presses each get swallowed; send
+  wake→DOWN→LEFT→CENTER as one quick sequence to reach Audio & subtitles.
+⏳ **NEXT ACTION:** (a) Nothing owner-blocking from this session — the
+fan-out ships with the NEXT alpha whenever one is published (no OTA cut
+this session; it's in main). (b) Rest
 of session-37 NEXT ACTION below still stands: alpha.58→59 update on the 2
 boxes (LEFT then OK); savoy.click/app installs whenever owner visits/ships
 a box; backlog: 9s bias knob, #16 skins, adam's streaming-config 401
