@@ -1,5 +1,29 @@
 # STATE — updated 2026-07-18 by session 35
 
+## ⚠️ SESSION 35 cont.2 (2026-07-18) — THE 8 ELFHOSTED ACCOUNTS CREATED: ACCOUNT SETUP IS COMPLETE FOR EVERYONE
+**Owner said "Create the 8" → all 8 remaining elfhosted/nightly AIOStreams
+accounts created via push_aiostreams.py POST (each user's own kit
+aiostreams-elfhosted.json as --template; live users.json; pre-write backup
+config_backups/2026-07-18/users.json.pre-elfhosted-8-s35): Anna/Jay, Myles
+Manuel, Myles Mobile, Jody, Mike, Clarence, Jacob, Toby — all first-try.**
+- Pre-flight caught nothing to fix: all 8 kits carry the user's OWN debridio
+  key in the enabled Watchtower preset; Myles Mobile's kit ships RD
+  DISABLED (standing decision holds — verified in the live account too).
+- Slot passwords = each user's top-level passport/Stremio password (owner
+  confirmed that's the convention; recorded into each nightly slot since
+  push_user's return drops plaintext).
+- VERIFIED all 8: API 200 with stored uuid:password, RD enabled with own
+  key (Myles Mobile: RD disabled as intended), public manifest 200.
+- **ROSTER STATUS: every one of the 12 users now has ALL 5 addon accounts
+  (3 AIOStreams + 2 AIOMetadata) and every Discover has Trakt connected.
+  Nothing account-related remains — the rollout is unblocked.**
+⏳ **NEXT ACTION:** the cutover build (owner decisions all in): #5 passport
+per-addon toggles → rebuild make_profiles to the canonical bundle with
+AIOLists LAST (search-only) → regenerate all hosted profile JSONs → scp to
+Dreamhost → optional push_stremio_bundle.py --all (Rachael excluded by
+default). Then Round-22 app remainder: #2 Library screen, emulator-verify
+#7 caption + #3 Discover grid, gates → OTA alpha.58.
+
 ## ⚠️ SESSION 35 cont. (2026-07-18) — OWNER DECISIONS LANDED + Myles Dad debridio everywhere + rollout audit
 - **DECISION (owner): AIOLists STAYS in the bundle, search-only, ordered
   LAST.** The 8-slot bundle order for make_profiles/push_stremio_bundle:
