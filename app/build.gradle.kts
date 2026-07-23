@@ -32,8 +32,8 @@ android {
         targetSdk = 37
         // Bump both for every pre-release: the Phase 5 in-app updater will
         // compare versionCode, and Android refuses to upgrade over an equal one.
-        versionCode = 59
-        versionName = "0.3.0-alpha.59"
+        versionCode = 60
+        versionName = "0.3.0-alpha.60"
 
         buildConfigField(
             "String", "SETUP_URL",
@@ -44,17 +44,11 @@ android {
             "\"${localProps.getProperty("setup.brand") ?: "OpenStream TV"}\"",
         )
 
-        // Launcher name follows the same owner-private brand as the in-app
-        // title (setup.brand): the public repo stays neutral ("OpenStream TV"),
-        // the owner's local.properties makes both say "Streams".
-        val brand = localProps.getProperty("setup.brand") ?: "OpenStream TV"
-        manifestPlaceholders["appLabel"] = brand
-        // The TV launcher shows the banner INSTEAD of the label, so the brand
-        // must live in the art itself: Streams builds get the wordmark
-        // banner, everything else the neutral "S" mark.
-        manifestPlaceholders["appBanner"] =
-            if (brand == "Streams") "@drawable/tv_banner_streams"
-            else "@drawable/tv_banner"
+        // Launcher name and banner are the OpenStream brand for EVERY build
+        // (owner 2026-07-19): the old per-owner "Streams" label/banner split
+        // is gone — the wordmark lives in the banner art itself, which is
+        // what the TV launcher shows instead of the label. setup.brand in
+        // local.properties still only feeds SETUP_BRAND (in-app setup text).
     }
 
     buildTypes {

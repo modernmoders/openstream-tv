@@ -1,4 +1,93 @@
-# STATE — updated 2026-07-19 by session 38
+# STATE — updated 2026-07-22 by session 40
+
+## ⚠️ SESSION 40 (2026-07-22) — Black-screen fix (killed service) + Nadine rename job LIVE + owner Qs answered
+- **BLACK SCREEN ON REOPEN FIXED (owner report: app opens black after
+  backing out mid-watch/paused until Back is pressed).** Root cause:
+  paused-in-background PlaybackService is no longer foreground → Android
+  kills it → engine detaches → player route rendered a permanent black
+  Box (engine==null, hasSource still true; only the BackHandler above the
+  early return worked). Fix in PlayerViewModel: engine-null-after-start
+  is treated like process death — uiState flips to hasSource=false +
+  restore, screen re-enters via stream flow (fresh link + resume prompt).
+  Bonus: restore stash now refreshed on autoplay advances (was stale in
+  the process-death path too — restored the binge's FIRST episode).
+  DECISIONS #67. Gates green. EMULATOR-VERIFIED: play (Local Test addon)
+  → HOME → am stopservice → reopen = resume prompt, "Resume from 0:27"
+  plays. NOT yet OTA-published (rides with the next alpha; branch
+  feat/openstream-rebrand, next OTA cut needs versionCode 61 — 60 is
+  consumed by the session-39 guide build).
+- **NADINE RENAME JOB DONE, LIVE-VERIFIED** (owner renamed Manuel Momma →
+  Nadine in the passport; asked for logins Nadine / Sean (Patrick) /
+  Richardson('s) + rows "Recommended for Nadine"): (1) make_hosting_bundle
+  .py now supports passport `aka` lists (DECISIONS #67); users.schema.json
+  documents it; live users.json got aka ["Sean Patrick","Richardson",
+  "Richardsons"]. (2) profiles.config.json links key renamed to "Nadine"
+  — profile FILENAME kept (manuel-momma-hSWmfGr0T_Q.json, boxes' URLs
+  stable). (3) Regenerated profiles (diff = ONLY her file, only the name
+  field → "Nadine") + index.php; both scp'd to savoy.click/setup (atomic,
+  644). LIVE lookups verified: nadine/sean/sean patrick/sean p/richardson/
+  richardsons/richardson's → FOUND Nadine; "manuel" no longer matches
+  (old name gone — tools now use --user "Nadine"). (4) Her AIOMetadata
+  Discover rec rows renamed "Recommended for YOU"→"for Nadine" ×3 via
+  live API (pre-write backup config_backups/2026-07-22/), re-load + public
+  manifest verified; her Stremio picks the names up automatically (rows
+  come from the manifest). (5) make_user_configs.py: manuel-momma
+  overrides dropped (default first word now correct); "nadine": None kept
+  in ADDON_DISPLAY_NAME (addonName stays "AIO - Discover").
+- **Owner Qs answered:** "myles" typed alone → the 3-way chooser (Myles
+  Manuel / Myles Mobile / Myles Dad; "myles m" still a 2-way chooser —
+  live-verified). Updates: publish_update.sh → every box self-offers on
+  next app launch; ONE tap path (our dialog focuses Update; Android's
+  installer screen: LEFT then OK); version jumps are direct (full APK,
+  versionCode > installed — no stepping through intermediates). GitHub
+  repo (openstream-tv) is currently PUBLIC; making it private breaks
+  NOTHING (OTA + profiles live on Dreamhost, GitHub is never contacted
+  by boxes) — owner's call, not flipped.
+⏳ **NEXT ACTION:** (a) On owner's word: cut the next OTA (bump to
+versionCode 61 on this branch — includes rebrand + subtitles fan-out +
+black-screen fix) via assembleRelease → tools/publish_update.sh; consider
+merging feat/openstream-rebrand → main first. (b) Owner decides repo
+visibility (public vs private — see Qs above). (c) If owner wants "manuel"
+to still find Nadine, add "Manuel Momma" to her aka list + regen/scp
+index.php (one command). (d) Session-38/39 backlog unchanged (9s bias
+knob, #16 skins, adam's streaming-config 401 cosmetic, autoplay-chain
+subtitle fan-out, guide-APK fresh-install test).
+
+## ⚠️ SESSION 39 (2026-07-19) — Guide APK refreshed: OpenStream alpha.60 live at savoy.click/OpenStreams.apk (NOT OTA-published)
+- **Owner asked to update the guide's APK.** Facts established: the picture
+  guide at savoy.click/index.html installs via Downloader short code
+  **5603325** → https://savoy.click/OpenStreams.apk (note the S — owner
+  says "OpenStream.apk" but the hosted file/code use OpenStreams.apk).
+  That file was a byte-copy of pre-rebrand sstreams-59.apk.
+- **Built alpha.60 (versionCode 60) from feat/openstream-rebrand** (bump
+  committed — the rebranded build must outrank installed alpha.59). Gates
+  green (assembleDebug + testDebugUnitTest), assembleRelease, badging
+  verified: dev.openstream.tv / 60 / 0.3.0-alpha.60 / label "OpenStream".
+  scp'd atomically (.tmp → mv) to savoy.click/OpenStreams.apk, chmod 644,
+  hosted sha256 == local, HTTPS 200. Dreamhost key auth works from this
+  Mac (no password needed — owner pasted one in chat; unused).
+- **OTA channel deliberately NOT touched:** setup/app/version.json still
+  offers alpha.59, sstreams-latest.apk (savoy.click/app) still = 59. The
+  2 live boxes have not been offered the rebrand — publishing alpha.60
+  OTA (tools/publish_update.sh after this branch's release build) is the
+  owner-blessed next step, not assumed. versionCode 60 is now CONSUMED
+  by this build; any future OTA alpha.60 must be built from this same
+  branch state or bump to 61.
+- **Owner Qs answered from live users.json:** Myles Dad logs in as
+  mylesdad@savoy.solutions (personal gmail on file:
+  triparishelectrical@gmail.com); Manuel Momma = manuelmomma@gmail.com.
+  Passport rename question: NO button propagates a name change (Save Now
+  only writes users.json); index.php name→file map + profile slugs + tool
+  lookups depend on the name — rename = its own job (session-34 answer
+  stands). Their TV-visible rec rows already say "YOU", unaffected.
+⏳ **NEXT ACTION:** (a) Owner: test a fresh install via the guide (code
+5603325) — should land "OpenStream" 0.3.0-alpha.60. (b) On owner's word:
+publish alpha.60 OTA (assembleRelease already done on this branch →
+tools/publish_update.sh) so the 2 boxes + savoy.click/app get the rebrand;
+consider merging feat/openstream-rebrand → main first. (c) If owner
+renames Myles Dad / Manuel Momma in the passport: run the rename job
+(index.php map + keep hosted profile filenames stable). (d) Session-38
+backlog unchanged.
 
 ## ⚠️ SESSION 38 (2026-07-19) — Subtitles fan-out built (§4.1 gap closed for the main video)
 - **Owner noticed the auto-picked subtitle track sometimes doesn't match**

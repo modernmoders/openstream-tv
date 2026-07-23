@@ -210,27 +210,9 @@ class PlayerViewModel @Inject constructor(
             // holder) is gone, but SavedStateHandle survives. If we stashed
             // what was playing, hand the screen a restore target — it re-opens
             // the video through the stream flow (fresh link, resume prompt).
-            val videoId = savedState.get<String>(KEY_RESTORE_VIDEO)
-            val restore = if (videoId != null) {
-                OpenStreams(
-                    type = savedState.get<String>(KEY_RESTORE_TYPE).orEmpty(),
-                    videoId = videoId,
-                    title = savedState.get<String>(KEY_RESTORE_TITLE).orEmpty(),
-                    metaId = savedState.get<String>(KEY_RESTORE_META).orEmpty(),
-                    poster = savedState.get<String>(KEY_RESTORE_POSTER),
-                )
-            } else {
-                null
-            }
-            _uiState.value = UiState(hasSource = false, restore = restore)
+            _uiState.value = UiState(hasSource = false, restore = restoreTarget())
         } else {
-            req.mediaRef?.let { ref ->
-                savedState[KEY_RESTORE_VIDEO] = ref.externalId
-                savedState[KEY_RESTORE_TYPE] = req.metaType
-                savedState[KEY_RESTORE_TITLE] = req.source.title
-                savedState[KEY_RESTORE_META] = req.metaId
-                savedState[KEY_RESTORE_POSTER] = req.poster
-            }
+            stashRestore(req)
             // A staged start position means there IS saved progress: ask where
             // to start (over the loading animation) instead of silently jumping.
             val resumeAt = req.source.startPositionMs.takeIf { it > 0 }
@@ -247,6 +229,21 @@ class PlayerViewModel @Inject constructor(
                 autoSkipIntros = playbackPrefs.autoSkipIntros.first()
                 autoSkipCredits = playbackPrefs.autoSkipCredits.first()
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
+                launch {
+                    // Android may kill the PlaybackService while we're in the
+                    // background: once playback pauses (Home press) the service
+                    // leaves the foreground and becomes fair game under memory
+                    // pressure. Its onDestroy detaches the engine, and coming
+                    // back to the app used to find this route with no engine —
+                    // a black screen only Back escaped (owner report
+                    // 2026-07-22). A vanished engine is the same situation as
+                    // process death, so recover the same way: re-enter the
+                    // video through the stream flow (fresh link, resume
+                    // prompt). Normal exits never get here — onCleared()
+                    // cancels this scope before it stops the service.
+                    this@PlayerViewModel.engine.first { it == null }
+                    _uiState.value = UiState(hasSource = false, restore = restoreTarget())
+                }
                 launch {
                     // The engine decides software-vs-hardware PER STREAM now
                     // (auto for codecs the box mangles) — the "Software video"
@@ -363,6 +360,32 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** Stash WHAT is playing so [restoreTarget] can rebuild it after process
+     *  death or a killed PlaybackService. Re-run on every episode advance —
+     *  restoring must land on the episode the viewer was actually in. */
+    private fun stashRestore(req: PlaybackRequest) {
+        req.mediaRef?.let { ref ->
+            savedState[KEY_RESTORE_VIDEO] = ref.externalId
+            savedState[KEY_RESTORE_TYPE] = req.metaType
+            savedState[KEY_RESTORE_TITLE] = req.source.title
+            savedState[KEY_RESTORE_META] = req.metaId
+            savedState[KEY_RESTORE_POSTER] = req.poster
+        }
+    }
+
+    /** The stashed playback, as a stream-flow re-entry target; null = nothing
+     *  was stashed (no mediaRef) — the screen just pops back instead. */
+    private fun restoreTarget(): OpenStreams? {
+        val videoId = savedState.get<String>(KEY_RESTORE_VIDEO) ?: return null
+        return OpenStreams(
+            type = savedState.get<String>(KEY_RESTORE_TYPE).orEmpty(),
+            videoId = videoId,
+            title = savedState.get<String>(KEY_RESTORE_TITLE).orEmpty(),
+            metaId = savedState.get<String>(KEY_RESTORE_META).orEmpty(),
+            poster = savedState.get<String>(KEY_RESTORE_POSTER),
+        )
+    }
+
     private fun playNext(engine: ExoPlayerEngine, next: Video, candidate: StreamCascade.Candidate) {
         val req = request ?: return
         val source = candidate.stream.toPlayableSource(episodeTitle(next))
@@ -380,6 +403,7 @@ class PlayerViewModel @Inject constructor(
         )
         request = newRequest
         currentPlayback.request = newRequest
+        stashRestore(newRequest) // restore must land on THIS episode, not the binge's first
         autoplayOrigin.origin = StreamCascade.CurrentStream(candidate.addonUrl, candidate.stream)
         // The alternatives list belonged to the finished episode; the new
         // one's list is unknown until its own stream screen loads it.

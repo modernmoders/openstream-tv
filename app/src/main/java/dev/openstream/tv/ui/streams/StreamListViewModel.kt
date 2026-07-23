@@ -34,6 +34,7 @@ import dev.openstream.tv.player.buildExternalLaunch
 import dev.openstream.tv.player.interpretExternalResult
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -158,7 +159,9 @@ class StreamListViewModel @Inject constructor(
      * Addon-fetched subtitles for THIS video (MASTER_PLAN §4.1 fan-out gap),
      * populated once by the init fan-out below; empty until it resolves (and
      * forever, if no installed addon declares `subtitles` for this id).
+     * Volatile: written from the IO fan-out, read on Main at stage() time.
      */
+    @Volatile
     private var addonSubtitles: List<SubtitleTrack> = emptyList()
 
     /**
@@ -354,9 +357,11 @@ class StreamListViewModel @Inject constructor(
                 }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             // Same fan-out shape as streams, queried in parallel with them —
             // a slow/broken subtitle addon must never delay the stream list.
+            // On IO, not Main: nothing awaits this and no UI state changes,
+            // so the whole fetch-and-store can stay off the Main queue.
             addonSubtitles = subtitleRepository.fetchAll(type, videoId).map { it.toSubtitleTrack() }
         }
         viewModelScope.launch {
