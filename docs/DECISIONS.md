@@ -2055,3 +2055,33 @@ asks; the non-obvious choices:
    different video id, and prefetching its addon subtitles ahead of the
    Up Next countdown wasn't in scope for this pass. Behavior there is
    unchanged from before this session, not worse.
+
+## 67. 2026-07-22 (session 40) — Killed-service recovery + 'aka' login aliases
+
+**Player black screen on reopen (owner report):** backing out to the
+launcher pauses playback (ON_STOP), Media3 then drops the
+PlaybackService out of the foreground, and Android may kill it under
+memory pressure. Its onDestroy detached the engine, and reopening the
+app landed on the player route with engine == null — rendered as a
+black Box with no exit but Back. DECISION: treat a vanished engine
+exactly like process death (the Round-14 restore flow): PlayerViewModel
+watches the engine flow for null-after-start and flips uiState to
+hasSource=false + restore, so the screen re-enters the video through
+the stream flow (fresh link + resume prompt). Rejected alternatives:
+keeping the service foreground while paused (fights TV OS conventions,
+drains the box), or re-starting the service in place (the engine's
+queue/tracks state died with the process — the stream flow already
+rebuilds all of it). The restore stash is refreshed on every autoplay
+episode advance so recovery lands on the CURRENT episode (was: the
+episode the binge started with — latent bug in the process-death path
+too).
+
+**'aka' aliases (make_hosting_bundle.py):** a passport user may carry
+aka: ["Sean Patrick", "Richardson", ...]. Each alias becomes a lookup
+row matching on its FIRST word with a wildcard initial ("sean",
+"sean p", "sean r" all land), while the display name stays the passport
+name. Wildcard-initial was chosen because an alias's typed second word
+is unpredictable (maiden name, married name, spelling) and family-scale
+name collisions are rare; if two people ever share an alias first word,
+the existing multi-match chooser already handles it. First use: Manuel
+Momma → Nadine (aka Sean Patrick / Richardson / Richardsons).

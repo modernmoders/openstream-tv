@@ -1,4 +1,57 @@
-# STATE — updated 2026-07-19 by session 39
+# STATE — updated 2026-07-22 by session 40
+
+## ⚠️ SESSION 40 (2026-07-22) — Black-screen fix (killed service) + Nadine rename job LIVE + owner Qs answered
+- **BLACK SCREEN ON REOPEN FIXED (owner report: app opens black after
+  backing out mid-watch/paused until Back is pressed).** Root cause:
+  paused-in-background PlaybackService is no longer foreground → Android
+  kills it → engine detaches → player route rendered a permanent black
+  Box (engine==null, hasSource still true; only the BackHandler above the
+  early return worked). Fix in PlayerViewModel: engine-null-after-start
+  is treated like process death — uiState flips to hasSource=false +
+  restore, screen re-enters via stream flow (fresh link + resume prompt).
+  Bonus: restore stash now refreshed on autoplay advances (was stale in
+  the process-death path too — restored the binge's FIRST episode).
+  DECISIONS #67. Gates green. EMULATOR-VERIFIED: play (Local Test addon)
+  → HOME → am stopservice → reopen = resume prompt, "Resume from 0:27"
+  plays. NOT yet OTA-published (rides with the next alpha; branch
+  feat/openstream-rebrand, next OTA cut needs versionCode 61 — 60 is
+  consumed by the session-39 guide build).
+- **NADINE RENAME JOB DONE, LIVE-VERIFIED** (owner renamed Manuel Momma →
+  Nadine in the passport; asked for logins Nadine / Sean (Patrick) /
+  Richardson('s) + rows "Recommended for Nadine"): (1) make_hosting_bundle
+  .py now supports passport `aka` lists (DECISIONS #67); users.schema.json
+  documents it; live users.json got aka ["Sean Patrick","Richardson",
+  "Richardsons"]. (2) profiles.config.json links key renamed to "Nadine"
+  — profile FILENAME kept (manuel-momma-hSWmfGr0T_Q.json, boxes' URLs
+  stable). (3) Regenerated profiles (diff = ONLY her file, only the name
+  field → "Nadine") + index.php; both scp'd to savoy.click/setup (atomic,
+  644). LIVE lookups verified: nadine/sean/sean patrick/sean p/richardson/
+  richardsons/richardson's → FOUND Nadine; "manuel" no longer matches
+  (old name gone — tools now use --user "Nadine"). (4) Her AIOMetadata
+  Discover rec rows renamed "Recommended for YOU"→"for Nadine" ×3 via
+  live API (pre-write backup config_backups/2026-07-22/), re-load + public
+  manifest verified; her Stremio picks the names up automatically (rows
+  come from the manifest). (5) make_user_configs.py: manuel-momma
+  overrides dropped (default first word now correct); "nadine": None kept
+  in ADDON_DISPLAY_NAME (addonName stays "AIO - Discover").
+- **Owner Qs answered:** "myles" typed alone → the 3-way chooser (Myles
+  Manuel / Myles Mobile / Myles Dad; "myles m" still a 2-way chooser —
+  live-verified). Updates: publish_update.sh → every box self-offers on
+  next app launch; ONE tap path (our dialog focuses Update; Android's
+  installer screen: LEFT then OK); version jumps are direct (full APK,
+  versionCode > installed — no stepping through intermediates). GitHub
+  repo (openstream-tv) is currently PUBLIC; making it private breaks
+  NOTHING (OTA + profiles live on Dreamhost, GitHub is never contacted
+  by boxes) — owner's call, not flipped.
+⏳ **NEXT ACTION:** (a) On owner's word: cut the next OTA (bump to
+versionCode 61 on this branch — includes rebrand + subtitles fan-out +
+black-screen fix) via assembleRelease → tools/publish_update.sh; consider
+merging feat/openstream-rebrand → main first. (b) Owner decides repo
+visibility (public vs private — see Qs above). (c) If owner wants "manuel"
+to still find Nadine, add "Manuel Momma" to her aka list + regen/scp
+index.php (one command). (d) Session-38/39 backlog unchanged (9s bias
+knob, #16 skins, adam's streaming-config 401 cosmetic, autoplay-chain
+subtitle fan-out, guide-APK fresh-install test).
 
 ## ⚠️ SESSION 39 (2026-07-19) — Guide APK refreshed: OpenStream alpha.60 live at savoy.click/OpenStreams.apk (NOT OTA-published)
 - **Owner asked to update the guide's APK.** Facts established: the picture
