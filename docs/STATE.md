@@ -1,4 +1,49 @@
-# STATE — updated 2026-07-22 by session 40
+# STATE — updated 2026-07-26 by session 41
+
+## ⚠️ SESSION 41 (2026-07-26) — English-first streams + Expert-only stream list + auto-resume (owner round, Cowork session)
+- **ENGLISH-AUDIO RANKING FIXED (owner: Naruto picked Japanese until the
+  3rd manual "Try a different stream", every episode).** Root cause:
+  hasEnglishAudio defaulted unreadable labels to English, so an
+  unlabeled JA-only 1080p beat a confirmed-EN 720p on resolution.
+  StreamCascade.mergeForDisplay now ranks confirmed-EN > unknown >
+  confirmed-foreign (englishAudioRank), still below cached. PLUS
+  ground-truth backstop: on Ready the player reads the opened file's
+  REAL audio tracks; an auto-picked stream with no English track
+  auto-advances (≤4 skips/episode; manual Expert picks never touched).
+  PlaybackRequest.autoSelected marks app picks. DECISIONS #68.
+- **STREAM LIST IS EXPERT-ONLY (owner directive):** new pref
+  showStreamList (default OFF, Expert settings → "Show streams"); rows
+  render only when Expert + toggle both on. Rows hidden → auto-start
+  runs regardless of the auto-play pref; failure = plain-words card.
+  Anime drawer + auto-play toggle moved INTO Expert settings (new
+  "EXPERT SETTINGS" caption); PLAYBACK section removed.
+- **BACK-STACK PILEUP FIXED (owner: backing out showed stream selection,
+  sometimes twice):** player→next-episode now pops player + outgoing
+  stream list together (popUpTo STREAMS inclusive); pop-through on
+  player exit keys off streamListVisible (expert && showStreams), not
+  expertMode.
+- **AUTO-RESUME (owner):** Resume-from prompts REMOVED (player overlay +
+  external-player dialog); playback starts at the saved position.
+  WATCHED_FRACTION 0.95 → 0.90 (past 90% = watched = restart from top).
+- **Stream titles wrap (no truncation) in the Expert list; stream picks/
+  skips/advances all logged to the Expert App log ([streams] tag).**
+- Gates green on this Mac: assembleDebug + testDebugUnitTest (391/391;
+  one HomeViewModelTest real-HTTP flake failed once, passed on re-run).
+  NOT emulator-verified yet; NOT OTA-published.
+- **Owner backlog added this round (not yet built):** one consistent UI
+  style across next-episode popup / Next Episode button / all dialogs;
+  per-series release-family memory (skip known-glitchy encodes across
+  episodes — needs a small Room table); anime credits-marker-based
+  restart threshold (deferred, 90% line covers standard EDs).
+⏳ **NEXT ACTION:** (a) Emulator-verify the round: Naruto-style episode →
+auto-pick lands English (or auto-advances to it), Back never shows a
+stream list with Show streams off, resume is silent, Settings shows
+EXPERT SETTINGS with Anime inside. (b) Then cut OTA versionCode 61
+(includes session-40 rebrand + black-screen fix + this round) via
+assembleRelease → tools/publish_update.sh. (c) Session-40 items (b)-(d)
+unchanged (repo visibility, "manuel" alias, 9s bias knob, #16 skins,
+autoplay-chain subtitle fan-out, guide-APK fresh-install test).
+
 
 ## ⚠️ SESSION 40 (2026-07-22) — Black-screen fix (killed service) + Nadine rename job LIVE + owner Qs answered
 - **BLACK SCREEN ON REOPEN FIXED (owner report: app opens black after

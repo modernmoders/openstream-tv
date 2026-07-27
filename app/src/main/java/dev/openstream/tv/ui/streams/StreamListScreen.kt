@@ -58,7 +58,6 @@ import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfaceRow
 import dev.openstream.tv.ui.components.UpNextOverlay
-import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
@@ -109,7 +108,7 @@ fun StreamListScreen(
     fun launch(play: PendingPlay, startPositionMs: Long) {
         val external = play.external
         if (external == null) {
-            if (viewModel.stage(play.addon, play.stream, startPositionMs)) onPlay()
+            if (viewModel.stage(play.addon, play.stream, startPositionMs, play.autoSelected)) onPlay()
         } else {
             viewModel.externalIntent(play.addon, play.stream, external, startPositionMs)
                 ?.let(::fireExternal)
@@ -117,25 +116,15 @@ fun StreamListScreen(
     }
 
     /**
-     * Player decided. The INTERNAL player now asks "resume / start over" itself,
-     * over its loading animation (owner 2026-07-08), so we just launch it at the
-     * saved position (resume by default) and let it prompt. An EXTERNAL player
-     * (VLC/MX) can't host our prompt, so it still gets the pre-launch dialog.
+     * Player decided. Resume is automatic now (owner 2026-07-26): internal or
+     * external, playback just starts from the saved position — the progress
+     * store already refuses to offer a position past the watched line, so a
+     * finished episode starts from the beginning on its own.
      */
     fun onPlayerDecided(play: PendingPlay) {
         choosingPlayer = false
-        val resume = state.resumePositionMs
-        when {
-            play.external == null -> {
-                pendingPlay = null
-                launch(play, resume ?: 0)
-            }
-            resume != null -> pendingPlay = play // external: ask before leaving the app
-            else -> {
-                pendingPlay = null
-                launch(play, 0)
-            }
-        }
+        pendingPlay = null
+        launch(play, state.resumePositionMs ?: 0)
     }
 
     // Auto-play first stream: launch hands-free, resuming automatically.
@@ -146,7 +135,7 @@ fun StreamListScreen(
             val s = viewModel.uiState.value
             val external = (resolvePreferredPlayer(s.playerPref, s.externalPlayers)
                 as? PlayerDecision.External)?.choice
-            launch(PendingPlay(auto.addon, auto.stream, external), auto.startPositionMs)
+            launch(PendingPlay(auto.addon, auto.stream, external, autoSelected = true), auto.startPositionMs)
         }
     }
     // §7.1.6 chain: the next episode plays in the same external player
@@ -219,16 +208,32 @@ fun StreamListScreen(
             )
         }
 
-        if (state.autoStarting) {
-            // Auto mode: a calm "Starting…" fills the screen so the technical
-            // stream list never flashes by (owner 2026-07-06). If auto-play
-            // gives up, autoStarting flips false and the real list appears.
+        if (state.autoStarting || !state.showList) {
+            // Calm state instead of the technical stream list: while auto-play
+            // is picking (everyone), and PERMANENTLY when the rows are hidden
+            // (owner 2026-07-26 — no Expert "Show streams", no list, ever).
+            // A failed auto-pick shows a plain-words card, never raw rows.
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LoadingMessage(
-                    text = "Starting your show…",
-                    horizontalPadding = 0.dp,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
+                if (state.autoStartFailed) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = "This video isn't starting right now.\nPlease try again in a little while.",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                        )
+                        Button(onClick = onBack) { Text("Go back") }
+                    }
+                } else {
+                    LoadingMessage(
+                        text = "Starting your show…",
+                        horizontalPadding = 0.dp,
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
             }
         } else {
         if (!state.initializing && state.groups.isEmpty()) {
@@ -325,19 +330,6 @@ fun StreamListScreen(
                 onPick = { choice -> onPlayerDecided(play.copy(external = choice)) },
                 onDismiss = { pendingPlay = null; choosingPlayer = false },
             )
-        } else {
-            ResumeDialog(
-                resumePositionMs = state.resumePositionMs ?: 0,
-                onResume = {
-                    pendingPlay = null
-                    launch(play, state.resumePositionMs ?: 0)
-                },
-                onStartOver = {
-                    pendingPlay = null
-                    launch(play, 0)
-                },
-                onDismiss = { pendingPlay = null },
-            )
         }
     }
 
@@ -350,6 +342,9 @@ private data class PendingPlay(
     val addon: InstalledAddon,
     val stream: Stream,
     val external: ExternalPlayerPort.Choice?,
+    /** True when auto-play picked this stream (nobody tapped a row) — lets the
+     *  player auto-skip it if it turns out to have no English audio track. */
+    val autoSelected: Boolean = false,
 )
 
 /**
@@ -422,45 +417,6 @@ private fun PlayWithDialog(
     }
 }
 
-/**
- * "Resume from X / Start over" (§10 Phase 2). A real Dialog window so D-pad
- * focus is trapped inside and Back dismisses — the list behind must not be
- * reachable while it's up (§5.4 focus predictability).
- */
-@Composable
-private fun ResumeDialog(
-    resumePositionMs: Long,
-    onResume: () -> Unit,
-    onStartOver: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val resumeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { resumeFocus.requestFocus() }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
-                .padding(32.dp),
-        ) {
-            Text(
-                text = "You've watched part of this",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = onResume,
-                    modifier = Modifier.focusRequester(resumeFocus),
-                ) { Text("Resume from ${resumePositionMs.asClock()}") }
-                Button(onClick = onStartOver) { Text("Start over") }
-            }
-        }
-    }
-}
-
 @Composable
 private fun StreamRow(
     stream: Stream,
@@ -490,20 +446,19 @@ private fun StreamRow(
                 )
             }
             Column(Modifier.weight(1f)) {
+                // Full release info, wrapped — never truncated (owner
+                // 2026-07-26: "the titles are all truncated"). This list is
+                // Expert-only now, so the detail is exactly what's wanted.
                 Text(
                     text = stream.name ?: "Stream",
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 if (stream.displayDescription.isNotBlank()) {
                     Text(
                         text = stream.displayDescription,
                         style = MaterialTheme.typography.bodySmall,
                         color = MutedText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

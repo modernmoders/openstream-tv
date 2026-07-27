@@ -86,6 +86,11 @@ class SettingsViewModel @Inject constructor(
     val autoSkipCredits: StateFlow<Boolean> = playbackPrefs.autoSkipCredits
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Expert-only "Show streams" (owner 2026-07-26): whether the raw stream
+     *  list screen shows its rows at all. Default OFF everywhere. */
+    val showStreamList: StateFlow<Boolean> = playbackPrefs.showStreamList
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: StateFlow<Boolean> = viewPrefs.uiSounds
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
@@ -137,6 +142,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setExpertMode(enabled: Boolean) {
         viewModelScope.launch { viewPrefs.setExpertMode(enabled) }
+    }
+
+    fun setShowStreamList(enabled: Boolean) {
+        viewModelScope.launch { playbackPrefs.setShowStreamList(enabled) }
     }
 
     fun setEpisodeNumbering(mode: EpisodeNumbering) {

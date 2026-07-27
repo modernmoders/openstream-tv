@@ -25,6 +25,14 @@ data class PlaybackRequest(
      * different stream) can re-merge them without a second addon round-trip.
      */
     val addonSubtitles: List<SubtitleTrack> = emptyList(),
+    /**
+     * True when the APP picked this stream (auto-play, autoplay next-episode,
+     * "Try a different stream" walks) rather than a person tapping a specific
+     * row in the Expert stream list. Gates the post-open English-audio check
+     * (owner 2026-07-26): an auto-pick that turns out to carry no English
+     * audio track is silently skipped; a deliberate manual pick never is.
+     */
+    val autoSelected: Boolean = false,
 )
 
 /**

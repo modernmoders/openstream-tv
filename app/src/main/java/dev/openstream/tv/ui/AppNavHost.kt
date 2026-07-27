@@ -109,6 +109,9 @@ fun AppNavHost(
     // technical user already relies on; easy mode never strands a viewer on
     // a raw, addon-labelled screen.
     val expertMode by launchViewModel.expertMode.collectAsStateWithLifecycle()
+    // Stream rows visible at all (Expert mode + its "Show streams" toggle) —
+    // decides whether Back from the player pops through the stream screen.
+    val streamListVisible by launchViewModel.streamListVisible.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     // Expert mode: movies skip the details screen (it held exactly one
     // action, "View streams" — an extra step, 2026-07-05 round 5) straight to
@@ -285,26 +288,31 @@ fun AppNavHost(
         }
         composable(Routes.PLAYER) {
             PlayerScreen(
-                // Easy mode (owner round 10): BACK from the player must land
-                // back on Details/episode-selection, never strand the viewer
-                // on the raw stream list — pop THROUGH the Streams entry
-                // instead of just one level. Expert mode keeps the original
-                // single-pop-to-streams behavior (it's a deliberately
-                // technical surface there). popBackStack(route, inclusive)
-                // is a no-op (returns false) if Streams somehow isn't on the
-                // stack — falling back to a plain pop keeps Back from ever
-                // doing nothing.
+                // BACK from the player must land back on Details/episode-
+                // selection, never strand the viewer on the raw stream list —
+                // pop THROUGH the Streams entry instead of just one level.
+                // Only when the stream rows are actually visible (Expert mode
+                // + "Show streams", owner 2026-07-26) does Back stop on the
+                // stream list. popBackStack(route, inclusive) is a no-op
+                // (returns false) if Streams somehow isn't on the stack —
+                // falling back to a plain pop keeps Back from ever doing
+                // nothing.
                 onExit = {
-                    val poppedThroughStreams = !expertMode &&
+                    val poppedThroughStreams = !streamListVisible &&
                         navController.popBackStack(Routes.STREAMS, inclusive = true)
                     if (!poppedThroughStreams) navController.popBackStack()
                 },
                 // Autoplay's manual fallback (§7.1 step 4): REPLACE the player
-                // with the next episode's stream list, so Back from there goes
-                // to the previous episode's list — not a dead ended player.
+                // AND the finished episode's stream list with the next
+                // episode's list. Popping only the player (pre-2026-07-26)
+                // left one stale stream list behind PER EPISODE WATCHED, so
+                // backing out later walked a pile of old stream selections
+                // (owner report). The player always sits on top of a Streams
+                // entry, so popping to STREAMS inclusive removes exactly the
+                // player + the outgoing list.
                 onOpenStreams = { type, videoId, title, metaId, poster ->
                     navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
-                        popUpTo(Routes.PLAYER) { inclusive = true }
+                        popUpTo(Routes.STREAMS) { inclusive = true }
                     }
                 },
             )

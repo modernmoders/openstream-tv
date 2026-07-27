@@ -2085,3 +2085,54 @@ is unpredictable (maiden name, married name, spelling) and family-scale
 name collisions are rare; if two people ever share an alias first word,
 the existing multi-match chooser already handles it. First use: Manuel
 Momma → Nadine (aka Sean Patrick / Richardson / Richardsons).
+
+## 68. 2026-07-26 (session 41) — English-first streams, hidden stream list, auto-resume
+
+**Three-tier English-audio ranking (owner: "videos with English audio
+first — that needs to stop"):** the boolean hasEnglishAudio defaulted
+unreadable labels to "English", so an unlabeled Japanese-only 1080p
+out-ranked a confirmed-English 720p on resolution (the owner's Naruto
+three-stream dance, every episode). DECISION: mergeForDisplay now ranks
+confirmed-English (2) > unknown (1) > confirmed-foreign (0) via
+englishAudioRank; cached stays the top tier (owner 2026-07-26: only
+cached streams play at all on his boxes, so cached-first is not the
+problem). This supersedes 2026-07-08 "never reorder by language".
+
+**Post-open English-audio verification (ground truth over labels):**
+labels can lie or say nothing; the opened file's real audio tracks
+can't. On PlayerEvent.Ready the player reads the actual audio track
+language tags; an AUTO-picked stream (PlaybackRequest.autoSelected)
+with tagged tracks and no English among them is skipped to the next
+alternative, capped at MAX_LANGUAGE_SKIPS=4 per episode so a title
+with no dub settles instead of walking the whole list. Manual Expert
+picks are never second-guessed; untagged files prove nothing and play.
+
+**Stream list is Expert-only now (owner: "stream lists shouldn't be
+appearing at all without Expert on"):** new playback pref
+showStreamList (default OFF) gates the rows, honored only with Expert
+mode also on. With rows hidden, auto-start runs REGARDLESS of the
+auto-play pref (there is no list to fall back to) and a failed pick
+shows a plain-words card, never raw rows. The Anime drawer and the
+auto-play toggle moved inside Expert settings; PLAYBACK section gone.
+
+**Back-stack pileup fixed:** the player's next-episode fallback popped
+only the PLAYER entry, leaving one stale stream list per episode
+watched — backing out later walked the pile (owner report, both
+modes). Now popUpTo(STREAMS, inclusive) replaces player + outgoing
+list together, and pop-through-on-exit keys off "stream rows visible"
+(expert && showStreamList), not expert mode alone.
+
+**Auto-resume, no prompt (owner: "default to play from where it left
+off"):** the Resume-from/Start-over prompts (player overlay AND the
+stream list's external-player dialog) are gone; playback just starts
+at the saved position. WATCHED_FRACTION 0.95 → 0.90: past 90% counts
+as watched, so a viewer who reached the credits restarts from the top
+next time instead of resuming into the last minutes. Anime
+credits-marker-based restart considered and deferred: AniSkip windows
+aren't known at stage time without an extra async lookup, and the 90%
+line already covers a standard ~1.5-minute ED.
+
+**Stream-selection diagnostics:** auto-picks, every "try another
+stream" advance, no-English skips, and settled-with-nothing all land
+in the Expert App log ([streams] tag) — the owner can now see exactly
+what was tried and why without a debug build.

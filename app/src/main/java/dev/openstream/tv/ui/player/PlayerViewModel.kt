@@ -64,6 +64,10 @@ private const val SKIP_POLL_INTERVAL_MS = 500L
 /** Consecutive broken streams auto-skipped before giving up with the panel. */
 private const val MAX_ERROR_SKIPS = 3
 
+/** No-English-audio streams auto-skipped per episode before we accept what's
+ *  playing (a title with no dub at all must not walk the whole list). */
+private const val MAX_LANGUAGE_SKIPS = 4
+
 /** Auto-advance on credits: quiet grace before the countdown even appears,
  *  then the countdown length (owner 2026-07-12: 10s later, count from 8).
  *  The countdown total is internal — the Up next card's ring drains against it. */
@@ -137,14 +141,6 @@ class PlayerViewModel @Inject constructor(
         /** Whether the CURRENT playback is using software decoding — the
          *  "Having trouble?" toggle reflects this ON/OFF (owner 2026-07-08). */
         val softwareDecoderOn: Boolean = false,
-        /**
-         * Non-null = there is saved progress and we haven't decided where to
-         * start yet: the player shows a "Resume from X / Start from the
-         * beginning" prompt over the loading animation while the stream is
-         * tested, and holds playback paused until answered (owner 2026-07-08).
-         * Cleared once answered — never shown twice in a session.
-         */
-        val resumePromptMs: Long? = null,
     )
 
     /** A neighbouring episode the player's prev/next buttons can open.
@@ -213,13 +209,12 @@ class PlayerViewModel @Inject constructor(
             _uiState.value = UiState(hasSource = false, restore = restoreTarget())
         } else {
             stashRestore(req)
-            // A staged start position means there IS saved progress: ask where
-            // to start (over the loading animation) instead of silently jumping.
-            val resumeAt = req.source.startPositionMs.takeIf { it > 0 }
+            // Saved progress = just resume there (owner 2026-07-26: no more
+            // "Resume from…?" prompt — the staged start position, which the
+            // progress store already caps at the watched line, simply plays).
             _uiState.value = UiState(
                 title = req.source.title,
                 canTryNext = alternatives.hasNext(),
-                resumePromptMs = resumeAt,
             )
             context.startService(Intent(context, PlaybackService::class.java))
             resolveEpisodeNav(req)
@@ -265,11 +260,6 @@ class PlayerViewModel @Inject constructor(
                 engine.exoPlayer.applyPreferredLanguages(languages.audio ?: "en", languages.subtitle)
                 engine.play(req.source)
                 pingWatchTracking()
-                // Resume prompt pending → buffer/test the stream but hold it
-                // paused (no surprise audio) until the viewer picks resume or
-                // start-over. play() prepared at the saved position already, so
-                // "resume" is just letting it go; "start over" seeks to 0 first.
-                if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
                 launch { collectPlayerEvents(engine) }
                 launch { collectAutoplayCommands(engine) }
                 launch {
@@ -299,6 +289,9 @@ class PlayerViewModel @Inject constructor(
                     errorSkips = 0
                     _uiState.value = _uiState.value.copy(switching = false)
                     autoplay.onPlaybackReady()
+                    // The opened file's ACTUAL audio tracks are readable now —
+                    // ground truth the pre-open label guessing can't give us.
+                    verifyEnglishAudio(engine)
                 }
                 is PlayerEvent.Ended -> {
                     // Finished: record it as watched (position == duration) so
@@ -400,7 +393,12 @@ class PlayerViewModel @Inject constructor(
             metaId = req.metaId,
             metaType = req.metaType,
             poster = req.poster,
+            autoSelected = true, // autoplay's pick, not a person's
         )
+        // Fresh episode: the language-skip budget and the once-per-file
+        // audio check start over.
+        languageSkips = 0
+        audioCheckedUrl = null
         request = newRequest
         currentPlayback.request = newRequest
         stashRestore(newRequest) // restore must land on THIS episode, not the binge's first
@@ -545,26 +543,6 @@ class PlayerViewModel @Inject constructor(
         goToNextEpisode()
     }
 
-    /** Resume prompt → "Resume": drop the prompt and let the (already prepared
-     *  at the saved position) playback go. */
-    fun resumeFromSaved() {
-        if (_uiState.value.resumePromptMs == null) return
-        _uiState.value = _uiState.value.copy(resumePromptMs = null)
-        engine.value?.exoPlayer?.playWhenReady = true
-    }
-
-    /** Resume prompt → "Start from the beginning": seek to 0, drop the prompt,
-     *  play. The seek re-buffers, so the loading animation carries over until
-     *  the fresh position renders. */
-    fun startFromBeginning() {
-        if (_uiState.value.resumePromptMs == null) return
-        _uiState.value = _uiState.value.copy(resumePromptMs = null)
-        engine.value?.exoPlayer?.let {
-            it.seekTo(0)
-            it.playWhenReady = true
-        }
-    }
-
     /** OK on the Skip button. Intro: jump past the window. Credits: this is
      *  the "Next Episode" button now (owner Round-15 #3) — mark watched and
      *  advance instead of seeking into the last seconds of the episode. */
@@ -675,6 +653,15 @@ class PlayerViewModel @Inject constructor(
                     // tracks only, the addon pool doesn't depend on which one.
                     subtitles = mergeSubtitleTracks(source.subtitles, req.addonSubtitles),
                 ),
+                // A walked-to candidate is the APP's pick, whoever started the
+                // walk — eligible for the post-open English-audio check.
+                autoSelected = true,
+            )
+            diagnostics.record(
+                "streams",
+                "\"${req.source.title}\": switching to stream " +
+                    "${alternatives.currentIndex + 1} of ${alternatives.list.size} " +
+                    "(${alt.stream.name ?: "unnamed"})",
             )
             request = newRequest
             currentPlayback.request = newRequest
@@ -684,10 +671,6 @@ class PlayerViewModel @Inject constructor(
                 switching = true, canTryNext = alternatives.hasNext(),
             )
             engine.play(newRequest.source)
-            // Broke DURING the resume prompt (first link failed to test): keep
-            // the replacement held paused so the prompt still governs where the
-            // working stream starts, instead of blaring audio behind the prompt.
-            if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
             return true
         }
     }
@@ -696,6 +679,51 @@ class PlayerViewModel @Inject constructor(
         val se = if (next.season != null && next.episode != null) "Season ${next.season} · Episode ${next.episode}" else null
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { request?.source?.title.orEmpty() }
+    }
+
+    /** The stream URL already language-checked — Ready re-fires after every
+     *  seek/rebuffer and the check must run once per opened file. */
+    private var audioCheckedUrl: String? = null
+
+    /** No-English skips used on the CURRENT episode (reset per episode). */
+    private var languageSkips = 0
+
+    /**
+     * Post-open English-audio check (owner 2026-07-26): the labels streams are
+     * ranked by can lie or say nothing, but once ExoPlayer has opened the file
+     * its real audio tracks are known. An AUTO-picked stream with tagged audio
+     * tracks and no English among them is quietly skipped to the next
+     * alternative — the walk the owner used to do by hand on Naruto. Manual
+     * Expert picks are never second-guessed, untagged tracks prove nothing,
+     * and after [MAX_LANGUAGE_SKIPS] we accept what plays (no dub may exist).
+     */
+    private fun verifyEnglishAudio(engine: ExoPlayerEngine) {
+        val req = request ?: return
+        if (!req.autoSelected) return
+        if (audioCheckedUrl == req.source.url) return
+        audioCheckedUrl = req.source.url
+        val tags = engine.exoPlayer.currentTracks.groups
+            .filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+            .flatMap { group -> (0 until group.length).map { group.getTrackFormat(it).language } }
+            .filterNotNull()
+            .filterNot { it.equals("und", ignoreCase = true) } // "undetermined"
+        if (tags.isEmpty()) return // untagged file: nothing provable, keep it
+        // "en"/"eng"/"en-US" all mean English.
+        if (tags.any { it.lowercase().startsWith("en") }) return
+        if (languageSkips >= MAX_LANGUAGE_SKIPS) {
+            diagnostics.record(
+                "streams",
+                "\"${_uiState.value.title}\": audio is [${tags.joinToString()}], no English — " +
+                    "skip limit reached, keeping this stream",
+            )
+            return
+        }
+        diagnostics.record(
+            "streams",
+            "\"${_uiState.value.title}\": opened stream's audio is [${tags.joinToString()}], " +
+                "no English track — trying the next stream",
+        )
+        if (tryNextStream()) languageSkips++
     }
 
     private fun Video.toEpisodeTarget() = EpisodeTarget(
@@ -832,9 +860,6 @@ class PlayerViewModel @Inject constructor(
         currentPlayback.request = newRequest
         _uiState.value = _uiState.value.copy(error = null, ended = false, switching = true)
         engine.play(newRequest.source)
-        // Mid-resume-prompt: keep the reloaded stream held paused so the
-        // prompt still governs where playback starts.
-        if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
     }
 
     /**

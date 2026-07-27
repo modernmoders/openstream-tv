@@ -57,7 +57,7 @@ class ProgressRepositoryTest {
     }
 
     @Test
-    fun `past 95 percent counts as watched`() {
+    fun `past the watched line counts as watched`() {
         assertFalse(
             ProgressRepository.isResumable(
                 progress(positionMs = 1_150_000, durationMs = 1_200_000)
@@ -89,7 +89,7 @@ class ProgressRepositoryTest {
     }
 
     @Test
-    fun `watched and resumable are exclusive at the 95 percent line`() {
+    fun `watched and resumable are exclusive at the watched line`() {
         // The same WATCHED_FRACTION splits "keep watching" from "watched" — a
         // row is never both, so a row shows a bar OR a ✓, never both.
         val near = progress(positionMs = 1_150_000, durationMs = 1_200_000)

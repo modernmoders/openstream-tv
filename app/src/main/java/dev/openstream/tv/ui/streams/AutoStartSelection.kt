@@ -11,11 +11,12 @@ import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
  * Auto-play + "Try another server" selection. Pure so the rules are
  * table-testable. Both run through [StreamCascade.mergeForDisplay]: the three
  * AIOStreams instances are interwoven, de-duplicated, and ranked cached-first →
+ * English audio (confirmed > unknown > confirmed-foreign, owner 2026-07-26) →
  * hardware-decodable → resolution (owner 2026-07-09), so the auto-pick lands on
  * a stream the box actually plays cleanly instead of an HEVC-10bit that
- * macroblocks / forces the software player. Ranking never reorders by LANGUAGE
- * (owner 2026-07-08 — that swapped anime dubs away); the source order, which
- * already carries AIOStreams' language sort, is the finest tiebreaker.
+ * macroblocks / forces the software player. (This supersedes the 2026-07-08
+ * "never reorder by language" rule — the owner's 07-10 and 07-26 directives
+ * both put English audio explicitly into the ranking.)
  */
 sealed interface AutoStartResult {
     /** A source that could still contribute the best stream is loading — wait. */

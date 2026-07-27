@@ -76,6 +76,16 @@ interface PlaybackPrefs {
      * timing is proven) — BACK during the countdown cancels it.
      */
     val autoSkipCredits: Flow<Boolean>
+
+    /**
+     * Expert-only: show the raw stream list screen (rows of releases) at all.
+     * Default OFF (owner 2026-07-26: "stream lists shouldn't be appearing at
+     * all without Expert on") — the app auto-picks and the list stays a calm
+     * progress state even when auto-pick gives up (error card instead).
+     * Only honored when Expert mode itself is on; see StreamListScreen.
+     */
+    val showStreamList: Flow<Boolean>
+
     suspend fun setAudioLanguage(languageTag: String)
 
     /** A real language tag, or [SUBTITLES_OFF]. */
@@ -86,6 +96,7 @@ interface PlaybackPrefs {
     suspend fun setSkipIntrosEnabled(enabled: Boolean)
     suspend fun setAutoSkipIntros(enabled: Boolean)
     suspend fun setAutoSkipCredits(enabled: Boolean)
+    suspend fun setShowStreamList(enabled: Boolean)
 
     /** Part of Settings → "Reset settings to default" — see ViewPrefs. */
     suspend fun resetToDefaults()
@@ -160,6 +171,13 @@ class DataStorePlaybackPrefs @Inject constructor(
         context.playbackPrefsStore.edit { it[AUTO_SKIP_CREDITS] = enabled }
     }
 
+    override val showStreamList: Flow<Boolean> =
+        context.playbackPrefsStore.data.map { it[SHOW_STREAM_LIST] ?: false }
+
+    override suspend fun setShowStreamList(enabled: Boolean) {
+        context.playbackPrefsStore.edit { it[SHOW_STREAM_LIST] = enabled }
+    }
+
     override suspend fun resetToDefaults() {
         context.playbackPrefsStore.edit { it.clear() }
     }
@@ -173,5 +191,6 @@ class DataStorePlaybackPrefs @Inject constructor(
         val SKIP_INTROS = booleanPreferencesKey("skip_intros_enabled")
         val AUTO_SKIP_INTROS = booleanPreferencesKey("auto_skip_intros")
         val AUTO_SKIP_CREDITS = booleanPreferencesKey("auto_skip_credits")
+        val SHOW_STREAM_LIST = booleanPreferencesKey("show_stream_list")
     }
 }

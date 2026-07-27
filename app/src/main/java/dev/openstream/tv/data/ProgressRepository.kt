@@ -98,8 +98,10 @@ class ProgressRepository @Inject constructor(
          *  click must not squat on the home screen's first row. */
         const val MIN_CONTINUE_WATCHING_MS = 60_000L
 
-        /** Past 95% = finished; offering "resume" into credits is noise. */
-        const val WATCHED_FRACTION = 0.95
+        /** Past 90% = finished (owner 2026-07-26, was 95%): resume is
+         *  automatic now, so anyone who reached the credits must restart
+         *  from the top on the next play, not resume into the last minutes. */
+        const val WATCHED_FRACTION = 0.90
 
         private const val MAX_CONTINUE_WATCHING = 20
 

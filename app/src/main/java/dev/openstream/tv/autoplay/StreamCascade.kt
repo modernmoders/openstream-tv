@@ -96,16 +96,20 @@ object StreamCascade {
             .distinctBy { dedupKey(it.stream) }
         // Final order:
         //   cached           - instantly playable
-        //   English audio    - a release tagged "English" overall can still carry
-        //                      only Italian/Japanese AUDIO; an unwatchable stream
-        //                      beats nothing (owner 2026-07-10)
+        //   English audio    - three tiers, not two (owner 2026-07-26: a
+        //                      Japanese-only release with an unreadable label
+        //                      kept out-ranking a real English 720p on
+        //                      resolution). CONFIRMED English first, then
+        //                      unknown-language, then confirmed-foreign — so
+        //                      resolution can only break ties inside a tier,
+        //                      never lift a maybe over a certainty.
         //   hardware-decode  - an unplayable 4K HEVC-10bit that macroblocks /
         //                      forces the software player must not out-rank a
         //                      clean 1080p H.264 (owner 2026-07-09)
         //   resolution, then the source order (which carries AIOStreams' own sort)
         return deduped.sortedWith(
             compareByDescending<Candidate> { hasCacheMarker(it.stream) }
-                .thenByDescending { hasEnglishAudio(it.stream) }
+                .thenByDescending { englishAudioRank(it.stream) }
                 .thenByDescending { canHardwareDecode(it.stream, hardwareCodecs) }
                 .thenByDescending { resolutionRank(it.stream) }
                 .thenBy { it.addonIndex }
@@ -215,27 +219,42 @@ object StreamCascade {
     }
 
     /**
-     * Does this stream carry English audio? An explicit language listing in
-     * the release FILENAME is most trustworthy; then the label's language
-     * pennant (`⛿ ᴇɴ · ᴊᴀ`); then, in older label formats, its **Audio**
-     * section — never the release's overall tag, which lies (owner
-     * 2026-07-10).
-     *
-     * No language info, or none we recognise, returns true: we only ever
-     * DEMOTE streams we positively know are foreign-audio, never ones we
-     * can't reason about.
+     * Does this stream carry English audio — as best the LABEL can tell?
+     * true = confirmed English, false = confirmed foreign-only, null = the
+     * label carries no language info we can read. An explicit language
+     * listing in the release FILENAME is most trustworthy; then the label's
+     * language pennant (`⛿ ᴇɴ · ᴊᴀ`); then, in older label formats, its
+     * **Audio** section — never the release's overall tag, which lies
+     * (owner 2026-07-10).
      */
-    fun hasEnglishAudio(stream: Stream): Boolean {
+    fun englishAudioConfidence(stream: Stream): Boolean? {
         filenameAudioCodes(stream.behaviorHints.filename)?.let { return "en" in it }
         val label = labelText(stream)
         pennantAudioCodes(label)?.let { codes ->
-            if (codes.isEmpty()) return true // bare pennant: neutral
+            if (codes.isEmpty()) return null // bare pennant: no info
             return "en" in codes
         }
-        val audio = AUDIO_SECTION.find(label)?.value ?: return true
+        val audio = AUDIO_SECTION.find(label)?.value ?: return null
         if (ENGLISH_AUDIO.containsMatchIn(audio)) return true
-        return !NON_ENGLISH_AUDIO.containsMatchIn(audio)
+        if (NON_ENGLISH_AUDIO.containsMatchIn(audio)) return false
+        return null // an Audio section naming no language we recognise
     }
+
+    /**
+     * Display-ranking tier for [englishAudioConfidence]: confirmed English
+     * (2) > unknown (1) > confirmed foreign (0). Unknowns sit BETWEEN the
+     * certainties (owner 2026-07-26): a stream we can't read must never
+     * out-rank one we KNOW is English, but still beats one we KNOW isn't.
+     */
+    fun englishAudioRank(stream: Stream): Int = when (englishAudioConfidence(stream)) {
+        true -> 2
+        null -> 1
+        false -> 0
+    }
+
+    /** Convenience view of [englishAudioConfidence] for callers that only
+     *  need "not confirmed-foreign" (unknown counts as English). */
+    fun hasEnglishAudio(stream: Stream): Boolean = englishAudioConfidence(stream) != false
 
     private val TEN_BIT = Regex("""10.?bit|hdr|dolby.?vision|\bdv\b|main.?10""", RegexOption.IGNORE_CASE)
 

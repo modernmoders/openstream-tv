@@ -286,17 +286,16 @@ fun PlayerScreen(
             showRebuffer = false
         }
     }
-    // The load/test phase: spinner (and, if there's saved progress, the resume
-    // prompt) covers the black/debrid-placeholder until the first real frame
-    // paints. While a resume prompt is pending, playback is held paused by the
-    // ViewModel, so `loading` stays true until the viewer answers.
+    // The load/test phase: spinner covers the black/debrid-placeholder until
+    // the first real frame paints. (Resume is automatic now — owner
+    // 2026-07-26 — so there's no prompt to hold the spinner up.)
     //
     // ONLY the initial load. A mid-playback re-buffer — every seek causes one —
     // must not throw a blocking scrim over the video: it swallowed the keys so
     // held scrubbing was impossible, and it flashed the spinner on each skipped
     // section (owner 2026-07-09).
     val loading = state.error == null && !state.ended && autoplay == null &&
-        (state.resumePromptMs != null || (!startedOnce && playbackState != Player.STATE_READY))
+        !startedOnce && playbackState != Player.STATE_READY
 
     // The Skip Intro pill's 20s fade (owner mockup): expiry is per-window —
     // a new segment (or re-entering one by scrubbing) restarts the clock.
@@ -410,13 +409,6 @@ fun PlayerScreen(
                     verticalArrangement = Arrangement.spacedBy(32.dp),
                 ) {
                     LoadingAnimation()
-                    state.resumePromptMs?.let { resumeMs ->
-                        ResumePrompt(
-                            resumeMs = resumeMs,
-                            onResume = viewModel::resumeFromSaved,
-                            onStartOver = viewModel::startFromBeginning,
-                        )
-                    }
                 }
             }
         }
@@ -911,39 +903,6 @@ private fun AnotherAppDialog(
                     modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
                 )
             }
-        }
-    }
-}
-
-/**
- * "Resume from X / Start from the beginning" shown over the loading spinner
- * while the stream is tested (owner 2026-07-08). Same content survives whatever
- * stream/link is picked because progress is keyed by the video, not the URL
- * (MediaRef, §8.4). Resume holds initial focus so a single OK continues — the
- * common case for someone getting back to a show they were partway through.
- */
-@Composable
-private fun ResumePrompt(
-    resumeMs: Long,
-    onResume: () -> Unit,
-    onStartOver: () -> Unit,
-) {
-    val resumeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { resumeFocus.requestFocus() } }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            "You've watched part of this",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onResume, modifier = Modifier.focusRequester(resumeFocus)) {
-                Text("Resume from ${resumeMs.asClock()}")
-            }
-            Button(onClick = onStartOver) { Text("Start from the beginning") }
         }
     }
 }

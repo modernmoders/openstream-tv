@@ -395,6 +395,30 @@ class StreamCascadeTest {
     }
 
     @Test
+    fun `confirmed English outranks unknown-language regardless of resolution`() {
+        // Owner 2026-07-26 (Naruto): a JA-only release whose label carries NO
+        // readable language info used to default to "English" and then beat
+        // the real English stream on resolution. Unknown must rank BELOW
+        // confirmed English…
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(
+                    stream(name = "1080P no-lang-info", filename = "naruto.135.1080p.mkv"),
+                    stream(name = "720P confirmed EN", filename = "b.720p.mkv",
+                        description = "☁︎ Naruto | ⛿ ᴇɴ · ᴊᴀ"),
+                    stream(name = "4K confirmed IT", filename = "c.2160p.mkv",
+                        description = "⛿ ɪᴛ"),
+                )),
+            ),
+        )
+        // …but still ABOVE confirmed-foreign.
+        assertEquals(
+            listOf("720P confirmed EN", "1080P no-lang-info", "4K confirmed IT"),
+            merged.map { it.stream.name },
+        )
+    }
+
+    @Test
     fun `mergeForDisplay applies no codec penalty when box capabilities are unknown`() {
         // Empty capability set -> everything treated as playable, so 4K wins.
         val merged = StreamCascade.mergeForDisplay(

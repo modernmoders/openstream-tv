@@ -94,6 +94,7 @@ class StreamListViewModelTest {
         alternatives,
         dev.openstream.tv.player.DecoderCapabilities(),
         playbackPrefs,
+        dev.openstream.tv.data.FakeViewPrefs(),
         SavedStateHandle(mapOf("type" to type, "videoId" to videoId, "title" to "T")),
     )
 

@@ -19,6 +19,8 @@ import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.ViewPrefs
+import dev.openstream.tv.diagnostics.DiagnosticsSink
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.SubtitleTrack
 import dev.openstream.tv.domain.VideoCodec
@@ -39,6 +41,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -66,7 +69,9 @@ class StreamListViewModel @Inject constructor(
     private val alternatives: StreamAlternatives,
     decoderCapabilities: DecoderCapabilities,
     playbackPrefs: PlaybackPrefs,
+    viewPrefs: ViewPrefs,
     savedStateHandle: SavedStateHandle,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
 ) : ViewModel() {
 
     val type: String = checkNotNull(savedStateHandle["type"])
@@ -109,6 +114,16 @@ class StreamListViewModel @Inject constructor(
          * real list appears so the person can choose — never a dead end).
          */
         val autoStarting: Boolean = false,
+        /**
+         * The raw stream rows may render at all: Expert mode AND its "Show
+         * streams" toggle (owner 2026-07-26 — "stream lists shouldn't be
+         * appearing at all without Expert on"). When false the screen only
+         * ever shows the calm starting state or a friendly failure card.
+         */
+        val showList: Boolean = false,
+        /** Auto-pick settled on nothing playable — with [showList] off, the
+         *  screen shows a plain error card instead of the raw list. */
+        val autoStartFailed: Boolean = false,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -169,7 +184,12 @@ class StreamListViewModel @Inject constructor(
      * sources v1 can't play (the UI shows those as notes, so this is
      * belt-and-braces).
      */
-    fun stage(addon: InstalledAddon, stream: Stream, startPositionMs: Long = 0): Boolean {
+    fun stage(
+        addon: InstalledAddon,
+        stream: Stream,
+        startPositionMs: Long = 0,
+        autoSelected: Boolean = false,
+    ): Boolean {
         val source = stream.toPlayableSource(title.ifBlank { stream.name ?: "Stream" })
             ?: return false
         currentPlayback.request = PlaybackRequest(
@@ -182,6 +202,7 @@ class StreamListViewModel @Inject constructor(
             metaType = type,
             poster = poster,
             addonSubtitles = addonSubtitles,
+            autoSelected = autoSelected,
         )
         // Autoplay's tier-1/2 ranking context (§7.1) — which addon, which stream
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
@@ -313,6 +334,11 @@ class StreamListViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            // Rows visible at all = Expert mode + its "Show streams" toggle.
+            combine(viewPrefs.expertMode, playbackPrefs.showStreamList) { e, s -> e && s }
+                .collect { show -> _uiState.update { it.copy(showList = show) } }
+        }
+        viewModelScope.launch {
             // Keep the shared "Try another server" list in step with the
             // fan-out — the player may need it while groups are still loading.
             _uiState.collect { alternatives.list = orderedAlternatives(it.groups, hardwareCodecs) }
@@ -320,7 +346,12 @@ class StreamListViewModel @Inject constructor(
         viewModelScope.launch {
             // Auto-play first stream (owner request 2026-07-06): wait until
             // the top of the list can no longer change, then launch it once.
-            if (!playbackPrefs.autoPlayFirstStream.first()) return@launch
+            // With the stream rows hidden (no Expert "Show streams"), auto-
+            // start is this screen's WHOLE job, so it runs regardless of the
+            // auto-play preference — there are no rows to fall back to.
+            val listVisible =
+                combine(viewPrefs.expertMode, playbackPrefs.showStreamList) { e, s -> e && s }.first()
+            if (listVisible && !playbackPrefs.autoPlayFirstStream.first()) return@launch
             // Hide the raw list behind a calm "Starting…" state until we either
             // launch or give up — no technical flash (owner 2026-07-06).
             _uiState.update { it.copy(autoStarting = true) }
@@ -332,11 +363,22 @@ class StreamListViewModel @Inject constructor(
                 .first { it !is AutoStartResult.Waiting }
             val found = result as? AutoStartResult.Found
             if (found == null || playbackStarted) {
-                // Nothing auto-playable, or the user got there first: reveal the
-                // real list so they can pick — never leave them on a spinner.
-                _uiState.update { it.copy(autoStarting = false) }
+                // Nothing auto-playable, or the user got there first: reveal
+                // the real list (Expert) or a friendly failure card (rows
+                // hidden) — never leave anyone on a spinner.
+                if (found == null && !playbackStarted) {
+                    diagnostics.record("streams", "\"$title\": nothing auto-playable after all sources settled")
+                }
+                _uiState.update {
+                    it.copy(autoStarting = false, autoStartFailed = found == null && !playbackStarted)
+                }
                 return@launch
             }
+            diagnostics.record(
+                "streams",
+                "\"$title\": auto-picked \"${found.stream.name ?: "unnamed"}\" " +
+                    "from ${alternatives.list.size} ranked streams",
+            )
             _autoStart.tryEmit(AutoStart(found.addon, found.stream, resume ?: 0))
         }
         viewModelScope.launch {
