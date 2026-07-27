@@ -44,6 +44,8 @@ import dev.openstream.tv.data.DiscoverViewPrefs
 import dev.openstream.tv.data.ProgressRepository
 import androidx.compose.foundation.layout.size
 import dev.openstream.tv.ui.components.FilterPill
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.components.GearIcon
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.OptionRow
@@ -382,7 +384,7 @@ private fun ViewOptionsDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(420.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -444,7 +446,7 @@ private fun PickerDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(420.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(

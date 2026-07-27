@@ -34,6 +34,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.data.HomeRow
 import dev.openstream.tv.ui.components.BackButton
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.components.TvTextField
 import dev.openstream.tv.ui.theme.AmbientSection
 import dev.openstream.tv.ui.theme.ambientBackground
@@ -197,7 +200,7 @@ private fun RenameDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .width(480.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -218,12 +221,17 @@ private fun RenameDialog(
                 onSubmit = { onSave(name) },
                 focusRequester = fieldFocus,
             )
-            Button(onClick = { onSave(name) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Save")
-            }
-            Button(onClick = { onSave("") }, modifier = Modifier.fillMaxWidth()) {
-                Text("Use original name")
-            }
+            PanelButton(
+                "Save",
+                onClick = { onSave(name) },
+                modifier = Modifier.fillMaxWidth(),
+                emphasized = true,
+            )
+            PanelButton(
+                "Use original name",
+                onClick = { onSave("") },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

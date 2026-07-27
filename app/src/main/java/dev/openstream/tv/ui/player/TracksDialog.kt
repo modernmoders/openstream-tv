@@ -22,11 +22,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.openstream.tv.player.TrackMenu
 import dev.openstream.tv.player.TrackOption
+import dev.openstream.tv.ui.components.OptionRow
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.theme.MutedText
 
 /**
@@ -58,7 +60,7 @@ fun TracksDialog(
         Row(
             horizontalArrangement = Arrangement.spacedBy(28.dp),
             modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             TrackSection(title = "Audio") {
@@ -132,18 +134,17 @@ private fun TrackButton(
     focusRequester: FocusRequester?,
     onClick: () -> Unit,
 ) {
-    Button(
+    // The shared picker row (Surfaces.kt): accent fill + ✓ for the active
+    // track, quiet focus ring — same language as every other option list
+    // (owner backlog 2026-07-26, one popup style).
+    OptionRow(
+        label = label,
+        selected = selected,
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
-    ) {
-        Text(
-            text = label + if (selected) "  ✓" else "",
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
+    )
 }
 
 @Composable

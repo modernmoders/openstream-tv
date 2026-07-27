@@ -43,6 +43,9 @@ import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.components.CaretDownIcon
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.update.UpdateViewModel
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
@@ -423,7 +426,7 @@ private fun ResetSettingsDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -439,11 +442,15 @@ private fun ResetSettingsDialog(
                 color = MutedText,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                // The SAFE way out is the emphasized one — a reset must be a
+                // deliberate walk off the highlighted path.
+                PanelButton(
+                    "Cancel",
                     onClick = onDismiss,
                     modifier = Modifier.focusRequester(cancelFocus),
-                ) { Text("Cancel") }
-                Button(onClick = onConfirm) { Text("Reset settings") }
+                    emphasized = true,
+                )
+                PanelButton("Reset settings", onClick = onConfirm)
             }
         }
     }
@@ -700,7 +707,7 @@ private fun PlayerPrefDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -753,7 +760,7 @@ private fun EpisodeNumberingDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -796,7 +803,7 @@ private fun ResetTvDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -812,11 +819,15 @@ private fun ResetTvDialog(
                 color = MutedText,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                // Same rule as the settings reset: safe default carries the
+                // accent, the destructive action stays quiet.
+                PanelButton(
+                    "Cancel",
                     onClick = onDismiss,
                     modifier = Modifier.focusRequester(cancelFocus),
-                ) { Text("Cancel") }
-                Button(onClick = onConfirm) { Text("Reset to factory defaults") }
+                    emphasized = true,
+                )
+                PanelButton("Reset to factory defaults", onClick = onConfirm)
             }
         }
     }

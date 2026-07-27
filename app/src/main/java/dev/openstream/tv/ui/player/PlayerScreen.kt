@@ -74,6 +74,9 @@ import androidx.compose.foundation.shape.CircleShape
 import dev.openstream.tv.ui.components.ChevronsRightIcon
 import dev.openstream.tv.ui.components.LoadingAnimation
 import dev.openstream.tv.ui.components.NextEpisodeCard
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.components.PlayerGlyph
 import dev.openstream.tv.ui.components.PlayerGlyphKind
 import dev.openstream.tv.ui.components.SurfacePill
@@ -649,7 +652,7 @@ fun PlayerScreen(
             UpNextOverlay(autoplay)
         } else if (state.ended) {
             CenterPanel("All done") {
-                Button(onClick = onExit) { Text("Back") }
+                PanelButton("Back", onClick = onExit, emphasized = true)
             }
         }
 
@@ -665,14 +668,18 @@ fun PlayerScreen(
             CenterPanel("Hmm, that one won't play.\n$message") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (viewModel.externalPlayers.isNotEmpty()) {
-                        Button(onClick = ::onPlayInAnotherApp) { Text("Play in another app") }
+                        PanelButton("Play in another app", onClick = ::onPlayInAnotherApp)
                     }
-                    Button(onClick = viewModel::retry) { Text("Try again") }
-                    Button(
+                    PanelButton("Try again", onClick = viewModel::retry)
+                    // Emphasized = the recommended way out, and it holds
+                    // initial focus — the two cues always travel together.
+                    PanelButton(
+                        "Try a different stream",
                         onClick = { viewModel.tryAnotherStream() },
                         modifier = Modifier.focusRequester(tryAnotherFocus),
-                    ) { Text("Try a different stream") }
-                    Button(onClick = onExit) { Text("Back") }
+                        emphasized = true,
+                    )
+                    PanelButton("Back", onClick = onExit)
                 }
             }
         }
@@ -852,7 +859,7 @@ private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) 
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text("If something's not right", style = MaterialTheme.typography.titleLarge, color = Color.White)
@@ -861,7 +868,12 @@ private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) 
                 HelpLine("Play in another app", "Hands the video to VLC or MX Player. Try this when the picture plays but there's no sound, or the audio is the wrong language.")
             }
             HelpLine("Software video (ON/OFF)", "The app now picks this automatically for videos this TV can't show cleanly. If the picture still looks blocky or scrambled, turn it ON — the video reloads right where you are. Turn OFF to go back to the faster hardware video.")
-            Button(onClick = onDismiss, modifier = Modifier.focusRequester(okFocus)) { Text("Got it") }
+            PanelButton(
+                "Got it",
+                onClick = onDismiss,
+                modifier = Modifier.focusRequester(okFocus),
+                emphasized = true,
+            )
         }
     }
 }
@@ -887,7 +899,7 @@ private fun AnotherAppDialog(
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -913,8 +925,10 @@ private fun CenterPanel(message: String, actions: @Composable () -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
+            // The one shared popup face (AppDialog.kt) — the error/finished
+            // panels must read as siblings of every other dialog.
             modifier = Modifier
-                .background(Color(0xD0101018), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(32.dp),
         ) {
             Text(message, style = MaterialTheme.typography.titleLarge, color = Color.White)

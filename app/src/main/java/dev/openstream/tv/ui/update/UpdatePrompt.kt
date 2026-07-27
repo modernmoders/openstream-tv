@@ -16,10 +16,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.theme.MutedText
 
 /**
@@ -53,7 +54,7 @@ fun UpdatePrompt(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             when (ui) {
@@ -77,11 +78,13 @@ fun UpdatePrompt(
                         color = MutedText,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
+                        PanelButton(
+                            "Update now",
                             onClick = onInstall,
                             modifier = Modifier.focusRequester(updateFocus),
-                        ) { Text("Update now") }
-                        OutlinedButton(onClick = onDismiss) { Text("Later") }
+                            emphasized = true,
+                        )
+                        PanelButton("Later", onClick = onDismiss)
                     }
                 }
                 UpdateViewModel.UpdateUi.Downloading -> {
@@ -109,11 +112,13 @@ fun UpdatePrompt(
                         color = MutedText,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
+                        PanelButton(
+                            "Try again",
                             onClick = onInstall,
                             modifier = Modifier.focusRequester(updateFocus),
-                        ) { Text("Try again") }
-                        OutlinedButton(onClick = onDismiss) { Text("Close") }
+                            emphasized = true,
+                        )
+                        PanelButton("Close", onClick = onDismiss)
                     }
                 }
                 else -> Unit

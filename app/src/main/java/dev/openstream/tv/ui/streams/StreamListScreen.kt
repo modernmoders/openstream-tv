@@ -55,6 +55,9 @@ import dev.openstream.tv.player.PlayerDecision
 import dev.openstream.tv.player.resolvePreferredPlayer
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfaceRow
 import dev.openstream.tv.ui.components.UpNextOverlay
@@ -254,11 +257,11 @@ fun StreamListScreen(
                             textAlign = TextAlign.Center,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = onBack) { Text("Go back") }
+                            PanelButton("Go back", onClick = onBack, emphasized = true)
                             // Escape hatch (owner 2026-07-26): reveal the raw
                             // list for this one video — playback is never a
                             // dead end even with streams hidden.
-                            Button(onClick = { revealOverride = true }) { Text("Show streams anyway") }
+                            PanelButton("Show streams anyway", onClick = { revealOverride = true })
                         }
                     }
                 } else {
@@ -407,7 +410,7 @@ private fun PlayWithDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(360.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp)
                 .onPreviewKeyEvent { event ->
                     val select = when (event.key.nativeKeyCode) {
@@ -435,17 +438,19 @@ private fun PlayWithDialog(
             )
             // Full-width buttons: ragged wrap-content widths read as broken
             // on a 10-foot UI (§5 visual polish)
-            Button(
+            PanelButton(
+                "Internal player",
                 onClick = { onPick(null) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(firstFocus),
-            ) { Text("Internal player") }
+            )
             externalPlayers.forEach { choice ->
-                Button(
+                PanelButton(
+                    choice.player.label,
                     onClick = { onPick(choice) },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(choice.player.label) }
+                )
             }
         }
     }

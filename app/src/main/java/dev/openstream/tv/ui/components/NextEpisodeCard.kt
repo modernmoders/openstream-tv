@@ -49,10 +49,10 @@ fun NextEpisodeCard(
     Column(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = modifier
-            // Translucent enough that the credits read underneath, opaque
-            // enough that the card stays legible over bright frames.
-            .background(Color(0xE014171C), RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0x2EFFFFFF), RoundedCornerShape(16.dp))
+            // The shared popup face (AppDialog.kt); the hairline border stays
+            // because this card floats over moving video, not a scrim.
+            .background(PanelFill, PanelShape)
+            .border(1.dp, Color(0x2EFFFFFF), PanelShape)
             .padding(16.dp),
     ) {
         Row(
