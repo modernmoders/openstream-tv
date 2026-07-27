@@ -103,7 +103,32 @@ class ProgressRepository @Inject constructor(
          *  from the top on the next play, not resume into the last minutes. */
         const val WATCHED_FRACTION = 0.90
 
+        /**
+         * A stored credits marker only counts when it lands in the back half
+         * of the episode — a marker earlier than that is community mis-timing
+         * (or a recap tagged as credits) and must not mark a barely-started
+         * episode "watched".
+         */
+        const val CREDITS_MARKER_MIN_FRACTION = 0.50
+
         private const val MAX_CONTINUE_WATCHING = 20
+
+        /**
+         * Where "watched" begins for this row, in ms. Normally the
+         * [WATCHED_FRACTION] line; when the anime skip data recorded where
+         * the credits actually START (and that lands in the sane back-half
+         * window), the earlier of the two wins — a long ED + next-episode
+         * preview can push real credits before the 90% line, and stopping
+         * during them must still count as "finished, restart next time"
+         * (owner backlog 2026-07-26).
+         */
+        fun watchedLineMs(p: WatchProgress): Long {
+            val fractionLine = (p.durationMs * WATCHED_FRACTION).toLong()
+            val credits = p.creditsStartMs ?: return fractionLine
+            val sane = credits >= p.durationMs * CREDITS_MARKER_MIN_FRACTION &&
+                credits < p.durationMs
+            return if (sane) minOf(fractionLine, credits) else fractionLine
+        }
 
         fun isResumable(
             p: WatchProgress,
@@ -111,17 +136,17 @@ class ProgressRepository @Inject constructor(
         ): Boolean =
             p.positionMs >= minPositionMs &&
                 p.durationMs > 0 &&
-                p.positionMs < p.durationMs * WATCHED_FRACTION
+                p.positionMs < watchedLineMs(p)
 
         /**
-         * Finished (or as good as): past [WATCHED_FRACTION]. A naturally-ended
+         * Finished (or as good as): past [watchedLineMs]. A naturally-ended
          * episode is stored at position == duration (PlayerViewModel), so this
          * is the "show a ✓" test for the Details episode list. The inverse of
-         * the resumable upper bound — the same 95% line splits "keep watching"
+         * the resumable upper bound — the same line splits "keep watching"
          * from "watched".
          */
         fun isWatched(p: WatchProgress): Boolean =
-            p.durationMs > 0 && p.positionMs >= p.durationMs * WATCHED_FRACTION
+            p.durationMs > 0 && p.positionMs >= watchedLineMs(p)
 
         /** Key a browse tile can compute from its MetaItem: "metaType/metaId". */
         fun metaKey(metaType: String, metaId: String): String = "$metaType/$metaId"

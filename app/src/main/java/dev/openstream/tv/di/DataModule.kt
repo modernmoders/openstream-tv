@@ -39,6 +39,17 @@ private val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/**
+ * v2 → v3: watch_progress gains the nullable credits-start marker so anime
+ * with community-timed credits can move the "watched" line off the blanket
+ * 90% (owner backlog 2026-07-26). Old rows keep NULL = old behavior exactly.
+ */
+private val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `watch_progress` ADD COLUMN `creditsStartMs` INTEGER")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
@@ -47,7 +58,7 @@ object DataModule {
     @Singleton
     fun database(@ApplicationContext context: Context): OpenStreamDatabase =
         Room.databaseBuilder(context, OpenStreamDatabase::class.java, "openstream.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides

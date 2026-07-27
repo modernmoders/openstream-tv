@@ -782,9 +782,20 @@ class PlayerViewModel @Inject constructor(
                 positionMs = duration,
                 durationMs = duration,
                 updatedAt = System.currentTimeMillis(),
+                creditsStartMs = creditsStartMarker(),
             )
         )
     }
+
+    /**
+     * This episode's credits-start (ms) from the anime skip windows, or null.
+     * Rides along on every progress save so ProgressRepository can start
+     * "watched" at the credits instead of the blanket 90% line — see
+     * [ProgressRepository.watchedLineMs]. Extending: if a non-anime credits
+     * source ever appears (chapter markers, addon data), feed it here.
+     */
+    private fun creditsStartMarker(): Long? =
+        skipSegments.firstOrNull { it.type == SkipType.CREDITS }?.startMs
 
     /**
      * Snapshot the player position into the progress table. Main-thread only
@@ -808,6 +819,7 @@ class PlayerViewModel @Inject constructor(
                 positionMs = position,
                 durationMs = duration,
                 updatedAt = System.currentTimeMillis(),
+                creditsStartMs = creditsStartMarker(),
             )
         )
     }
