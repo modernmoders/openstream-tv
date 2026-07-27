@@ -215,14 +215,37 @@ fun StreamListScreen(
             // A failed auto-pick shows a plain-words card, never raw rows.
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (state.autoStartFailed) {
+                    // Descriptive but plain-words (owner 2026-07-26): say WHICH
+                    // kind of failure happened, never raw addon errors — those
+                    // are in the Expert App log.
+                    val failed = state.groups.count { it is GroupState.Failed }
+                    val loaded = state.groups.count { it is GroupState.Loaded }
+                    val detail = when {
+                        state.groups.isEmpty() ->
+                            "No stream sources are set up on this TV yet."
+                        loaded == 0 ->
+                            "None of this TV's $failed stream source(s) could be " +
+                                "reached — the internet connection may be down."
+                        else ->
+                            "The stream sources answered, but none of them had a " +
+                                "playable video for this one." +
+                                (if (failed > 0) " ($failed source(s) also couldn't be reached.)" else "")
+                    }
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth(0.7f),
                     ) {
                         Text(
-                            text = "This video isn't starting right now.\nPlease try again in a little while.",
+                            text = "This video isn't starting right now",
                             style = MaterialTheme.typography.headlineSmall,
                             color = Color.White,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = "$detail\nBacking out and trying again usually fixes a temporary problem.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MutedText,
                             textAlign = TextAlign.Center,
                         )
                         Button(onClick = onBack) { Text("Go back") }
