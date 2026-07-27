@@ -72,6 +72,8 @@ class StreamListViewModel @Inject constructor(
     viewPrefs: ViewPrefs,
     savedStateHandle: SavedStateHandle,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
+    private val familyMemory: dev.openstream.tv.data.ReleaseFamilyMemory =
+        dev.openstream.tv.data.ReleaseFamilyMemory.NONE,
 ) : ViewModel() {
 
     val type: String = checkNotNull(savedStateHandle["type"])
@@ -124,6 +126,14 @@ class StreamListViewModel @Inject constructor(
         /** Auto-pick settled on nothing playable — with [showList] off, the
          *  screen shows a plain error card instead of the raw list. */
         val autoStartFailed: Boolean = false,
+        /**
+         * Release families that already burned an auto-pick for this series
+         * (ReleaseFamilyMemory) — every ranking on this screen sinks them
+         * below clean candidates. Loaded once from Room at init; Room answers
+         * in milliseconds while the addon fan-out takes seconds, so the set
+         * is in place well before the auto-pick settles.
+         */
+        val strickenFamilies: Set<String> = emptySet(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -283,6 +293,7 @@ class StreamListViewModel @Inject constructor(
                     metaId = metaId,
                     mediaRef = pending.mediaRef,
                     origin = autoplayOrigin.origin,
+                    strickenFamilies = { familyMemory.strickenFamilies(metaId) },
                 )
             }
             // Generic players / cancelled launches tell us nothing — leave
@@ -329,6 +340,12 @@ class StreamListViewModel @Inject constructor(
     init {
         _uiState.update { it.copy(externalPlayers = externalLauncher.installedPlayers()) }
         viewModelScope.launch {
+            // Known-glitchy release families for this series (recorded by the
+            // player when an auto-pick failed on an earlier episode) — the
+            // rankings below sink them so a binge stops re-trying bad encodes.
+            _uiState.update { it.copy(strickenFamilies = familyMemory.strickenFamilies(metaId)) }
+        }
+        viewModelScope.launch {
             playbackPrefs.preferredPlayer.collect { pref ->
                 _uiState.update { it.copy(playerPref = pref) }
             }
@@ -341,7 +358,9 @@ class StreamListViewModel @Inject constructor(
         viewModelScope.launch {
             // Keep the shared "Try another server" list in step with the
             // fan-out — the player may need it while groups are still loading.
-            _uiState.collect { alternatives.list = orderedAlternatives(it.groups, hardwareCodecs) }
+            _uiState.collect {
+                alternatives.list = orderedAlternatives(it.groups, hardwareCodecs, it.strickenFamilies)
+            }
         }
         viewModelScope.launch {
             // Auto-play first stream (owner request 2026-07-06): wait until
@@ -359,7 +378,11 @@ class StreamListViewModel @Inject constructor(
             // and auto-start must resume where the person left off.
             val resume = progressRepository.observeResumePosition(mediaRef).first()
             val result = _uiState
-                .map { bestPlayableWhenSettled(it.initializing, it.groups, hardwareCodecs) }
+                .map {
+                    bestPlayableWhenSettled(
+                        it.initializing, it.groups, hardwareCodecs, it.strickenFamilies,
+                    )
+                }
                 .first { it !is AutoStartResult.Waiting }
             val found = result as? AutoStartResult.Found
             if (found == null || playbackStarted) {

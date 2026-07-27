@@ -160,12 +160,13 @@ fun StreamListScreen(
     // (owner 2026-07-09) instead of per-addon blocks. The dedupe collapses the
     // same release returned by all three AIOStreams instances.
     val loadedGroups = state.groups.filterIsInstance<GroupState.Loaded>()
-    val mergedStreams = remember(state.groups) {
+    val mergedStreams = remember(state.groups, state.strickenFamilies) {
         StreamCascade.mergeForDisplay(
             loadedGroups.mapIndexed { i, g ->
                 StreamCascade.AddonStreams(g.addon.manifestUrl, i, g.streams)
             },
             viewModel.hardwareCodecs,
+            state.strickenFamilies,
         )
     }
     val addonByUrl = remember(state.groups) {

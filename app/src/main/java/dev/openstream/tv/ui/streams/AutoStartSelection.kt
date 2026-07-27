@@ -42,6 +42,7 @@ fun bestPlayableWhenSettled(
     initializing: Boolean,
     groups: List<GroupState>,
     hardwareCodecs: Set<VideoCodec> = emptySet(),
+    strickenFamilies: Set<String> = emptySet(),
 ): AutoStartResult {
     if (initializing) return AutoStartResult.Waiting
     // The best stream can come from ANY source, so wait until they've all
@@ -49,7 +50,7 @@ fun bestPlayableWhenSettled(
     // state covers the wait; a dead source times out to Failed, so this never
     // hangs. Supersedes the old first-in-addon-order pick.
     if (groups.any { it is GroupState.Loading }) return AutoStartResult.Waiting
-    val top = StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs)
+    val top = StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs, strickenFamilies)
         .firstOrNull() ?: return AutoStartResult.None
     val addon = groups.filterIsInstance<GroupState.Loaded>()
         .firstOrNull { it.addon.manifestUrl == top.addonUrl }?.addon
@@ -65,6 +66,7 @@ fun bestPlayableWhenSettled(
 fun orderedAlternatives(
     groups: List<GroupState>,
     hardwareCodecs: Set<VideoCodec> = emptySet(),
+    strickenFamilies: Set<String> = emptySet(),
 ): List<StreamAlternatives.Alternative> =
-    StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs)
+    StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs, strickenFamilies)
         .map { StreamAlternatives.Alternative(it.addonUrl, it.stream) }

@@ -91,6 +91,8 @@ class PlayerViewModel @Inject constructor(
     private val uiSounds: UiSounds,
     private val savedState: SavedStateHandle,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
+    private val familyMemory: dev.openstream.tv.data.ReleaseFamilyMemory =
+        dev.openstream.tv.data.ReleaseFamilyMemory.NONE,
 ) : ViewModel() {
 
     /** Installed external players (VLC/MX) for the "Play in another app"
@@ -307,6 +309,7 @@ class PlayerViewModel @Inject constructor(
                         metaId = req.metaId,
                         mediaRef = req.mediaRef,
                         origin = autoplayOrigin.origin,
+                        strickenFamilies = { familyMemory.strickenFamilies(req.metaId) },
                     )
                 }
                 is PlayerEvent.Error -> {
@@ -723,6 +726,11 @@ class PlayerViewModel @Inject constructor(
             "\"${_uiState.value.title}\": opened stream's audio is [${tags.joinToString()}], " +
                 "no English track — trying the next stream",
         )
+        // Remember this encode for the SERIES: episode 5 shouldn't have to
+        // re-discover what episode 4 already proved had no English audio.
+        autoplayOrigin.origin?.stream?.let {
+            familyMemory.recordStrikeAsync(req.metaId, it, "no English audio")
+        }
         if (tryNextStream()) languageSkips++
     }
 
@@ -833,6 +841,17 @@ class PlayerViewModel @Inject constructor(
      * to go, never a dead/hidden button.
      */
     fun tryAnotherStream() {
+        // Walking away from a FAILED auto-pick is the strike signal for the
+        // release-family memory: this encode burned us, remember it for the
+        // series' other episodes. Manual Expert picks (autoSelected=false)
+        // and walks from a WORKING stream (error==null, e.g. quality taste)
+        // never strike — only proven failures teach the memory.
+        val req = request
+        if (req?.autoSelected == true && _uiState.value.error != null) {
+            autoplayOrigin.origin?.stream?.let {
+                familyMemory.recordStrikeAsync(req.metaId, it, "failed to play")
+            }
+        }
         if (!tryNextStream(preferDifferent = true)) openCurrentStreamList()
     }
 

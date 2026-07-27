@@ -62,6 +62,12 @@ class AutoplayController @Inject constructor(
         metaId: String,
         mediaRef: MediaRef?,
         origin: CurrentStream?,
+        /**
+         * Release families already struck for this series — supplied lazily
+         * (Room read) by whoever owns a ReleaseFamilyMemory; the default
+         * keeps callers without one (and older tests) on plain ranking.
+         */
+        strickenFamilies: suspend () -> Set<String> = { emptySet() },
     ) {
         stop()
         if (metaType != "series") return
@@ -72,7 +78,12 @@ class AutoplayController @Inject constructor(
         jobs += scope.launch {
             val meta = gateway.resolveMeta(metaType, metaId) ?: return@launch
             val next = NextEpisode.nextAfter(meta.videos, mediaRef.externalId)
-            val m = AutoplayStateMachine(origin ?: CurrentStream("", Stream()))
+            val m = AutoplayStateMachine(
+                origin ?: CurrentStream("", Stream()),
+                // Known-glitchy families for this series sink in the next
+                // episode's ranking — the whole point of the strike memory.
+                strickenFamilies = strickenFamilies(),
+            )
             machine = m
             _state.value = m.start(next)
             jobs += scope.launch { tick(scope) }

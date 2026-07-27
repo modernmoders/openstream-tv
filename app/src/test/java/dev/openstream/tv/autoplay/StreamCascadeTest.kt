@@ -431,4 +431,64 @@ class StreamCascadeTest {
         )
         assertEquals("4K HEVC 10bit", merged.first().stream.name)
     }
+
+    // --- release-family memory (owner backlog 2026-07-26): struck families sink ---
+
+    @Test
+    fun `familyKey is stable across episodes of the same encode`() {
+        // Episode numbers strip out, so ep3 and ep4 of one release share a key.
+        val ep3 = stream(name = "Rip 1080p", filename = "Show.S01E03.1080p.WEB.GROUP.mkv")
+        val ep4 = stream(name = "Rip 1080p", filename = "Show.S01E04.1080p.WEB.GROUP.mkv")
+        val otherEncode = stream(name = "Rip 1080p", filename = "Show.S01E03.1080p.BluRay.OTHER.mkv")
+        assertEquals(StreamCascade.familyKey(ep3), StreamCascade.familyKey(ep4))
+        assertTrue(StreamCascade.familyKey(ep3) != StreamCascade.familyKey(otherEncode))
+    }
+
+    @Test
+    fun `mergeForDisplay sinks a struck family below an otherwise worse stream`() {
+        val glitchy = stream(name = "Glitchy 4K ⚡", filename = "Show.S01E04.2160p.WEB.BAD.mkv")
+        val clean = stream(name = "Clean 720p", filename = "Show.S01E04.720p.WEB.GOOD.mkv")
+        val struck = setOf(StreamCascade.familyKey(glitchy))
+
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(AddonStreams("https://aio.example", 0, listOf(glitchy, clean))),
+            strickenFamilies = struck,
+        )
+
+        // The struck 4K cached stream loses to the clean 720p — but it's
+        // still IN the list (demoted, never hidden).
+        assertEquals(listOf("Clean 720p", "Glitchy 4K ⚡"), merged.map { it.stream.name })
+    }
+
+    @Test
+    fun `rank sinks a struck family even on a bingeGroup match`() {
+        val cur = current(stream = stream(name = "Bad encode", bingeGroup = "aio|1080p|BAD"))
+        val sameBadFamily = stream(name = "Bad next ep", bingeGroup = "aio|1080p|BAD",
+            filename = "Show.S01E04.1080p.WEB.BAD.mkv")
+        val cleanOther = stream(name = "Clean next ep", filename = "Show.S01E04.1080p.WEB.GOOD.mkv")
+
+        val ranked = StreamCascade.rank(
+            cur,
+            listOf(
+                AddonStreams("https://aio.example", 0, listOf(sameBadFamily)),
+                AddonStreams("https://other.example", 1, listOf(cleanOther)),
+            ),
+            strickenFamilies = setOf(StreamCascade.familyKey(sameBadFamily)),
+        )
+
+        // Without the strike the bingeGroup match would win tier 1 outright.
+        assertEquals("Clean next ep", ranked.first().stream.name)
+    }
+
+    @Test
+    fun `a stream with an empty family key never matches a struck family`() {
+        // A label of only numbers yields an empty token set; an empty key in
+        // the struck set must not drag unrelated streams down with it.
+        val numeric = Stream(url = "https://cdn.example/v.mp4", name = "1080")
+        val merged = StreamCascade.mergeForDisplay(
+            listOf(AddonStreams("https://aio.example", 0, listOf(numeric))),
+            strickenFamilies = setOf(""),
+        )
+        assertEquals(1, merged.size)
+    }
 }

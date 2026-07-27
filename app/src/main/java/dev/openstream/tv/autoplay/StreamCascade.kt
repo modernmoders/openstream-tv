@@ -41,8 +41,18 @@ object StreamCascade {
         val stream: Stream,
     )
 
-    /** All playable candidates, best attempt first. Empty = nothing playable. */
-    fun rank(current: CurrentStream, groups: List<AddonStreams>): List<Candidate> {
+    /**
+     * All playable candidates, best attempt first. Empty = nothing playable.
+     * [strickenFamilies] (release families that already burned an auto-pick
+     * for this series — see ReleaseFamilyMemory) sink to the bottom FIRST,
+     * before any continuity tier: re-trying a known-glitchy encode on the
+     * next episode is exactly what the memory exists to stop.
+     */
+    fun rank(
+        current: CurrentStream,
+        groups: List<AddonStreams>,
+        strickenFamilies: Set<String> = emptySet(),
+    ): List<Candidate> {
         val currentBinge = current.stream.behaviorHints.bingeGroup
         val currentRes = resolutionOf(current.stream)
         val currentTokens = normalizedTokens(current.stream)
@@ -55,9 +65,10 @@ object StreamCascade {
         }
 
         return candidates.sortedWith(
-            compareByDescending<Candidate> {
-                currentBinge != null && it.stream.behaviorHints.bingeGroup == currentBinge
-            }
+            compareBy<Candidate> { isStricken(it.stream, strickenFamilies) }
+                .thenByDescending {
+                    currentBinge != null && it.stream.behaviorHints.bingeGroup == currentBinge
+                }
                 .thenByDescending { it.addonUrl == current.addonUrl }
                 .thenByDescending { currentRes != null && resolutionOf(it.stream) == currentRes }
                 .thenByDescending { tokenSimilarity(currentTokens, normalizedTokens(it.stream)) }
@@ -79,6 +90,7 @@ object StreamCascade {
     fun mergeForDisplay(
         groups: List<AddonStreams>,
         hardwareCodecs: Set<VideoCodec> = emptySet(),
+        strickenFamilies: Set<String> = emptySet(),
     ): List<Candidate> {
         val playable = groups.flatMap { group ->
             group.streams.mapIndexedNotNull { i, stream ->
@@ -95,6 +107,10 @@ object StreamCascade {
             )
             .distinctBy { dedupKey(it.stream) }
         // Final order:
+        //   NOT struck       - release families that already burned an
+        //                      auto-pick for this series (ReleaseFamilyMemory)
+        //                      go last, whatever their other virtues — they
+        //                      stay listed, never hidden
         //   cached           - instantly playable
         //   English audio    - three tiers, not two (owner 2026-07-26: a
         //                      Japanese-only release with an unreadable label
@@ -108,7 +124,8 @@ object StreamCascade {
         //                      clean 1080p H.264 (owner 2026-07-09)
         //   resolution, then the source order (which carries AIOStreams' own sort)
         return deduped.sortedWith(
-            compareByDescending<Candidate> { hasCacheMarker(it.stream) }
+            compareBy<Candidate> { isStricken(it.stream, strickenFamilies) }
+                .thenByDescending { hasCacheMarker(it.stream) }
                 .thenByDescending { englishAudioRank(it.stream) }
                 .thenByDescending { canHardwareDecode(it.stream, hardwareCodecs) }
                 .thenByDescending { resolutionRank(it.stream) }
@@ -279,6 +296,24 @@ object StreamCascade {
      */
     fun canHardwareDecode(stream: Stream, hardwareCodecs: Set<VideoCodec>): Boolean =
         videoCodecOf(stream).hardwareDecodable(hardwareCodecs)
+
+    /**
+     * The RELEASE FAMILY a stream belongs to: its episode-number-stripped
+     * token set, canonical (sorted, space-joined) so equal families compare
+     * as equal strings. "Show.S01E03.1080p.WEB.GROUP" and episode 4 of the
+     * same encode share one family key — that's what lets a strike recorded
+     * on one episode demote its siblings (ReleaseFamilyMemory). Empty when
+     * the label carries no letters worth keying on.
+     */
+    fun familyKey(stream: Stream): String =
+        normalizedTokens(stream).sorted().joinToString(" ")
+
+    /** Struck = this stream's family already burned an auto-pick for this series. */
+    private fun isStricken(stream: Stream, strickenFamilies: Set<String>): Boolean {
+        if (strickenFamilies.isEmpty()) return false
+        val key = familyKey(stream)
+        return key.isNotEmpty() && key in strickenFamilies
+    }
 
     /** Same release across sources → same key. Torrent infoHash is authoritative;
      *  otherwise the exact release filename, else the whole label. */
