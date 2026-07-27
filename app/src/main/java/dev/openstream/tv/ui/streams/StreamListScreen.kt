@@ -86,6 +86,10 @@ fun StreamListScreen(
 
     /** Stream chosen but not yet launched: resume/start-over and/or player choice pending. */
     var pendingPlay by remember { mutableStateOf<PendingPlay?>(null) }
+    /** "Show streams anyway" pressed on the failure card (owner 2026-07-26):
+     *  one-time escape hatch that reveals the hidden list for THIS screen
+     *  only — no dead ends, and no Settings trip to rescue one video. */
+    var revealOverride by remember { mutableStateOf(false) }
     /** True while [pendingPlay] shows the "Play with…" list, false = resume dialog. */
     var choosingPlayer by remember { mutableStateOf(false) }
 
@@ -208,7 +212,7 @@ fun StreamListScreen(
             )
         }
 
-        if (state.autoStarting || !state.showList) {
+        if (state.autoStarting || (!state.showList && !revealOverride)) {
             // Calm state instead of the technical stream list: while auto-play
             // is picking (everyone), and PERMANENTLY when the rows are hidden
             // (owner 2026-07-26 — no Expert "Show streams", no list, ever).
@@ -248,7 +252,13 @@ fun StreamListScreen(
                             color = MutedText,
                             textAlign = TextAlign.Center,
                         )
-                        Button(onClick = onBack) { Text("Go back") }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(onClick = onBack) { Text("Go back") }
+                            // Escape hatch (owner 2026-07-26): reveal the raw
+                            // list for this one video — playback is never a
+                            // dead end even with streams hidden.
+                            Button(onClick = { revealOverride = true }) { Text("Show streams anyway") }
+                        }
                     }
                 } else {
                     LoadingMessage(
