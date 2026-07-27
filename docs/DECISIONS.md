@@ -2136,3 +2136,42 @@ line already covers a standard ~1.5-minute ED.
 stream" advance, no-English skips, and settled-with-nothing all land
 in the Expert App log ([streams] tag) — the owner can now see exactly
 what was tried and why without a debug build.
+
+## 69. 2026-07-27 (session 42) — Release-family memory, credits watched line, one popup language
+
+**Release-family memory (Room v4, `release_family_strikes`):** when the
+app abandons a stream IT auto-picked — playback failure walked away
+from, or the post-open check finding no English audio — the release
+FAMILY (episode-number-stripped token set, `StreamCascade.familyKey`)
+takes a strike for that series. Every ranking then sinks struck
+families below clean candidates: demoted, never hidden, so the Expert
+list stays complete. Manual picks neither write strikes nor get
+filtered. Why a token-set key and not infoHash/filename: those name ONE
+episode's file; the family key is what episodes 3 and 4 of the same
+encode share, which is exactly the repeat-failure the owner saw on
+Naruto. `ReleaseFamilyMemory` is an interface (NONE for JVM tests); the
+Room impl wraps every DB touch — a memory feature must never break
+playback. Autoplay gets the strike set via a lazy supplier on
+`onPlaybackEnded` rather than constructor injection, so the pure state
+machine and its tests stay untouched.
+
+**Anime credits-start watched line (Room v3, `creditsStartMs` on
+watch_progress):** the player rides the AniSkip CREDITS window start
+along on every progress save; `watchedLineMs` = min(90% line, credits
+start), marker honored only in the back half of the episode (mis-timed
+community data must not mark a half-watched episode finished) and only
+ever moving the line EARLIER. Stopping during a long ED/preview now
+counts as finished; non-anime keeps the 90% behavior bit-for-bit.
+
+**One popup language (`AppDialog.kt`):** `PanelFill`/`PanelShape` are
+THE popup face and `PanelButton` the action pill (surface language of
+DECISIONS #29 — accent focus ring, accent fill on the one recommended
+action; confirm dialogs emphasize the SAFE choice, never the
+destructive one). Adopted by all dialogs, the player's panels, the
+failure card, the Up Next cards, and the track picker (rows are
+OptionRows now). Bare TV-Material Buttons survive only on full screens
+(Connect, addon manager, details) — popups were the owner's ask.
+
+**Plain-words error fallback:** unmapped PlaybackExceptions no longer
+print raw constants at the viewer; the exact code still lands in the
+Expert App log line.

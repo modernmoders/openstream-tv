@@ -1,3 +1,70 @@
+# STATE — updated 2026-07-27 by session 42
+
+## ⚠️ SESSION 42 (2026-07-27) — Session-41 round EMULATOR-VERIFIED + pass-2 backlog built + **alpha.61 PUBLISHED OTA**
+- **PASS 1 VERIFIED on the emulator (alpha.60 debug, adam's live profile
+  via the in-app Connect flow after a factory reset):** Naruto S1E1 →
+  stream list stays hidden ("Starting your show…"), auto-picked the
+  confirmed-EN "480P Dvdrip ★★★★★" from 11 ranked (later the 1080P
+  Bluray from 19); **English audio proven by ground truth** — probed the
+  playing MKV's headers: track languages [und(video), eng, jpn, eng,
+  eng]; post-open check ran with zero language skips. Back from the
+  player lands on the DETAILS episode list (never a stream screen);
+  resume is silent (picked up at 13:02/23:37, no prompt); no-sources
+  case shows the plain failure card + "Show streams anyway"; App log
+  carries the whole [streams] trail (auto-picked from N ranked /
+  switching to stream i of N / addresses sanitized) + [skip] windows.
+  EXPERT SETTINGS section renders as designed (Show streams default
+  OFF, Anime drawer inside).
+- **PASS 2 BUILT (the session-41 owner backlog), 4 commits, gates green
+  (400 unit tests):**
+  · **Release-family memory** (Room v4 `release_family_strikes`,
+    DECISIONS #69): auto-pick failures + no-English skips strike the
+    encode's episode-number-stripped family PER SERIES; every ranking
+    sinks struck families (demoted, never hidden). Manual picks exempt.
+  · **Anime credits watched line** (Room v3 `creditsStartMs`): watched
+    = min(90%, AniSkip credits start, back-half-only guard) — stopping
+    in a long ED now counts as finished; non-anime unchanged.
+  · **One popup language** (`AppDialog.kt` PanelFill/PanelShape/
+    PanelButton): all dialogs + player panels + failure card + Up Next
+    cards + track picker share one face and pill buttons (accent ring
+    focus, accent fill on the recommended action; confirms emphasize
+    the SAFE choice). Verified visually on the emulator.
+  · **Plain-words fallback** for unmapped player errors (no more
+    "(PARSING_CONTAINER_UNSUPPORTED)" on screen; code stays in the log).
+- **alpha.61 (versionCode 61) PUBLISHED OTA** via assembleRelease →
+  tools/publish_update.sh: hosted version.json offers 61, readback
+  verified, sstreams-latest.apk (savoy.click/app) refreshed. Includes
+  the session-40 rebrand + black-screen fix + session-41 round + this
+  round. Boxes self-offer on next launch (install screen: LEFT then OK).
+- **Notes for the owner (not bugs fixed this round):** (a) on the 1080P
+  Bluray the auto-picked SUBTITLE track was French ("FEU" on screen) —
+  the subtitle-preference picker can still mismatch (§4.1 fan-out
+  helps; a language-pin like the audio check may be worth a round);
+  (b) in-app brand text still says "Streams" ("Welcome to Streams",
+  home header, Settings subtitle) while the launcher label is
+  OpenStream — owner's call whether to sweep it; (c) NOT emulator-
+  verified end-to-end: a real strike write→next-episode demotion and a
+  real credits-line restart (both unit-tested; verify on the box during
+  normal watching via App log "release family struck" lines).
+- **Emulator gotchas for future sessions:** do NOT pass -gpu flags
+  (crashes/hangs; AVD has gpu disabled in config); a default_boot
+  snapshot restore can roll the DEVICE CLOCK back — debrid TLS then
+  fails "Chain validation failed" (certs not yet valid); fix:
+  `adb shell cmd network_time_update_service force_refresh`. The
+  snapshot also rolled back the app DB/APK once (reinstall + reconnect
+  profile via the name screen — "adam" — takes ~1 min).
+⏳ **NEXT ACTION:** (a) Owner: take the alpha.61 update on the 2 boxes
+(LEFT then OK), binge an anime series and eyeball: no repeated bad
+encodes across episodes (App log shows "release family struck" when one
+is remembered), stopping during credits restarts the episode next time,
+popups all wear the same style. (b) If the French-subtitle mismatch
+annoys: next round = subtitle-language pin (English-first subtitle
+auto-pick, mirroring the audio check). (c) Owner decides on the in-app
+"Streams" → OpenStream text sweep. (d) Session-40 items (b)-(d)
+unchanged (repo visibility, "manuel" alias, 9s bias knob, #16 skins,
+autoplay-chain subtitle fan-out, guide-APK fresh-install test).
+
+# (previous head follows)
 # STATE — updated 2026-07-26 by session 41
 
 ## ⚠️ SESSION 41 (2026-07-26) — English-first streams + Expert-only stream list + auto-resume (owner round, Cowork session)
