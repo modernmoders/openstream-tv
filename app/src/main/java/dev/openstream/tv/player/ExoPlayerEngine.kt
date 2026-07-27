@@ -196,10 +196,15 @@ class ExoPlayerEngine(
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED ->
             "This stream's file is damaged or not really a video"
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+        PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED ->
+            "This video is packaged in a way this TV can't open"
         PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
         PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ->
             "This device can't decode this video format"
-        else -> "Playback failed (${errorCodeName.removePrefix("ERROR_CODE_")})"
+        // Whatever the reason, the viewer never sees raw error-code jargon —
+        // the Expert App log line carries the exact code for whoever debugs.
+        else -> "This video won't play on this TV"
     }
 
     private fun guessSubtitleMime(url: String): String = when {
