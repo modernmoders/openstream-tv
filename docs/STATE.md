@@ -1,3 +1,35 @@
+# STATE — updated 2026-07-27 by session 42 (cont.)
+
+## ⚠️ SESSION 42 cont. (2026-07-27) — Credits countdown visible from second one + owner's mid-play switch DIAGNOSED
+- **CREDITS COUNTDOWN REDESIGN (owner ask):** with auto-advance on, the
+  "Skipping to next episode" card (the Round-17 countdown card, new
+  eyebrow) now replaces the Next Episode pill from the credits window's
+  FIRST second, ring draining across the whole 18s — no more silent 10s
+  grace that read as a stuck button. Advance moment unchanged (18s
+  total = the 2026-07-12 tuning). Auto-advance off keeps the manual
+  pill. Gates green (400 tests). NOT yet OTA-published — rides the next
+  cut (alpha.62) on owner's word.
+- **OWNER'S "trying another stream partway through" DIAGNOSED from the
+  uploaded box logs (savoy.click/setup/logs/):** his box is still on
+  **alpha.59** — today's alpha.61 update attempt failed with
+  INSTALL_FAILED_ABORTED "User rejected permissions" (Android's install
+  screen focuses Cancel; LEFT-then-OK coaching applies). The 07-26
+  Naruto s4 session shows the playing stream's server dying mid-episode
+  → alpha.59's quiet try-next-server kicked in → landed once on a
+  broken encode (PARSING_CONTAINER_UNSUPPORTED, the same family the
+  emulator hit). Root contributors, seen on TOBY'S box too (so host-
+  side, not adam's wifi): AIOStreams Primary had an outage window
+  07-26, and Backup (fortheweebs) chronically answers in 10s+ (probed
+  10.5s from this Mac today) → constant fan-out timeouts. Everything
+  that softens this (verified ranking, family strikes, plain errors)
+  is IN alpha.61 — the box just needs to take the update.
+⏳ **NEXT ACTION addition:** (a) Owner: retake the update on the box —
+when Android's screen appears press LEFT then OK (today's attempt hit
+Cancel). (b) On owner's word: cut alpha.62 (versionCode 62) to ship the
+countdown redesign. (c) Consider retiring/replacing the fortheweebs
+Backup instance if its 10s+ answers persist — it burns every fan-out.
+
+# (previous head follows)
 # STATE — updated 2026-07-27 by session 42
 
 ## ⚠️ SESSION 42 (2026-07-27) — Session-41 round EMULATOR-VERIFIED + pass-2 backlog built + **alpha.61 PUBLISHED OTA**
