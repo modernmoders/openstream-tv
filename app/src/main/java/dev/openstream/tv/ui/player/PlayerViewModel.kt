@@ -68,11 +68,13 @@ private const val MAX_ERROR_SKIPS = 3
  *  playing (a title with no dub at all must not walk the whole list). */
 private const val MAX_LANGUAGE_SKIPS = 4
 
-/** Auto-advance on credits: quiet grace before the countdown even appears,
- *  then the countdown length (owner 2026-07-12: 10s later, count from 8).
- *  The countdown total is internal — the Up next card's ring drains against it. */
-private const val AUTO_ADVANCE_GRACE_MS = 10_000L
-internal const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 8
+/** Auto-advance on credits: the countdown card appears the moment the
+ *  credits window opens and its timer runs the WHOLE wait (owner 2026-07-27:
+ *  "the autoskip timer should start as soon as the popup pops up" — the old
+ *  10s invisible grace + 8s visible count read as a stuck button). 18s keeps
+ *  the exact advance moment the owner tuned on 2026-07-12 (10 + 8); only the
+ *  visibility changed. */
+internal const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 18
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -505,14 +507,15 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** Auto-advance (owner 2026-07-12 timing): let the ending BREATHE for 10
-     *  seconds first, then "Next episode in 8…" one second per tick, then
-     *  advance. BACK cancels ([cancelNextEpisodeCountdown]); the window stays
-     *  auto-handled so the countdown doesn't respawn inside the credits. */
+    /** Auto-advance: the "Skipping to next episode" card + draining ring show
+     *  from the FIRST second of the credits window (owner 2026-07-27) — no
+     *  invisible grace, the viewer always sees how long they have. Total wait
+     *  is unchanged (18s, the 2026-07-12 tuning). BACK cancels
+     *  ([cancelNextEpisodeCountdown]); the window stays auto-handled so the
+     *  countdown doesn't respawn inside the credits. */
     private fun startNextEpisodeCountdown() {
         autoAdvanceJob?.cancel()
         autoAdvanceJob = viewModelScope.launch {
-            delay(AUTO_ADVANCE_GRACE_MS)
             for (remaining in AUTO_ADVANCE_COUNTDOWN_SECONDS downTo 1) {
                 _uiState.value = _uiState.value.copy(nextEpisodeCountdown = remaining)
                 delay(1_000)

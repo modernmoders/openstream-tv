@@ -45,6 +45,10 @@ fun NextEpisodeCard(
     secondsLeft: Int,
     totalSeconds: Int,
     modifier: Modifier = Modifier,
+    /** The small line above the episode name. The in-player credits countdown
+     *  says what's HAPPENING ("Skipping to next episode" — owner 2026-07-27);
+     *  the between-episodes flow keeps the plain "Up next". */
+    eyebrow: String = "Up next",
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -73,7 +77,7 @@ fun NextEpisodeCard(
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Up next", style = MaterialTheme.typography.labelMedium, color = MutedText)
+                Text(eyebrow, style = MaterialTheme.typography.labelMedium, color = MutedText)
                 Text(
                     text = episodeLabel,
                     style = MaterialTheme.typography.titleMedium,

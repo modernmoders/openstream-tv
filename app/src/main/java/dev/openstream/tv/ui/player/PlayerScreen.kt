@@ -575,12 +575,18 @@ fun PlayerScreen(
             ) {
                 val countdown = state.nextEpisodeCountdown
                 when {
+                    // With auto-advance on, the countdown is non-null from the
+                    // credits window's first second — this card IS the "Next
+                    // Episode" surface then (owner 2026-07-27: popup + running
+                    // timer together, never a button that secretly waits).
                     countdown != null -> NextEpisodeCard(
                         episodeLabel = upNextLabel(state.nextEpisode),
                         thumbnail = state.nextEpisode?.thumbnail,
                         secondsLeft = countdown,
                         totalSeconds = AUTO_ADVANCE_COUNTDOWN_SECONDS,
+                        eyebrow = "Skipping to next episode",
                     )
+                    // Auto-advance OFF: the manual pill, unchanged.
                     skipSeg.type == SkipType.CREDITS -> SkipPill("Next Episode")
                     else -> AnimatedVisibility(
                         visible = !introHintExpired,
