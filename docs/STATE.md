@@ -1,3 +1,64 @@
+# STATE — updated 2026-07-28 by session 43
+
+## ⚠️ SESSION 43 (2026-07-28) — Subscription/password links LIVE + 4 owner app asks built
+
+- **SUBSCRIPTION PORTAL LINKS FIXED AND LIVE (the owner's "claude cowork
+  tried, it was all confused" job).** Root cause found: the 07-27 run
+  uploaded the pages to savoy.click/subs/ with dir `drwx------` and files
+  `-rw-------`, so EVERY link 403'd; and it generated them from the STALE
+  repo snapshot (docs/reference/StremioSurfer/users.json) instead of the
+  live passport file, which is why "Manuel Momma" still had a page (she's
+  been Nadine since session 40) and Rachael's token didn't match.
+- **generate_portal.py rewritten** (lives in ~/Documents/Claude/
+  StremioSurfer; backup generate_portal.py.bak-pre-s43). Now shows, in
+  plain language: the Stremio email + password with Copy buttons, a live
+  RD countdown, an amber **"Adam already owes you 6 more months"** card
+  driven by `billing.owe_half_year` (Myles Manuel, Jody Miller, Rachael)
+  with the extended through-date, and a calm "nothing to renew" card for
+  `billing.rd_not_needed` (Myles Mobile) instead of a red EXPIRED pill.
+  `--upload` now scps AND chmods (dir 755 / files 644) and installs an
+  `Options -Indexes` .htaccess; pages carry robots noindex.
+- **All 12 live and verified 200; the directory listing verified 403.**
+  Stale portal-jamie-* and portal-manuel-momma-* deleted from the server.
+  Rachael's `subscription.portal_token` was seeded to r8wqe in the live
+  users.json so her already-hosted page kept its URL — that is a passport
+  write on a live user, additive metadata only, no account touched.
+  Pre-write backup: config_backups/2026-07-28/users.json.pre-portal-s43.
+- **4 APP ASKS BUILT (DECISIONS #70), gates green (406 tests, 0 fails),
+  commit e250ce9. NOT emulator-verified, NOT OTA-published:**
+  · **Info screen on every click** — Expert mode no longer skips movies
+    past Details into the (hidden-by-default) stream list.
+  · **Trailer button always offered**, aimed at SmartTube → SmartTube
+    Beta → YouTube TV → YouTube (manifest <queries> added); no trailer
+    in the meta falls back to a YouTube search for the title.
+  · **Auto-start settle budget 3s** — the pre-play wait no longer equals
+    the slowest addon (the fortheweebs Backup answers in 10s+). Past the
+    budget: best of whoever answered; still waits if nothing playable has
+    arrived. App log says "(started without N slow source(s))".
+  · **Buffer before switching streams** — ExoPlayer load retries 3→5,
+    plus a 2.5s wait-and-rejoin of the SAME stream (×2) on transport
+    errors before the try-next-stream walk. 4xx/malformed still walk now.
+- **Owner's config-update question answered** (AIOStreams "Template
+  Updates Available", Tamtaro SEL 2.6.1 → 3.0.2): the propagation path is
+  already built — apply the update in YOUR account, Export Template, drop
+  it in StremioSurfer/templates/<instance>.json, then
+  `push_aiostreams.py --instance <primary|backup|nightly> --all --strict`
+  per instance (it substitutes each person's own keys for
+  `<template_placeholder>`). CAVEAT: templates/ is stale (2026-07-07) and
+  backup.json / nightly.json are 0 bytes — they must be re-exported.
+
+⏳ **NEXT ACTION:** (a) Owner: send the portal links (list in the session
+reply / rerun `python3 generate_portal.py --users users.json --all
+--links-only`). (b) Owner: still on alpha.59 — take the update on the box
+(LEFT then OK). (c) On owner's word: cut alpha.62 (versionCode 62) —
+carries session 42's countdown redesign AND this round. (d) Emulator-verify
+this round: movie click lands on Info, Trailer opens SmartTube, playback
+starts noticeably sooner, a killed connection rebuffers instead of
+switching. (e) Template rollout: re-export the 3 AIOStreams templates then
+push (see above). (f) Consider retiring the fortheweebs Backup instance —
+the 3s budget hides its latency but it still burns every fan-out.
+
+# (previous head follows)
 # STATE — updated 2026-07-27 by session 42 (cont.)
 
 ## ⚠️ SESSION 42 cont. (2026-07-27) — Credits countdown visible from second one + owner's mid-play switch DIAGNOSED
