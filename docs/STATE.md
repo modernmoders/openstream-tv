@@ -24,8 +24,14 @@
   users.json so her already-hosted page kept its URL — that is a passport
   write on a live user, additive metadata only, no account touched.
   Pre-write backup: config_backups/2026-07-28/users.json.pre-portal-s43.
+- **alpha.62 (versionCode 62) PUBLISHED OTA** on the owner's word ("push to
+  box pls"): assembleRelease -> tools/publish_update.sh. Hosted version.json
+  offers 62, readback verified, sstreams-latest.apk (savoy.click/app)
+  refreshed, hosted sha256 == local. Carries session 42's countdown redesign
+  AND this round. Boxes self-offer on next app launch (install screen: LEFT
+  then OK). NOT emulator-verified first — owner chose to ship.
 - **4 APP ASKS BUILT (DECISIONS #70), gates green (406 tests, 0 fails),
-  commit e250ce9. NOT emulator-verified, NOT OTA-published:**
+  commit e250ce9:**
   · **Info screen on every click** — Expert mode no longer skips movies
     past Details into the (hidden-by-default) stream list.
   · **Trailer button always offered**, aimed at SmartTube → SmartTube
@@ -49,14 +55,16 @@
 
 ⏳ **NEXT ACTION:** (a) Owner: send the portal links (list in the session
 reply / rerun `python3 generate_portal.py --users users.json --all
---links-only`). (b) Owner: still on alpha.59 — take the update on the box
-(LEFT then OK). (c) On owner's word: cut alpha.62 (versionCode 62) —
-carries session 42's countdown redesign AND this round. (d) Emulator-verify
-this round: movie click lands on Info, Trailer opens SmartTube, playback
-starts noticeably sooner, a killed connection rebuffers instead of
-switching. (e) Template rollout: re-export the 3 AIOStreams templates then
-push (see above). (f) Consider retiring the fortheweebs Backup instance —
-the 3s budget hides its latency but it still burns every fan-out.
+--links-only`). (b) Owner: take alpha.62 on BOTH boxes — the app offers it
+on next launch; on Android's install screen press LEFT then OK (his box was
+still on alpha.59, so this jump is direct). Then eyeball: a movie click
+lands on the Info screen, Trailer opens SmartTube, playback starts sooner,
+a stall rebuffers instead of jumping streams. (c) Template rollout: owner
+applies the Tamtaro SEL 3.0.2 update in his OWN AIOStreams account, exports
+the 3 templates (templates/ is stale 2026-07-07; backup.json and
+nightly.json are 0 bytes), then push_aiostreams.py --all --strict per
+instance. (d) Consider retiring the fortheweebs Backup instance — the 3s
+budget hides its latency but it still burns every fan-out.
 
 # (previous head follows)
 # STATE — updated 2026-07-27 by session 42 (cont.)
