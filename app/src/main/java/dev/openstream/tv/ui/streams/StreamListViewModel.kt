@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Stream list fan-out (§4.1.5): every stream-declaring addon is queried in
@@ -377,13 +378,27 @@ class StreamListViewModel @Inject constructor(
             // Resume position first — Room answers long before the fan-out,
             // and auto-start must resume where the person left off.
             val resume = progressRepository.observeResumePosition(mediaRef).first()
-            val result = _uiState
+
+            suspend fun awaitAllSourcesSettled(): AutoStartResult = _uiState
                 .map {
                     bestPlayableWhenSettled(
                         it.initializing, it.groups, hardwareCodecs, it.strickenFamilies,
                     )
                 }
                 .first { it !is AutoStartResult.Waiting }
+
+            // Waiting for EVERY source made the wait as long as the slowest
+            // one — with the Backup instance answering in 10s+, that's the
+            // "why does it sit there before playing" the owner asked about
+            // (2026-07-28). Now: give them all a budget to weigh in, then go
+            // with the best of whoever answered. Only if nobody has anything
+            // playable yet do we keep waiting — a short wait beats a wrong
+            // "no streams" card.
+            val result = withTimeoutOrNull(AUTO_START_SETTLE_BUDGET_MS) { awaitAllSourcesSettled() }
+                ?: bestPlayableAmongLoaded(
+                    _uiState.value.groups, hardwareCodecs, _uiState.value.strickenFamilies,
+                ).takeIf { it is AutoStartResult.Found }
+                ?: awaitAllSourcesSettled()
             val found = result as? AutoStartResult.Found
             if (found == null || playbackStarted) {
                 // Nothing auto-playable, or the user got there first: reveal
@@ -397,10 +412,12 @@ class StreamListViewModel @Inject constructor(
                 }
                 return@launch
             }
+            val stillLoading = _uiState.value.groups.count { it is GroupState.Loading }
             diagnostics.record(
                 "streams",
                 "\"$title\": auto-picked \"${found.stream.name ?: "unnamed"}\" " +
-                    "from ${alternatives.list.size} ranked streams",
+                    "from ${alternatives.list.size} ranked streams" +
+                    if (stillLoading > 0) " (started without $stillLoading slow source(s))" else "",
             )
             _autoStart.tryEmit(AutoStart(found.addon, found.stream, resume ?: 0))
         }
@@ -455,5 +472,16 @@ class StreamListViewModel @Inject constructor(
 
     override fun onCleared() {
         autoplay.stop()
+    }
+
+    private companion object {
+        /**
+         * How long the auto-pick waits for EVERY stream source before settling
+         * for the best of the ones that answered. Sized off the owner's own
+         * numbers: his fast instances answer in well under a second while the
+         * fortheweebs Backup takes 10s+, so 3s collects the useful candidates
+         * without letting one sick host set the delay on every video.
+         */
+        const val AUTO_START_SETTLE_BUDGET_MS = 3_000L
     }
 }

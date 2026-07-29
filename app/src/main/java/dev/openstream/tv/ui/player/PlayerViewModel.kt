@@ -332,6 +332,12 @@ class PlayerViewModel @Inject constructor(
                         // any stream-walking — the stream is usually fine, the
                         // box's decoder is what broke (MX-parity logic).
                         event.isDecodeError && retryCurrentInSoftware(engine) -> Unit
+                        // The host dropped mid-movie: wait a beat and re-open
+                        // the SAME stream where we were, like a human would,
+                        // before giving up on it (owner 2026-07-28 — "it
+                        // should pause and try to buffer sometimes when it
+                        // just instantly tries another stream").
+                        event.isNetworkError && reconnectCurrent(engine) -> Unit
                         // Auto-skip a broken stream to the next server (owner
                         // request 2026-07-06) — quietly, like a human would.
                         autoAdvanceOnError && errorSkips < MAX_ERROR_SKIPS && tryNextStream() ->
@@ -884,6 +890,49 @@ class PlayerViewModel @Inject constructor(
         return true
     }
 
+    /** Same-stream reconnects already spent, keyed by stream URL — a stream
+     *  that keeps dropping must eventually give way to a different one. */
+    private var reconnectsUrl: String? = null
+    private var reconnectsUsed = 0
+
+    /**
+     * Transport failure on a stream that was PLAYING: pause, wait, and re-open
+     * the same URL at the same position — the "let it buffer" move a person
+     * would make — instead of jumping to another stream mid-scene.
+     *
+     * Bounded by [MAX_RECONNECTS] per stream URL, and skipped entirely when
+     * the stream never got going (position 0 = it isn't a stall, it's a
+     * stream that can't open — walking on is right there). False = the caller
+     * falls through to the auto-skip / error panel exactly as before.
+     */
+    private fun reconnectCurrent(engine: ExoPlayerEngine): Boolean {
+        val req = request ?: return false
+        val position = engine.exoPlayer.currentPosition
+        if (position <= 0) return false
+        if (reconnectsUrl != req.source.url) {
+            reconnectsUrl = req.source.url
+            reconnectsUsed = 0
+        }
+        if (reconnectsUsed >= MAX_RECONNECTS) return false
+        reconnectsUsed++
+        diagnostics.record(
+            "player",
+            "connection dropped — waiting ${RECONNECT_DELAY_MS}ms and rejoining " +
+                "\"${req.source.title}\" at ${position / 1000}s " +
+                "(attempt $reconnectsUsed of $MAX_RECONNECTS)",
+        )
+        // Buffering face, not an error card: nothing is broken yet.
+        _uiState.value = _uiState.value.copy(error = null, switching = true)
+        viewModelScope.launch {
+            delay(RECONNECT_DELAY_MS)
+            // The viewer may have backed out or the engine may have gone away
+            // during the wait — replayCurrent's own guards handle a null
+            // request, but re-check the engine we captured is still the live one.
+            if (this@PlayerViewModel.engine.value === engine) replayCurrent(engine)
+        }
+        return true
+    }
+
     /** Re-open the current source in place, keeping the playback position. */
     private fun replayCurrent(engine: ExoPlayerEngine) {
         val req = request ?: return
@@ -945,6 +994,15 @@ class PlayerViewModel @Inject constructor(
     }
 
     private companion object {
+        /** Same-stream reconnect attempts before walking to another stream.
+         *  Two × [RECONNECT_DELAY_MS] plus ExoPlayer's own load retries buys
+         *  a stuttering host well over half a minute to come back. */
+        const val MAX_RECONNECTS = 2
+
+        /** The "let it buffer" pause before rejoining. Long enough for a
+         *  blip to clear, short enough that a real outage isn't a hang. */
+        const val RECONNECT_DELAY_MS = 2_500L
+
         // SavedStateHandle keys for the process-death restore target.
         const val KEY_RESTORE_VIDEO = "restore.videoId"
         const val KEY_RESTORE_TYPE = "restore.type"

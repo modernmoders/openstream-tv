@@ -104,33 +104,24 @@ fun AppNavHost(
         true -> Routes.CONNECT
         false -> Routes.HOME
     }
-    // Easy vs Expert mode (owner round 10 — DECISIONS #27 default OFF):
-    // gates two navigation shapes below. Expert mode keeps every shortcut a
-    // technical user already relies on; easy mode never strands a viewer on
-    // a raw, addon-labelled screen.
-    val expertMode by launchViewModel.expertMode.collectAsStateWithLifecycle()
     // Stream rows visible at all (Expert mode + its "Show streams" toggle) —
     // decides whether Back from the player pops through the stream screen.
     val streamListVisible by launchViewModel.streamListVisible.collectAsStateWithLifecycle()
     val navController = rememberNavController()
-    // Expert mode: movies skip the details screen (it held exactly one
-    // action, "View streams" — an extra step, 2026-07-05 round 5) straight to
-    // the stream list. Easy mode instead opens a proper Info screen first
-    // (owner round 10: backdrop, description, rating, cast, a big Play CTA,
-    // an optional trailer button) — DetailsScreen already renders all of
-    // that for series, so movies now share the same screen instead of a
-    // second one (KISS). Series/channels always need Details for season &
-    // episode picking either way. For a movie the meta id IS the video id
-    // (§4.1 stream addressing).
+    // Every poster click opens the Info screen: backdrop, description,
+    // rating, cast, a Play CTA and a trailer button for movies; season and
+    // episode picking for series. DetailsScreen renders both shapes, so
+    // movies and series share one screen (KISS). For a movie the meta id IS
+    // the video id (§4.1 stream addressing).
     val openDetails: (MetaItem) -> Unit = { item ->
-        val isMovie = item.type.equals("movie", ignoreCase = true)
-        if (isMovie && expertMode) {
-            navController.navigate(
-                Routes.streams(item.type, item.id, item.name, item.id, item.poster)
-            )
-        } else {
-            navController.navigate(Routes.details(item))
-        }
+        // EVERY click lands on the Info screen now, Expert or not (owner
+        // 2026-07-28: "when clicking on a movie, it should bring up the
+        // information screen about that movie"). Expert mode used to skip
+        // straight to streams for movies, which — since the stream list went
+        // hidden-by-default in session 41 — meant a click just started
+        // playing with no chance to read anything about the film first.
+        // Play is still one press away: it's the focused button on arrival.
+        navController.navigate(Routes.details(item))
     }
     // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
     val goBack: () -> Unit = { navController.popBackStack() }

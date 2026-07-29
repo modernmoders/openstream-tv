@@ -2175,3 +2175,56 @@ OptionRows now). Bare TV-Material Buttons survive only on full screens
 **Plain-words error fallback:** unmapped PlaybackExceptions no longer
 print raw constants at the viewer; the exact code still lands in the
 Expert App log line.
+
+## 70. 2026-07-28 (session 43) — Info screen for everyone, bounded start-up wait, buffer-before-switch
+
+**Every poster click opens the Info screen (`AppNavHost.openDetails`).**
+Expert mode used to send movies straight to the stream list, on the
+2026-07-05 reasoning that Details held exactly one action ("View
+streams") and was therefore a wasted press. That stopped being true
+twice over: round 10 gave Details a real Info screen (backdrop,
+description, rating, cast, Play CTA) and session 41 hid the stream list
+by default — so in Expert mode a movie click just *started playing*
+with nothing readable in between. The mode branch is gone; Play is the
+focused button on arrival, so it is still one press.
+
+**Trailer button is always offered (`TrailerLauncher`).** Two separate
+problems, one helper. (a) Most addons — Cinemeta included — send no
+`trailers` at all, so a button gated on the meta was missing on most
+films; a missing trailer id now falls back to a YouTube *search* for
+"<title> <year> trailer". (b) A bare ACTION_VIEW is a coin flip on a
+browser-less onn box, so the intent aims at a known installed handler
+first: SmartTube (owner preference — no ads) → SmartTube Beta →
+YouTube TV → YouTube phone, declared in the manifest's `<queries>`
+because Android 11+ hides them otherwise. Generic ACTION_VIEW is the
+fallback, and a total miss says so on screen instead of doing nothing.
+Playing YouTube *inside* the app was rejected: it needs stream
+extraction, which isn't something we can do legitimately.
+
+**Auto-start settle budget (`AUTO_START_SETTLE_BUDGET_MS` = 3s).** The
+auto-pick waited for EVERY stream source to answer, which made the wait
+before playback equal to the slowest host — and the owner's Backup
+instance (fortheweebs) chronically answers in 10s+ (session 42
+measured 10.5s). Now the full-settle wait gets a 3s budget; past it we
+take the best of whoever answered (`bestPlayableAmongLoaded`). If
+*nothing* playable has arrived yet we keep waiting rather than show a
+wrong "no streams" card — a bounded delay is the fix, not a wrong
+answer. The App log says "(started without N slow source(s))" when the
+escape hatch fires, so the cost is visible. Ranking is untouched: the
+budget drops the wait, not the ordering.
+
+**Buffer before switching streams (`reconnectCurrent`,
+`isNetworkErrorCode`).** Owner 2026-07-28: a mid-movie stall "should
+pause and try to buffer" instead of instantly jumping to another
+stream. Two layers. (a) `DefaultLoadErrorHandlingPolicy(5)` on the
+media source factory: ExoPlayer re-tries a failed load ~5 times with
+exponential backoff (~15s of quiet rebuffering) before the error is
+fatal at all. (b) When it does go fatal on a *transport* code
+(connection failed/timeout, IO unspecified, timeout — deliberately NOT
+4xx or a malformed container, which don't improve with time), the
+player waits 2.5s and re-opens the SAME url at the current position,
+twice per stream, before the existing try-the-next-stream walk. Guarded
+on `currentPosition > 0`: a stream that never started isn't stalling,
+it's broken, and walking on immediately is right. The two error classes
+are asserted non-overlapping in tests so the `when` ordering in
+`collectPlayerEvents` isn't load-bearing.

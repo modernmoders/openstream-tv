@@ -28,6 +28,13 @@
         <package android:name="org.videolan.vlc" />
         <package android:name="com.mxtech.videoplayer.pro" />
         <package android:name="com.mxtech.videoplayer.ad" />
+        <!-- Trailer playback (TrailerLauncher): without these, Android 11+
+             package visibility hides them and every trailer falls back to
+             "let the system decide" — which is nothing on a browser-less box. -->
+        <package android:name="com.teamsmart.videomanager.tv" />
+        <package android:name="com.liskovsoft.smarttubetv.beta" />
+        <package android:name="com.google.android.youtube.tv" />
+        <package android:name="com.google.android.youtube" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="video/*" />

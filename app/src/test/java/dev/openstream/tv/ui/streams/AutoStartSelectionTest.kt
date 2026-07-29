@@ -148,4 +148,43 @@ class AutoStartSelectionTest {
         assertTrue(holder.hasNext())
         assertEquals(playable, holder.advance()?.stream)
     }
+
+    // --- The settle-budget escape hatch (owner 2026-07-28: "are we waiting 5
+    // --- seconds before each video is played?"). Once the budget expires the
+    // --- ViewModel picks from whoever answered instead of the slowest host.
+
+    @Test
+    fun `best-among-loaded ignores a still-loading source`() {
+        val groups = listOf(
+            GroupState.Loading(addon("slow")),
+            GroupState.Loaded(addon("fast"), listOf(playable)),
+        )
+        // The settled rule still waits...
+        assertEquals(AutoStartResult.Waiting, bestPlayableWhenSettled(false, groups))
+        // ...but past the budget we go with what's on the table.
+        val found = bestPlayableAmongLoaded(groups) as AutoStartResult.Found
+        assertEquals(playable, found.stream)
+        assertEquals("fast", found.addon.manifestUrl)
+    }
+
+    @Test
+    fun `best-among-loaded returns none while nothing playable has arrived`() {
+        // This is what keeps the ViewModel waiting past the budget rather than
+        // showing a wrong "no streams" card.
+        val groups = listOf(
+            GroupState.Loading(addon("slow")),
+            GroupState.Loaded(addon("empty"), emptyList()),
+        )
+        assertEquals(AutoStartResult.None, bestPlayableAmongLoaded(groups))
+    }
+
+    @Test
+    fun `best-among-loaded still ranks — it drops the wait, not the ordering`() {
+        val groups = listOf(
+            GroupState.Loaded(addon("a"), listOf(torrentOnly, playable)),
+            GroupState.Loading(addon("slow")),
+        )
+        val found = bestPlayableAmongLoaded(groups) as AutoStartResult.Found
+        assertEquals(playable, found.stream) // unplayable torrent-only skipped
+    }
 }

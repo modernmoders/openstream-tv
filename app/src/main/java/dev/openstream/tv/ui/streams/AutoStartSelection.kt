@@ -49,7 +49,26 @@ fun bestPlayableWhenSettled(
     // settled before committing the auto-pick. The "Finding more streams…"
     // state covers the wait; a dead source times out to Failed, so this never
     // hangs. Supersedes the old first-in-addon-order pick.
+    //
+    // The caller puts a deadline on this wait — see StreamListViewModel's
+    // AUTO_START_SETTLE_BUDGET_MS — because one chronically slow instance
+    // (the fortheweebs Backup answers in 10s+) would otherwise set the
+    // start-up delay for EVERY video.
     if (groups.any { it is GroupState.Loading }) return AutoStartResult.Waiting
+    return bestPlayableAmongLoaded(groups, hardwareCodecs, strickenFamilies)
+}
+
+/**
+ * The best stream out of the sources that have answered SO FAR — the same
+ * ranking, just without waiting on stragglers. Used once the settle budget
+ * runs out, so a slow addon delays playback by a bounded amount instead of
+ * however long it feels like taking.
+ */
+fun bestPlayableAmongLoaded(
+    groups: List<GroupState>,
+    hardwareCodecs: Set<VideoCodec> = emptySet(),
+    strickenFamilies: Set<String> = emptySet(),
+): AutoStartResult {
     val top = StreamCascade.mergeForDisplay(loadedAsAddonStreams(groups), hardwareCodecs, strickenFamilies)
         .firstOrNull() ?: return AutoStartResult.None
     val addon = groups.filterIsInstance<GroupState.Loaded>()

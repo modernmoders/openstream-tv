@@ -1,7 +1,5 @@
 package dev.openstream.tv.ui.details
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -183,6 +181,9 @@ private fun DetailsContent(
     onPlayEpisode: (Video) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    // Set when no app on this box could open the trailer link — the button
+    // then says so in plain words instead of silently doing nothing.
+    var trailerLaunchFailed by remember { mutableStateOf(false) }
     // Entry focus. For a resume, scroll the target episode into existence first
     // (a LazyColumn hasn't composed off-screen rows, so its FocusRequester would
     // otherwise throw) then focus it; otherwise focus the default anchor. Runs
@@ -296,24 +297,34 @@ private fun DetailsContent(
                             }
                         )
                     }
-                    val trailer = meta.trailers.firstOrNull()
-                    if (trailer != null) {
-                        val context = LocalContext.current
-                        OutlinedButton(onClick = {
-                            // External, not embedded: a broken/uninstalled
-                            // YouTube app must not dead-end this screen.
-                            runCatching {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(trailer.youtubeUrl))
-                                )
-                            }
-                        }) { Text("Watch trailer") }
-                    }
+                    // Always offered (owner 2026-07-28). With a trailer id in
+                    // the meta it opens that video; without one — the common
+                    // case, Cinemeta sends none — it opens a YouTube search
+                    // for the title, which beats hiding the button entirely.
+                    val context = LocalContext.current
+                    val trailerUrl = meta.trailers.firstOrNull()?.source
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { TrailerLauncher.watchUrl(it) }
+                        ?: TrailerLauncher.searchUrl(meta.name, meta.releaseInfo)
+                    OutlinedButton(onClick = {
+                        // External, not embedded: playing YouTube in-app isn't
+                        // something we can do legitimately, and a missing
+                        // handler must not dead-end this screen.
+                        trailerLaunchFailed = !TrailerLauncher.open(context, trailerUrl)
+                    }) { Text("▶  Trailer") }
                 }
                 if (movieResumable) {
                     ProgressBar(
                         fraction = movieWatch!!.fractionWatched,
                         modifier = Modifier.fillMaxWidth(0.35f),
+                    )
+                }
+                if (trailerLaunchFailed) {
+                    Text(
+                        text = "No app on this box can play the trailer. " +
+                            "Install SmartTube or YouTube and it will work.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedText,
                     )
                 }
                 }
