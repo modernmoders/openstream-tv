@@ -111,8 +111,11 @@ private const val REBUFFER_RING_DELAY_MS = 400L
 @Composable
 fun PlayerScreen(
     onExit: () -> Unit,
-    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
-        { _, _, _, _, _ -> },
+    onOpenStreams: (
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int?,
+    ) -> Unit =
+        { _, _, _, _, _, _ -> },
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -127,14 +130,14 @@ fun PlayerScreen(
             // the viewer out of it (Round 14: "stays where you were").
             val restore = state.restore
             if (restore != null) {
-                onOpenStreams(restore.type, restore.videoId, restore.title, restore.metaId, restore.poster)
+                onOpenStreams(restore.type, restore.videoId, restore.title, restore.metaId, restore.poster, restore.runtimeMin)
             } else {
                 onExit()
             }
         }
     }
     LaunchedEffect(Unit) {
-        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
+        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster, it.runtimeMin) }
     }
     // Remote BACK: during the Up Next countdown, cancel it and stay; otherwise
     // leave the player the SAME way the on-screen exits do (onExit) — in easy

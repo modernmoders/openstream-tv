@@ -70,10 +70,15 @@ object Routes {
     const val DETAILS = "details/{type}/{id}"
     fun details(item: MetaItem) = "details/${Uri.encode(item.type)}/${Uri.encode(item.id)}"
 
-    const val STREAMS = "streams/{type}/{videoId}?title={title}&metaId={metaId}&poster={poster}"
-    fun streams(type: String, videoId: String, title: String, metaId: String, poster: String?) =
+    const val STREAMS =
+        "streams/{type}/{videoId}?title={title}&metaId={metaId}&poster={poster}&runtimeMin={runtimeMin}"
+    fun streams(
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int? = null,
+    ) =
         "streams/${Uri.encode(type)}/${Uri.encode(videoId)}?title=${Uri.encode(title)}" +
-            "&metaId=${Uri.encode(metaId)}&poster=${Uri.encode(poster.orEmpty())}"
+            "&metaId=${Uri.encode(metaId)}&poster=${Uri.encode(poster.orEmpty())}" +
+            "&runtimeMin=${runtimeMin ?: ""}"
 
     /** Source arrives via CurrentPlayback, not route args (see that class). */
     const val PLAYER = "player"
@@ -258,8 +263,8 @@ fun AppNavHost(
         composable(Routes.DETAILS) {
             DetailsScreen(
                 onBack = goBack,
-                onOpenStreams = { type, videoId, title, metaId, poster ->
-                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster))
+                onOpenStreams = { type, videoId, title, metaId, poster, runtimeMin ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster, runtimeMin))
                 },
             )
         }
@@ -270,8 +275,8 @@ fun AppNavHost(
                 // External-player autoplay's manual fallback (§7.1.6): REPLACE
                 // this episode's list with the next episode's, mirroring the
                 // player's behavior — Back must not walk a binge's whole tail.
-                onOpenStreams = { type, videoId, title, metaId, poster ->
-                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
+                onOpenStreams = { type, videoId, title, metaId, poster, runtimeMin ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster, runtimeMin)) {
                         popUpTo(Routes.STREAMS) { inclusive = true }
                     }
                 },
@@ -301,8 +306,8 @@ fun AppNavHost(
                 // (owner report). The player always sits on top of a Streams
                 // entry, so popping to STREAMS inclusive removes exactly the
                 // player + the outgoing list.
-                onOpenStreams = { type, videoId, title, metaId, poster ->
-                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
+                onOpenStreams = { type, videoId, title, metaId, poster, runtimeMin ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster, runtimeMin)) {
                         popUpTo(Routes.STREAMS) { inclusive = true }
                     }
                 },

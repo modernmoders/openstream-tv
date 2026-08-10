@@ -89,6 +89,10 @@ class StreamListViewModel @Inject constructor(
     private val metaId: String = savedStateHandle.get<String>("metaId")?.ifBlank { null } ?: videoId
     private val poster: String? = savedStateHandle.get<String>("poster")?.ifBlank { null }
 
+    /** Declared runtime (minutes) from the Details meta; null = unknown. Rides
+     *  into PlaybackRequest for the player's junk-file length check. */
+    private val expectedRuntimeMin: Int? = savedStateHandle.get<String>("runtimeMin")?.toIntOrNull()
+
     /** Progress key for this video (§8.4): opaque, addon-kind for now. */
     private val mediaRef = MediaRef.addon(videoId)
 
@@ -148,7 +152,12 @@ class StreamListViewModel @Inject constructor(
     private val _launchExternal = MutableSharedFlow<Intent>(extraBufferCapacity = 1)
 
     /** Autoplay gave up (§7.1 step 4): replace this screen with the next episode's list. */
-    data class OpenStreams(val type: String, val videoId: String, val title: String, val metaId: String, val poster: String?)
+    data class OpenStreams(
+        val type: String, val videoId: String, val title: String, val metaId: String,
+        val poster: String?,
+        /** Same series, same typical episode length — the runtime rides along. */
+        val runtimeMin: Int? = null,
+    )
     val openStreams: SharedFlow<OpenStreams> get() = _openStreams
     private val _openStreams = MutableSharedFlow<OpenStreams>(extraBufferCapacity = 1)
 
@@ -214,6 +223,7 @@ class StreamListViewModel @Inject constructor(
             poster = poster,
             addonSubtitles = addonSubtitles,
             autoSelected = autoSelected,
+            expectedRuntimeMin = expectedRuntimeMin,
         )
         // Autoplay's tier-1/2 ranking context (§7.1) — which addon, which stream
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
@@ -434,7 +444,7 @@ class StreamListViewModel @Inject constructor(
                     is AutoplayController.Command.Play ->
                         launchNextExternally(command.next, command.candidate)
                     is AutoplayController.Command.OpenStreamList -> _openStreams.tryEmit(
-                        OpenStreams(type, command.next.id, episodeTitle(command.next), metaId, poster)
+                        OpenStreams(type, command.next.id, episodeTitle(command.next), metaId, poster, expectedRuntimeMin)
                     )
                 }
             }

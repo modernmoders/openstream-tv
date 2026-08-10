@@ -55,6 +55,7 @@ import dev.openstream.tv.addon.Video
 import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.player.parseRuntimeMinutes
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.ProgressRing
@@ -77,7 +78,10 @@ import dev.openstream.tv.ui.theme.MutedText
 @Composable
 fun DetailsScreen(
     onBack: () -> Unit,
-    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit,
+    onOpenStreams: (
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int?,
+    ) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -145,6 +149,7 @@ fun DetailsScreen(
                     onOpenStreams(
                         viewModel.type, viewModel.id, state.meta!!.name,
                         viewModel.id, state.meta!!.poster,
+                        parseRuntimeMinutes(state.meta!!.runtime),
                     )
                 },
                 onPlayEpisode = { video ->
@@ -152,6 +157,9 @@ fun DetailsScreen(
                     onOpenStreams(
                         viewModel.type, video.id, video.displayTitle,
                         viewModel.id, state.meta!!.poster,
+                        // Metas carry no per-episode runtime; the series-level
+                        // one (typical episode length) feeds the length check.
+                        parseRuntimeMinutes(state.meta!!.runtime),
                     )
                 },
             )

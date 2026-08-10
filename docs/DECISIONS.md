@@ -2228,3 +2228,35 @@ on `currentPosition > 0`: a stream that never started isn't stalling,
 it's broken, and walking on immediately is right. The two error classes
 are asserted non-overlapping in tests so the `when` ordering in
 `collectPlayerEvents` isn't load-bearing.
+
+## 71. 2026-08-09 (session 44) — Junk-file skip: length as ground truth, never pixels
+
+**Post-open length check (`verifyPlausibleLength`, `StreamLength.kt`).**
+Owner: some streams are a solid-color card with text — they play
+"successfully", end in seconds, mark the episode watched, and fire the
+next-episode flow ("it'll skip to the end of the episode"). Detecting
+the *picture* (frame analysis) was rejected: heavy, decoder-dependent,
+and unnecessary — the reliable tell is that the opened file is far
+shorter than the content could be. On `PlayerEvent.Ready` (the same
+hook as the English-audio ground truth) an AUTO-picked stream is junk
+when its real duration is under an absolute floor (3 min — shortest
+real content ≈ 7-min kids' episodes, placeholders are 10s–2min) OR
+under HALF the metadata's declared runtime. Junk = skip to the next
+ranked stream + strike the release family (the same placeholder shows
+up under every episode), exactly the language-walk pattern: manual
+Expert picks exempt, `MAX_JUNK_SKIPS` = 4 per episode then accept
+(a wrong declared runtime must not walk the whole list), once per
+opened URL. Length runs BEFORE the audio check — a placeholder's audio
+language is irrelevant, and a switch lets the new stream's Ready re-run
+both.
+
+**Runtime plumbing (`expectedRuntimeMin`).** Stremio metas carry
+runtime only as a free-form string on the meta ("45 min", "1h 41min",
+"2h", bare "148") and never per-episode — `parseRuntimeMinutes` parses
+it at the Details screen and the minutes ride the streams route
+(`runtimeMin` nav arg) → `PlaybackRequest` → episode advances/restores.
+For series it's the typical episode length; the half-of-expected margin
+absorbs specials and cut differences. Unknown runtime degrades to the
+absolute floor only. Live types (channel/tv) are never judged by
+length (§8) — and their durations are unset anyway, which
+`isImplausiblyShort` already treats as proof of nothing.

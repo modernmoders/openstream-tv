@@ -35,6 +35,7 @@ import dev.openstream.tv.player.buildExternalLaunch
 import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
+import dev.openstream.tv.player.isImplausiblyShort
 import dev.openstream.tv.player.rememberedLanguage
 import dev.openstream.tv.player.skip.AutoSkipAction
 import dev.openstream.tv.player.skip.SkipSegment
@@ -67,6 +68,10 @@ private const val MAX_ERROR_SKIPS = 3
 /** No-English-audio streams auto-skipped per episode before we accept what's
  *  playing (a title with no dub at all must not walk the whole list). */
 private const val MAX_LANGUAGE_SKIPS = 4
+
+/** Junk-length streams auto-skipped per episode before we accept what's
+ *  playing — a wrong declared runtime must not walk the whole list. */
+private const val MAX_JUNK_SKIPS = 4
 
 /** Auto-advance on credits: the countdown card appears the moment the
  *  credits window opens and its timer runs the WHOLE wait (owner 2026-07-27:
@@ -164,7 +169,12 @@ class PlayerViewModel @Inject constructor(
     val autoplayState: StateFlow<AutoplayStateMachine.State?> = autoplay.state
 
     /** Where to land when autoplay gives up: the next episode's stream list. */
-    data class OpenStreams(val type: String, val videoId: String, val title: String, val metaId: String, val poster: String?)
+    data class OpenStreams(
+        val type: String, val videoId: String, val title: String, val metaId: String,
+        val poster: String?,
+        /** Same series, same typical episode length — the runtime rides along. */
+        val runtimeMin: Int? = null,
+    )
     val openStreams: SharedFlow<OpenStreams> get() = _openStreams
     private val _openStreams = MutableSharedFlow<OpenStreams>(extraBufferCapacity = 1)
 
@@ -293,9 +303,12 @@ class PlayerViewModel @Inject constructor(
                     errorSkips = 0
                     _uiState.value = _uiState.value.copy(switching = false)
                     autoplay.onPlaybackReady()
-                    // The opened file's ACTUAL audio tracks are readable now —
-                    // ground truth the pre-open label guessing can't give us.
-                    verifyEnglishAudio(engine)
+                    // The opened file's ACTUAL duration and audio tracks are
+                    // readable now — ground truth the pre-open label guessing
+                    // can't give us. Length first: a junk placeholder's audio
+                    // language is irrelevant, and a switch makes the new
+                    // stream's own Ready re-run both checks.
+                    if (verifyPlausibleLength(engine)) verifyEnglishAudio(engine)
                 }
                 is PlayerEvent.Ended -> {
                     // Finished: record it as watched (position == duration) so
@@ -357,7 +370,10 @@ class PlayerViewModel @Inject constructor(
                 is AutoplayController.Command.OpenStreamList -> {
                     val req = request ?: return@collect
                     _openStreams.tryEmit(
-                        OpenStreams(req.metaType, command.next.id, episodeTitle(command.next), req.metaId, req.poster)
+                        OpenStreams(
+                            req.metaType, command.next.id, episodeTitle(command.next),
+                            req.metaId, req.poster, req.expectedRuntimeMin,
+                        )
                     )
                 }
             }
@@ -374,6 +390,7 @@ class PlayerViewModel @Inject constructor(
             savedState[KEY_RESTORE_TITLE] = req.source.title
             savedState[KEY_RESTORE_META] = req.metaId
             savedState[KEY_RESTORE_POSTER] = req.poster
+            savedState[KEY_RESTORE_RUNTIME] = req.expectedRuntimeMin
         }
     }
 
@@ -387,6 +404,7 @@ class PlayerViewModel @Inject constructor(
             title = savedState.get<String>(KEY_RESTORE_TITLE).orEmpty(),
             metaId = savedState.get<String>(KEY_RESTORE_META).orEmpty(),
             poster = savedState.get<String>(KEY_RESTORE_POSTER),
+            runtimeMin = savedState.get<Int>(KEY_RESTORE_RUNTIME),
         )
     }
 
@@ -405,11 +423,14 @@ class PlayerViewModel @Inject constructor(
             metaType = req.metaType,
             poster = req.poster,
             autoSelected = true, // autoplay's pick, not a person's
+            expectedRuntimeMin = req.expectedRuntimeMin, // same series, same typical length
         )
-        // Fresh episode: the language-skip budget and the once-per-file
-        // audio check start over.
+        // Fresh episode: the language/junk skip budgets and the once-per-file
+        // audio and length checks start over.
         languageSkips = 0
         audioCheckedUrl = null
+        junkSkips = 0
+        lengthCheckedUrl = null
         request = newRequest
         currentPlayback.request = newRequest
         stashRestore(newRequest) // restore must land on THIS episode, not the binge's first
@@ -691,6 +712,59 @@ class PlayerViewModel @Inject constructor(
         val se = if (next.season != null && next.episode != null) "Season ${next.season} · Episode ${next.episode}" else null
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { request?.source?.title.orEmpty() }
+    }
+
+    /** The stream URL already length-checked — Ready re-fires after every
+     *  seek/rebuffer and the check must run once per opened file. */
+    private var lengthCheckedUrl: String? = null
+
+    /** Junk-length skips used on the CURRENT episode (reset per episode). */
+    private var junkSkips = 0
+
+    /**
+     * Post-open junk-file check (owner 2026-08-09: the solid-color card that
+     * "skips to the end of the episode"). Placeholder files play fine but are
+     * seconds-to-minutes long — they used to end instantly, mark the episode
+     * watched, and fire the next-episode flow. Once ExoPlayer has opened the
+     * file its real duration is known: an AUTO-picked stream implausibly
+     * shorter than the metadata's runtime (see StreamLength.kt) is quietly
+     * skipped and its release family struck, exactly like the English-audio
+     * walk. Manual Expert picks are never second-guessed; live types are
+     * never judged by length (§8); after [MAX_JUNK_SKIPS] we accept what
+     * plays. Returns false when a switch was started — the caller must skip
+     * the audio check, the next stream's Ready re-runs everything.
+     */
+    private fun verifyPlausibleLength(engine: ExoPlayerEngine): Boolean {
+        val req = request ?: return true
+        if (!req.autoSelected) return true
+        if (req.metaType != "movie" && req.metaType != "series") return true
+        if (lengthCheckedUrl == req.source.url) return true
+        lengthCheckedUrl = req.source.url
+        val durationMs = engine.exoPlayer.duration
+        if (!isImplausiblyShort(durationMs, req.expectedRuntimeMin)) return true
+        val facts = "only ${durationMs / 60_000}m ${durationMs / 1000 % 60}s long" +
+            (req.expectedRuntimeMin?.let { " (expected ~${it} min)" } ?: "")
+        if (junkSkips >= MAX_JUNK_SKIPS) {
+            diagnostics.record(
+                "streams",
+                "\"${_uiState.value.title}\": opened file is $facts — " +
+                    "skip limit reached, keeping this stream",
+            )
+            return true
+        }
+        diagnostics.record(
+            "streams",
+            "\"${_uiState.value.title}\": opened file is $facts — " +
+                "junk placeholder, trying the next stream",
+        )
+        // Remember this encode for the SERIES: the same placeholder usually
+        // shows up under every episode's stream list.
+        autoplayOrigin.origin?.stream?.let {
+            familyMemory.recordStrikeAsync(req.metaId, it, "junk file ($facts)")
+        }
+        if (!tryNextStream()) return true // list exhausted: what plays, plays
+        junkSkips++
+        return false
     }
 
     /** The stream URL already language-checked — Ready re-fires after every
@@ -1009,5 +1083,6 @@ class PlayerViewModel @Inject constructor(
         const val KEY_RESTORE_TITLE = "restore.title"
         const val KEY_RESTORE_META = "restore.metaId"
         const val KEY_RESTORE_POSTER = "restore.poster"
+        const val KEY_RESTORE_RUNTIME = "restore.runtimeMin"
     }
 }

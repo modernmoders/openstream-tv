@@ -33,6 +33,15 @@ data class PlaybackRequest(
      * audio track is silently skipped; a deliberate manual pick never is.
      */
     val autoSelected: Boolean = false,
+    /**
+     * The metadata's declared runtime in minutes (Cinemeta/AIOMetadata
+     * `runtime`), plumbed from the Details screen; null = unknown. Feeds the
+     * post-open junk-file length check (see StreamLength.kt) — an auto-picked
+     * "episode" that opens far shorter than this is a placeholder card, not
+     * the show. For series it's the typical episode length (metas carry no
+     * per-episode runtime), which the half-of-expected margin absorbs.
+     */
+    val expectedRuntimeMin: Int? = null,
 )
 
 /**

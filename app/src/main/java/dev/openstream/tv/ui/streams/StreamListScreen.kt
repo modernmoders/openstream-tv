@@ -80,8 +80,11 @@ import dev.openstream.tv.ui.theme.MutedText
 fun StreamListScreen(
     onBack: () -> Unit = {},
     onPlay: () -> Unit = {},
-    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
-        { _, _, _, _, _ -> },
+    onOpenStreams: (
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int?,
+    ) -> Unit =
+        { _, _, _, _, _, _ -> },
     viewModel: StreamListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -149,7 +152,7 @@ fun StreamListScreen(
     LaunchedEffect(Unit) { viewModel.launchExternal.collect(::fireExternal) }
     LaunchedEffect(Unit) {
         // Autoplay gave up → next episode's manual stream list replaces this one
-        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
+        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster, it.runtimeMin) }
     }
     // Back cancels the Up Next flow instead of leaving the screen (§7.1 step 4a)
     BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
