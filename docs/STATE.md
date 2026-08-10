@@ -1,3 +1,46 @@
+# STATE — updated 2026-08-09 by session 44 (cont.)
+
+## ⚠️ SESSION 44 cont. (2026-08-09) — alpha.63 PUBLISHED OTA + director's-cut rank-down rollout (partial, auto-retrying)
+
+- **alpha.63 (versionCode 63) PUBLISHED OTA** (owner believed he was
+  "on 63" — it hadn't been cut; published so it's true): assembleRelease
+  → tools/publish_update.sh, version.json offers 63, readback verified,
+  sstreams-latest.apk refreshed, hosted sha256 == local. Carries the
+  junk-file skip (DECISIONS #71). Boxes self-offer on next launch
+  (LEFT then OK).
+- **DIRECTOR'S-CUT RANK-DOWN (owner: "take them down") — built + partly
+  live.** New tool `StremioSurfer/rank_down_cuts.py` appends a
+  rankedStreamExpressions entry (marker `/*#Theatrical first*/`,
+  score -20000, keywords: directors cut / extended / ultimate cut /
+  final cut / unrated / uncut / special edition / redux on
+  filename,folderName) to every non-Rachael AIOStreams config.
+  Idempotent; `--remove` undoes; pre-write backups in
+  config_backups/2026-08-09/*.pre-cutrank.json. VERIFIED on Kingdom of
+  Heaven tt0320661: unedited primary auto-picked the Extended 1080p #1;
+  edited nightly ranks theatrical first, Director's Cut near bottom.
+  Limitation (accepted): score sorts after resolution/quality in the
+  Tamtaro sortCriteria, so a 4K-only DC still beats a 1080p theatrical.
+- **ROLLOUT STATUS at checkpoint: all 10 backups DONE (fortheweebs),
+  adam nightly DONE, Mike + Clarence primary DONE. The rest are BLOCKED
+  by a Debridio Watchtower outage** — AIOStreams re-validates every
+  enabled preset on save and refuses ANY write while Watchtower's
+  manifest won't fetch (intermittent per instance). Also hit removed-
+  preset save-blockers: 'USA TV' AND 'TorBox' ("<name> has been
+  removed") — the tool drops the named preset and retries (toggle_rd
+  pattern). A background retry loop is re-running `rank_down_cuts.py
+  --all` every 10 min (max 12 passes) on this Mac. Check status any
+  time: `python3 ~/Documents/Claude/StremioSurfer/rank_down_cuts.py
+  --all --dry-run` (todo slots print WOULD write).
+
+⏳ **NEXT ACTION (cont.):** (a) If the retry loop didn't finish: rerun
+`python3 ~/Documents/Claude/StremioSurfer/rank_down_cuts.py --all`
+until exit 0 (idempotent; Watchtower outage is the only blocker).
+(b) Owner: both boxes take alpha.63 (LEFT then OK) — junk placeholder
+files then self-skip (App log: "junk placeholder"). (c) Session-43
+leftovers stand (Tamtaro 3.0.2 template re-export; fortheweebs Backup
+retirement question).
+
+# (previous head follows)
 # STATE — updated 2026-08-09 by session 44
 
 ## ⚠️ SESSION 44 (2026-08-09) — Junk-file skip built (solid-color placeholder streams)
