@@ -1,3 +1,47 @@
+# STATE — updated 2026-08-09 by session 44
+
+## ⚠️ SESSION 44 (2026-08-09) — Junk-file skip built (solid-color placeholder streams)
+
+- **Owner Q answered:** buffer-before-switching IS live — shipped in
+  alpha.62 (session 43, commit e250ec9). If his box still jumps streams
+  on a mere buffer, the box hasn't taken 62 (LEFT then OK).
+- **JUNK-FILE SKIP BUILT (owner: "a screen that's a solid color… it'll
+  skip to the end of the episode"), commit 5c9bb38, DECISIONS #71.**
+  Those are placeholder files seconds-to-minutes long; they used to end
+  instantly, mark the episode watched, and fire next-episode. Now on
+  PlayerEvent.Ready (same hook as the English-audio ground truth) an
+  AUTO-picked file implausibly short — under 3 min absolute, or under
+  HALF the meta's declared runtime — is quietly skipped to the next
+  ranked stream and its release family struck. Manual Expert picks
+  exempt; MAX_JUNK_SKIPS=4 per episode then accept; live types never
+  judged (§8). New StreamLength.kt (parseRuntimeMinutes +
+  isImplausiblyShort); runtime plumbed Details → streams route
+  (`runtimeMin` nav arg) → PlaybackRequest.expectedRuntimeMin →
+  episode advances/restores. App log: "[streams] … junk placeholder,
+  trying the next stream".
+- **Gates green: assembleDebug + testDebugUnitTest, 416 tests
+  (10 new StreamLengthTest), 0 failures.** NOT emulator-verified (no
+  junk file to reproduce on demand); NOT OTA-published — rides the next
+  alpha on owner's word. Box logs will show the [streams] junk lines in
+  real watching.
+- **Also this session (advisory, nothing changed):** director's-cut
+  avoidance question — recommended AIOStreams ranked/preferred stream
+  expressions (rank down "directors cut"/"extended"/etc.) over hard
+  Excluded Keywords; owner hasn't picked a direction yet.
+- Owner's untracked app/Logo Options-selection.png left untracked on
+  purpose (his file, not this session's work).
+
+⏳ **NEXT ACTION:** (a) On owner's word: cut alpha.63 (versionCode 63)
+via assembleRelease → tools/publish_update.sh (carries the junk-file
+skip). (b) Owner: confirm both boxes are on alpha.62+ (buffer fix);
+after 63, junk placeholders should self-skip — check App log for
+"junk placeholder" lines if one slips through. (c) Owner: answer the
+director's-cut question (rank down vs block — then I edit the live
+AIOStreams configs, Rachael excluded). (d) Session-43 leftovers stand:
+Tamtaro 3.0.2 template re-export + push_aiostreams rollout; consider
+retiring the fortheweebs Backup instance.
+
+# (previous head follows)
 # STATE — updated 2026-07-28 by session 43
 
 ## ⚠️ SESSION 43 (2026-07-28) — Subscription/password links LIVE + 4 owner app asks built
