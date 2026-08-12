@@ -32,13 +32,28 @@
   time: `python3 ~/Documents/Claude/StremioSurfer/rank_down_cuts.py
   --all --dry-run` (todo slots print WOULD write).
 
-⏳ **NEXT ACTION (cont.):** (a) If the retry loop didn't finish: rerun
-`python3 ~/Documents/Claude/StremioSurfer/rank_down_cuts.py --all`
-until exit 0 (idempotent; Watchtower outage is the only blocker).
-(b) Owner: both boxes take alpha.63 (LEFT then OK) — junk placeholder
-files then self-skip (App log: "junk placeholder"). (c) Session-43
-leftovers stand (Tamtaro 3.0.2 template re-export; fortheweebs Backup
-retirement question).
+- **ROLLOUT COMPLETE 2026-08-11: 33/33 slots verified DONE** (11 users
+  × 3 instances, Rachael excluded). Root cause of the save-blocker
+  found: **Debridio Watchtower's domain wt-addon.debridio.com is
+  NXDOMAIN** (~40h observed; debridio.com still sells WatchTower) —
+  AIOStreams re-validates every enabled preset on save, so the dead
+  domain vetoed all writes AND its stream fan-outs were failing anyway.
+  Fix: rank_down_cuts.py `--disable-dead-watchtower` DISABLES (never
+  drops — key kept) the preset when it blocks a save. **Watchtower now
+  disabled on 20/33 slots; 13 saved earlier still have it enabled**
+  (their next config save will hit the same wall — use the flag).
+  Dead 'USA TV' + 'TorBox' presets (instance-removed types) were
+  dropped from several configs by the standard self-heal. Live-verified
+  post-rollout: adam primary tt0320661 top-8 = theatrical only (was
+  Extended #1 / Directors Cut #2); a "DC"-abbreviated file can still
+  appear mid-list ('dc' keyword deliberately skipped — DC Comics).
+⏳ **NEXT ACTION (cont.):** (a) Owner: both boxes take alpha.63 (LEFT
+then OK) — junk placeholder files then self-skip (App log: "junk
+placeholder"). (b) If Debridio revives Watchtower
+(wt-addon.debridio.com resolves again): re-enable the preset on the 20
+disabled slots (flip enabled=true; list via rank_down_cuts.py-style
+GET sweep). (c) Session-43 leftovers stand (Tamtaro 3.0.2 template
+re-export; fortheweebs Backup retirement question).
 
 # (previous head follows)
 # STATE — updated 2026-08-09 by session 44
