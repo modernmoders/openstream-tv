@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import dev.openstream.tv.domain.PlayableSource
 import dev.openstream.tv.domain.VideoCodec
 import dev.openstream.tv.domain.hardwareDecodable
@@ -91,6 +92,14 @@ class ExoPlayerEngine(
         .setRenderersFactory(renderersFactory)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(DefaultDataSource.Factory(context, httpFactory))
+                // A debrid host that stutters mid-movie should be waited out,
+                // not abandoned (owner 2026-07-28). Media3's default gives a
+                // load 3 tries with exponential backoff (~1s, 2s, 4s) before
+                // the error turns fatal and PlayerViewModel walks to another
+                // stream; 5 stretches that to ~15s of quiet re-buffering,
+                // which covers the outages the owner's boxes actually see.
+                // Higher would just make a genuinely dead link feel hung.
+                .setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(5))
         )
         .setLoadControl(
             DefaultLoadControl.Builder()
@@ -172,6 +181,7 @@ class ExoPlayerEngine(
                         error.toPlainLanguage(),
                         "${error.errorCodeName}$cause",
                         isDecodeError = isDecodeErrorCode(error.errorCode),
+                        isNetworkError = isNetworkErrorCode(error.errorCode),
                     )
                 )
             }
@@ -196,10 +206,15 @@ class ExoPlayerEngine(
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
         PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED ->
             "This stream's file is damaged or not really a video"
+        PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+        PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED ->
+            "This video is packaged in a way this TV can't open"
         PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
         PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ->
             "This device can't decode this video format"
-        else -> "Playback failed (${errorCodeName.removePrefix("ERROR_CODE_")})"
+        // Whatever the reason, the viewer never sees raw error-code jargon —
+        // the Expert App log line carries the exact code for whoever debugs.
+        else -> "This video won't play on this TV"
     }
 
     private fun guessSubtitleMime(url: String): String = when {

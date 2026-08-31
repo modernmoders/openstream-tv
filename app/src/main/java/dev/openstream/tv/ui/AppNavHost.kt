@@ -42,6 +42,7 @@ import dev.openstream.tv.ui.search.SearchScreen
 import dev.openstream.tv.ui.settings.AppLogScreen
 import dev.openstream.tv.ui.settings.HomeRowsScreen
 import dev.openstream.tv.ui.settings.PosterSizeScreen
+import dev.openstream.tv.ui.settings.SubtitleStyleScreen
 import dev.openstream.tv.ui.settings.SettingsScreen
 import dev.openstream.tv.ui.streams.StreamListScreen
 
@@ -61,6 +62,8 @@ object Routes {
     const val SETTINGS_HOME_ROWS = "settings/home-rows"
     /** Poster density with a live preview picture (round 20 #7). */
     const val SETTINGS_POSTER_SIZE = "settings/poster-size"
+    /** Subtitle size/colour/backdrop with a live sample frame (owner 2026-08-30). */
+    const val SETTINGS_SUBTITLES = "settings/subtitles"
     /** Expert-mode diagnostics viewer (MASTER_PLAN §10 "log them"). */
     const val SETTINGS_APP_LOG = "settings/app-log"
     /** Welcome Guide + type-your-name setup (owner directive 2026-07-06). */
@@ -70,10 +73,15 @@ object Routes {
     const val DETAILS = "details/{type}/{id}"
     fun details(item: MetaItem) = "details/${Uri.encode(item.type)}/${Uri.encode(item.id)}"
 
-    const val STREAMS = "streams/{type}/{videoId}?title={title}&metaId={metaId}&poster={poster}"
-    fun streams(type: String, videoId: String, title: String, metaId: String, poster: String?) =
+    const val STREAMS =
+        "streams/{type}/{videoId}?title={title}&metaId={metaId}&poster={poster}&runtimeMin={runtimeMin}"
+    fun streams(
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int? = null,
+    ) =
         "streams/${Uri.encode(type)}/${Uri.encode(videoId)}?title=${Uri.encode(title)}" +
-            "&metaId=${Uri.encode(metaId)}&poster=${Uri.encode(poster.orEmpty())}"
+            "&metaId=${Uri.encode(metaId)}&poster=${Uri.encode(poster.orEmpty())}" +
+            "&runtimeMin=${runtimeMin ?: ""}"
 
     /** Source arrives via CurrentPlayback, not route args (see that class). */
     const val PLAYER = "player"
@@ -104,30 +112,24 @@ fun AppNavHost(
         true -> Routes.CONNECT
         false -> Routes.HOME
     }
-    // Easy vs Expert mode (owner round 10 — DECISIONS #27 default OFF):
-    // gates two navigation shapes below. Expert mode keeps every shortcut a
-    // technical user already relies on; easy mode never strands a viewer on
-    // a raw, addon-labelled screen.
-    val expertMode by launchViewModel.expertMode.collectAsStateWithLifecycle()
+    // Stream rows visible at all (Expert mode + its "Show streams" toggle) —
+    // decides whether Back from the player pops through the stream screen.
+    val streamListVisible by launchViewModel.streamListVisible.collectAsStateWithLifecycle()
     val navController = rememberNavController()
-    // Expert mode: movies skip the details screen (it held exactly one
-    // action, "View streams" — an extra step, 2026-07-05 round 5) straight to
-    // the stream list. Easy mode instead opens a proper Info screen first
-    // (owner round 10: backdrop, description, rating, cast, a big Play CTA,
-    // an optional trailer button) — DetailsScreen already renders all of
-    // that for series, so movies now share the same screen instead of a
-    // second one (KISS). Series/channels always need Details for season &
-    // episode picking either way. For a movie the meta id IS the video id
-    // (§4.1 stream addressing).
+    // Every poster click opens the Info screen: backdrop, description,
+    // rating, cast, a Play CTA and a trailer button for movies; season and
+    // episode picking for series. DetailsScreen renders both shapes, so
+    // movies and series share one screen (KISS). For a movie the meta id IS
+    // the video id (§4.1 stream addressing).
     val openDetails: (MetaItem) -> Unit = { item ->
-        val isMovie = item.type.equals("movie", ignoreCase = true)
-        if (isMovie && expertMode) {
-            navController.navigate(
-                Routes.streams(item.type, item.id, item.name, item.id, item.poster)
-            )
-        } else {
-            navController.navigate(Routes.details(item))
-        }
+        // EVERY click lands on the Info screen now, Expert or not (owner
+        // 2026-07-28: "when clicking on a movie, it should bring up the
+        // information screen about that movie"). Expert mode used to skip
+        // straight to streams for movies, which — since the stream list went
+        // hidden-by-default in session 41 — meant a click just started
+        // playing with no chance to read anything about the film first.
+        // Play is still one press away: it's the focused button on arrival.
+        navController.navigate(Routes.details(item))
     }
     // On-screen Back buttons (§10 elder-friendly) share the remote's semantics.
     val goBack: () -> Unit = { navController.popBackStack() }
@@ -222,6 +224,7 @@ fun AppNavHost(
                 onBack = goBack,
                 onHomeRows = { navController.navigate(Routes.SETTINGS_HOME_ROWS) },
                 onPosterSize = { navController.navigate(Routes.SETTINGS_POSTER_SIZE) },
+                onSubtitles = { navController.navigate(Routes.SETTINGS_SUBTITLES) },
                 onAddons = { navController.navigate(Routes.ADDONS) },
                 onAppLog = { navController.navigate(Routes.SETTINGS_APP_LOG) },
                 // "Reset this TV": land on Welcome/Connect with a clean back
@@ -237,6 +240,9 @@ fun AppNavHost(
         }
         composable(Routes.SETTINGS_POSTER_SIZE) {
             PosterSizeScreen(onBack = goBack)
+        }
+        composable(Routes.SETTINGS_SUBTITLES) {
+            SubtitleStyleScreen(onBack = goBack)
         }
         composable(Routes.SETTINGS_APP_LOG) {
             AppLogScreen(onBack = goBack)
@@ -264,8 +270,8 @@ fun AppNavHost(
         composable(Routes.DETAILS) {
             DetailsScreen(
                 onBack = goBack,
-                onOpenStreams = { type, videoId, title, metaId, poster ->
-                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster))
+                onOpenStreams = { type, videoId, title, metaId, poster, runtimeMin ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster, runtimeMin))
                 },
             )
         }
@@ -276,8 +282,8 @@ fun AppNavHost(
                 // External-player autoplay's manual fallback (§7.1.6): REPLACE
                 // this episode's list with the next episode's, mirroring the
                 // player's behavior — Back must not walk a binge's whole tail.
-                onOpenStreams = { type, videoId, title, metaId, poster ->
-                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
+                onOpenStreams = { type, videoId, title, metaId, poster, runtimeMin ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster, runtimeMin)) {
                         popUpTo(Routes.STREAMS) { inclusive = true }
                     }
                 },
@@ -285,26 +291,31 @@ fun AppNavHost(
         }
         composable(Routes.PLAYER) {
             PlayerScreen(
-                // Easy mode (owner round 10): BACK from the player must land
-                // back on Details/episode-selection, never strand the viewer
-                // on the raw stream list — pop THROUGH the Streams entry
-                // instead of just one level. Expert mode keeps the original
-                // single-pop-to-streams behavior (it's a deliberately
-                // technical surface there). popBackStack(route, inclusive)
-                // is a no-op (returns false) if Streams somehow isn't on the
-                // stack — falling back to a plain pop keeps Back from ever
-                // doing nothing.
+                // BACK from the player must land back on Details/episode-
+                // selection, never strand the viewer on the raw stream list —
+                // pop THROUGH the Streams entry instead of just one level.
+                // Only when the stream rows are actually visible (Expert mode
+                // + "Show streams", owner 2026-07-26) does Back stop on the
+                // stream list. popBackStack(route, inclusive) is a no-op
+                // (returns false) if Streams somehow isn't on the stack —
+                // falling back to a plain pop keeps Back from ever doing
+                // nothing.
                 onExit = {
-                    val poppedThroughStreams = !expertMode &&
+                    val poppedThroughStreams = !streamListVisible &&
                         navController.popBackStack(Routes.STREAMS, inclusive = true)
                     if (!poppedThroughStreams) navController.popBackStack()
                 },
                 // Autoplay's manual fallback (§7.1 step 4): REPLACE the player
-                // with the next episode's stream list, so Back from there goes
-                // to the previous episode's list — not a dead ended player.
-                onOpenStreams = { type, videoId, title, metaId, poster ->
-                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster)) {
-                        popUpTo(Routes.PLAYER) { inclusive = true }
+                // AND the finished episode's stream list with the next
+                // episode's list. Popping only the player (pre-2026-07-26)
+                // left one stale stream list behind PER EPISODE WATCHED, so
+                // backing out later walked a pile of old stream selections
+                // (owner report). The player always sits on top of a Streams
+                // entry, so popping to STREAMS inclusive removes exactly the
+                // player + the outgoing list.
+                onOpenStreams = { type, videoId, title, metaId, poster, runtimeMin ->
+                    navController.navigate(Routes.streams(type, videoId, title, metaId, poster, runtimeMin)) {
+                        popUpTo(Routes.STREAMS) { inclusive = true }
                     }
                 },
             )

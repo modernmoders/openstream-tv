@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.openstream.tv.addon.AddonRepository
+import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.SetupConfig
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.ui.search.VoiceSearchTrigger
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.take
@@ -24,6 +26,7 @@ class LaunchViewModel @Inject constructor(
     repository: AddonRepository,
     config: SetupConfig,
     viewPrefs: ViewPrefs,
+    playbackPrefs: PlaybackPrefs,
     private val voiceSearchTrigger: VoiceSearchTrigger,
 ) : ViewModel() {
 
@@ -51,5 +54,16 @@ class LaunchViewModel @Inject constructor(
      * DataStore value arrives.
      */
     val expertMode: StateFlow<Boolean> = viewPrefs.expertMode
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /**
+     * Whether the raw stream list screen ever shows its rows (owner
+     * 2026-07-26): Expert mode AND the Expert-settings "Show streams" toggle,
+     * both on. AppNavHost needs it for the same reason as [expertMode] —
+     * when the rows are hidden, Back from the player must pop THROUGH the
+     * (invisible) stream screen, exactly like easy mode.
+     */
+    val streamListVisible: StateFlow<Boolean> = viewPrefs.expertMode
+        .combine(playbackPrefs.showStreamList) { expert, show -> expert && show }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 }

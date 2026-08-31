@@ -2055,3 +2055,290 @@ asks; the non-obvious choices:
    different video id, and prefetching its addon subtitles ahead of the
    Up Next countdown wasn't in scope for this pass. Behavior there is
    unchanged from before this session, not worse.
+
+## 67. 2026-07-22 (session 40) — Killed-service recovery + 'aka' login aliases
+
+**Player black screen on reopen (owner report):** backing out to the
+launcher pauses playback (ON_STOP), Media3 then drops the
+PlaybackService out of the foreground, and Android may kill it under
+memory pressure. Its onDestroy detached the engine, and reopening the
+app landed on the player route with engine == null — rendered as a
+black Box with no exit but Back. DECISION: treat a vanished engine
+exactly like process death (the Round-14 restore flow): PlayerViewModel
+watches the engine flow for null-after-start and flips uiState to
+hasSource=false + restore, so the screen re-enters the video through
+the stream flow (fresh link + resume prompt). Rejected alternatives:
+keeping the service foreground while paused (fights TV OS conventions,
+drains the box), or re-starting the service in place (the engine's
+queue/tracks state died with the process — the stream flow already
+rebuilds all of it). The restore stash is refreshed on every autoplay
+episode advance so recovery lands on the CURRENT episode (was: the
+episode the binge started with — latent bug in the process-death path
+too).
+
+**'aka' aliases (make_hosting_bundle.py):** a passport user may carry
+aka: ["Sean Patrick", "Richardson", ...]. Each alias becomes a lookup
+row matching on its FIRST word with a wildcard initial ("sean",
+"sean p", "sean r" all land), while the display name stays the passport
+name. Wildcard-initial was chosen because an alias's typed second word
+is unpredictable (maiden name, married name, spelling) and family-scale
+name collisions are rare; if two people ever share an alias first word,
+the existing multi-match chooser already handles it. First use: Manuel
+Momma → Nadine (aka Sean Patrick / Richardson / Richardsons).
+
+## 68. 2026-07-26 (session 41) — English-first streams, hidden stream list, auto-resume
+
+**Three-tier English-audio ranking (owner: "videos with English audio
+first — that needs to stop"):** the boolean hasEnglishAudio defaulted
+unreadable labels to "English", so an unlabeled Japanese-only 1080p
+out-ranked a confirmed-English 720p on resolution (the owner's Naruto
+three-stream dance, every episode). DECISION: mergeForDisplay now ranks
+confirmed-English (2) > unknown (1) > confirmed-foreign (0) via
+englishAudioRank; cached stays the top tier (owner 2026-07-26: only
+cached streams play at all on his boxes, so cached-first is not the
+problem). This supersedes 2026-07-08 "never reorder by language".
+
+**Post-open English-audio verification (ground truth over labels):**
+labels can lie or say nothing; the opened file's real audio tracks
+can't. On PlayerEvent.Ready the player reads the actual audio track
+language tags; an AUTO-picked stream (PlaybackRequest.autoSelected)
+with tagged tracks and no English among them is skipped to the next
+alternative, capped at MAX_LANGUAGE_SKIPS=4 per episode so a title
+with no dub settles instead of walking the whole list. Manual Expert
+picks are never second-guessed; untagged files prove nothing and play.
+
+**Stream list is Expert-only now (owner: "stream lists shouldn't be
+appearing at all without Expert on"):** new playback pref
+showStreamList (default OFF) gates the rows, honored only with Expert
+mode also on. With rows hidden, auto-start runs REGARDLESS of the
+auto-play pref (there is no list to fall back to) and a failed pick
+shows a plain-words card, never raw rows. The Anime drawer and the
+auto-play toggle moved inside Expert settings; PLAYBACK section gone.
+
+**Back-stack pileup fixed:** the player's next-episode fallback popped
+only the PLAYER entry, leaving one stale stream list per episode
+watched — backing out later walked the pile (owner report, both
+modes). Now popUpTo(STREAMS, inclusive) replaces player + outgoing
+list together, and pop-through-on-exit keys off "stream rows visible"
+(expert && showStreamList), not expert mode alone.
+
+**Auto-resume, no prompt (owner: "default to play from where it left
+off"):** the Resume-from/Start-over prompts (player overlay AND the
+stream list's external-player dialog) are gone; playback just starts
+at the saved position. WATCHED_FRACTION 0.95 → 0.90: past 90% counts
+as watched, so a viewer who reached the credits restarts from the top
+next time instead of resuming into the last minutes. Anime
+credits-marker-based restart considered and deferred: AniSkip windows
+aren't known at stage time without an extra async lookup, and the 90%
+line already covers a standard ~1.5-minute ED.
+
+**Stream-selection diagnostics:** auto-picks, every "try another
+stream" advance, no-English skips, and settled-with-nothing all land
+in the Expert App log ([streams] tag) — the owner can now see exactly
+what was tried and why without a debug build.
+
+## 69. 2026-07-27 (session 42) — Release-family memory, credits watched line, one popup language
+
+**Release-family memory (Room v4, `release_family_strikes`):** when the
+app abandons a stream IT auto-picked — playback failure walked away
+from, or the post-open check finding no English audio — the release
+FAMILY (episode-number-stripped token set, `StreamCascade.familyKey`)
+takes a strike for that series. Every ranking then sinks struck
+families below clean candidates: demoted, never hidden, so the Expert
+list stays complete. Manual picks neither write strikes nor get
+filtered. Why a token-set key and not infoHash/filename: those name ONE
+episode's file; the family key is what episodes 3 and 4 of the same
+encode share, which is exactly the repeat-failure the owner saw on
+Naruto. `ReleaseFamilyMemory` is an interface (NONE for JVM tests); the
+Room impl wraps every DB touch — a memory feature must never break
+playback. Autoplay gets the strike set via a lazy supplier on
+`onPlaybackEnded` rather than constructor injection, so the pure state
+machine and its tests stay untouched.
+
+**Anime credits-start watched line (Room v3, `creditsStartMs` on
+watch_progress):** the player rides the AniSkip CREDITS window start
+along on every progress save; `watchedLineMs` = min(90% line, credits
+start), marker honored only in the back half of the episode (mis-timed
+community data must not mark a half-watched episode finished) and only
+ever moving the line EARLIER. Stopping during a long ED/preview now
+counts as finished; non-anime keeps the 90% behavior bit-for-bit.
+
+**One popup language (`AppDialog.kt`):** `PanelFill`/`PanelShape` are
+THE popup face and `PanelButton` the action pill (surface language of
+DECISIONS #29 — accent focus ring, accent fill on the one recommended
+action; confirm dialogs emphasize the SAFE choice, never the
+destructive one). Adopted by all dialogs, the player's panels, the
+failure card, the Up Next cards, and the track picker (rows are
+OptionRows now). Bare TV-Material Buttons survive only on full screens
+(Connect, addon manager, details) — popups were the owner's ask.
+
+**Plain-words error fallback:** unmapped PlaybackExceptions no longer
+print raw constants at the viewer; the exact code still lands in the
+Expert App log line.
+
+## 70. 2026-07-28 (session 43) — Info screen for everyone, bounded start-up wait, buffer-before-switch
+
+**Every poster click opens the Info screen (`AppNavHost.openDetails`).**
+Expert mode used to send movies straight to the stream list, on the
+2026-07-05 reasoning that Details held exactly one action ("View
+streams") and was therefore a wasted press. That stopped being true
+twice over: round 10 gave Details a real Info screen (backdrop,
+description, rating, cast, Play CTA) and session 41 hid the stream list
+by default — so in Expert mode a movie click just *started playing*
+with nothing readable in between. The mode branch is gone; Play is the
+focused button on arrival, so it is still one press.
+
+**Trailer button is always offered (`TrailerLauncher`).** Two separate
+problems, one helper. (a) Most addons — Cinemeta included — send no
+`trailers` at all, so a button gated on the meta was missing on most
+films; a missing trailer id now falls back to a YouTube *search* for
+"<title> <year> trailer". (b) A bare ACTION_VIEW is a coin flip on a
+browser-less onn box, so the intent aims at a known installed handler
+first: SmartTube (owner preference — no ads) → SmartTube Beta →
+YouTube TV → YouTube phone, declared in the manifest's `<queries>`
+because Android 11+ hides them otherwise. Generic ACTION_VIEW is the
+fallback, and a total miss says so on screen instead of doing nothing.
+Playing YouTube *inside* the app was rejected: it needs stream
+extraction, which isn't something we can do legitimately.
+
+**Auto-start settle budget (`AUTO_START_SETTLE_BUDGET_MS` = 3s).** The
+auto-pick waited for EVERY stream source to answer, which made the wait
+before playback equal to the slowest host — and the owner's Backup
+instance (fortheweebs) chronically answers in 10s+ (session 42
+measured 10.5s). Now the full-settle wait gets a 3s budget; past it we
+take the best of whoever answered (`bestPlayableAmongLoaded`). If
+*nothing* playable has arrived yet we keep waiting rather than show a
+wrong "no streams" card — a bounded delay is the fix, not a wrong
+answer. The App log says "(started without N slow source(s))" when the
+escape hatch fires, so the cost is visible. Ranking is untouched: the
+budget drops the wait, not the ordering.
+
+**Buffer before switching streams (`reconnectCurrent`,
+`isNetworkErrorCode`).** Owner 2026-07-28: a mid-movie stall "should
+pause and try to buffer" instead of instantly jumping to another
+stream. Two layers. (a) `DefaultLoadErrorHandlingPolicy(5)` on the
+media source factory: ExoPlayer re-tries a failed load ~5 times with
+exponential backoff (~15s of quiet rebuffering) before the error is
+fatal at all. (b) When it does go fatal on a *transport* code
+(connection failed/timeout, IO unspecified, timeout — deliberately NOT
+4xx or a malformed container, which don't improve with time), the
+player waits 2.5s and re-opens the SAME url at the current position,
+twice per stream, before the existing try-the-next-stream walk. Guarded
+on `currentPosition > 0`: a stream that never started isn't stalling,
+it's broken, and walking on immediately is right. The two error classes
+are asserted non-overlapping in tests so the `when` ordering in
+`collectPlayerEvents` isn't load-bearing.
+
+## 71. 2026-08-09 (session 44) — Junk-file skip: length as ground truth, never pixels
+
+**Post-open length check (`verifyPlausibleLength`, `StreamLength.kt`).**
+Owner: some streams are a solid-color card with text — they play
+"successfully", end in seconds, mark the episode watched, and fire the
+next-episode flow ("it'll skip to the end of the episode"). Detecting
+the *picture* (frame analysis) was rejected: heavy, decoder-dependent,
+and unnecessary — the reliable tell is that the opened file is far
+shorter than the content could be. On `PlayerEvent.Ready` (the same
+hook as the English-audio ground truth) an AUTO-picked stream is junk
+when its real duration is under an absolute floor (3 min — shortest
+real content ≈ 7-min kids' episodes, placeholders are 10s–2min) OR
+under HALF the metadata's declared runtime. Junk = skip to the next
+ranked stream + strike the release family (the same placeholder shows
+up under every episode), exactly the language-walk pattern: manual
+Expert picks exempt, `MAX_JUNK_SKIPS` = 4 per episode then accept
+(a wrong declared runtime must not walk the whole list), once per
+opened URL. Length runs BEFORE the audio check — a placeholder's audio
+language is irrelevant, and a switch lets the new stream's Ready re-run
+both.
+
+**Runtime plumbing (`expectedRuntimeMin`).** Stremio metas carry
+runtime only as a free-form string on the meta ("45 min", "1h 41min",
+"2h", bare "148") and never per-episode — `parseRuntimeMinutes` parses
+it at the Details screen and the minutes ride the streams route
+(`runtimeMin` nav arg) → `PlaybackRequest` → episode advances/restores.
+For series it's the typical episode length; the half-of-expected margin
+absorbs specials and cut differences. Unknown runtime degrades to the
+absolute floor only. Live types (channel/tv) are never judged by
+length (§8) — and their durations are unset anyway, which
+`isImplausiblyShort` already treats as proof of nothing.
+
+## 72. 2026-08-30 (session 45) — Subtitle look editor (size / colour / backdrop)
+
+Owner ask: "incorporate a subtitle size and background/color editor/changer too."
+
+**Where it lives.** Settings → **HOW THINGS LOOK → Subtitles**, NOT behind
+Expert mode. Subtitles too small to read is an everyday accessibility problem
+for exactly the viewers these boxes are for (§10 elder-friendly) — it is not a
+technical knob like the decoder or the stream list. It opens its own screen
+(`SubtitleStyleScreen`) rather than three dialogs, mirroring `PosterSizeScreen`
+(round 20 #7, "confusing settings get a screen WITH a picture"): size, colour
+and backdrop can only be judged together against one sample frame, and the
+owner has already learned that screen's shape. The preview follows FOCUS, so
+moving over an option shows it before OK commits.
+
+**Three axes, plain words.** Size (Small/Normal/Large/Extra large), Colour
+(White/Yellow/Cyan/Green — the broadcast-caption set a cable box offers), and
+"Behind the words" (Black outline / Soft shadow / Dark box / Solid black box /
+Nothing). Rejected a free colour picker and an opacity slider: a d-pad has no
+good gesture for either, and five backdrops already span readable-over-busy-
+video to minimal-obstruction.
+
+**Sizes are a fraction of screen height, not sp.** media3's
+`SubtitleView.setFractionalTextSize` uses that unit, a TV is watched from
+across the room, and Android's system caption settings don't exist on most of
+these boxes. NORMAL is exactly media3's own `DEFAULT_TEXT_SIZE_FRACTION`
+(0.0533) and the defaults overall (white, normal, outline) reproduce the
+previous look bit-for-bit — a box whose owner never opens the screen sees no
+change. A unit test pins that fraction so it can't drift silently.
+
+**`setApplyEmbeddedStyles(false)` — the deliberate trade.** A styled `.ass`
+track (common on anime fansubs) otherwise overrides everything the owner just
+picked, making the screen look broken. Our style therefore wins. Cost: fancy
+sign/karaoke typesetting renders as plain text. Accepted — legibility for the
+household beats typesetting fidelity for one genre, and the owner asked for
+this control specifically.
+
+**Framework-free data model.** `data/SubtitleStyle.kt` holds plain values (a
+height fraction, ARGB ints, a `SubtitleEdge` enum); only `PlayerScreen` maps
+them onto media3's `CaptionStyleCompat`. Keeps the options unit-testable on the
+JVM with no Android types and no Robolectric. Note `SUBTITLE_TRANSPARENT` is
+top-level, not in `SubtitleBackdrop`'s companion — an enum entry cannot read its
+own companion while the entries are still constructing (this failed to compile
+first try).
+
+Applied in the `AndroidView` update block, so editing the style while something
+is paused takes effect on the video already on screen. Stored in `ViewPrefs`
+(appearance), so "Reset settings to default" already covers it. Gates green:
+assembleDebug + testDebugUnitTest, 422 tests (6 new `SubtitleStyleTest`), 0
+failures. NOT emulator-verified and NOT OTA-published — rides the next alpha.
+
+## 73. 2026-08-31 (session 45 cont.) — Silent streams (no audio track) auto-skip
+
+Owner: "I want to be sure the app skips any streams without any audio track."
+
+Session 41's post-open English check (#68) read the opened file's REAL audio
+tracks and skipped an auto-pick with tagged tracks and no English. But its very
+first guard was `if (tags.isEmpty()) return  // untagged file: nothing
+provable` — and a file with **zero audio tracks** produces an empty tag list
+too. So the one case that is unambiguously broken, a silent video, was the case
+that got the benefit of the doubt and was kept. That is the owner's "some have
+no audio".
+
+Now `verifyEnglishAudio` separates the two: it counts audio track GROUPS before
+it looks at language tags. Zero audio groups = a silent picture = skip to the
+next stream and strike the release family (same treatment as no-English, same
+`MAX_LANGUAGE_SKIPS` budget, manual Expert picks still exempt). Audio groups
+present but untagged still proves nothing and is still kept.
+
+**Guarded on `groups.isNotEmpty()`.** A `Ready` event with NO track groups of
+any kind means the tracks simply aren't published yet, not that the file is
+silent — skipping on that would false-positive on every slow-to-parse stream.
+Requiring at least one group (in practice the video track) before declaring a
+file silent makes the check evidence-based rather than timing-dependent.
+
+Rejected: a separate skip budget (the existing one already bounds the walk, and
+mixing budgets makes the ceiling unpredictable); pre-filtering by stream label
+(labels lie — that is the whole reason this check reads the opened file).
+
+Gates green: assembleDebug + testDebugUnitTest, 422 tests, 0 failures. NOT
+emulator-verified (needs a genuinely silent stream to reproduce on demand); the
+box log will show "opened stream has NO audio track — trying the next stream".

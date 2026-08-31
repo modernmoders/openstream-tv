@@ -19,6 +19,8 @@ import dev.openstream.tv.autoplay.StreamCascade
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProgressRepository
+import dev.openstream.tv.data.ViewPrefs
+import dev.openstream.tv.diagnostics.DiagnosticsSink
 import dev.openstream.tv.domain.MediaRef
 import dev.openstream.tv.domain.SubtitleTrack
 import dev.openstream.tv.domain.VideoCodec
@@ -34,14 +36,17 @@ import dev.openstream.tv.player.buildExternalLaunch
 import dev.openstream.tv.player.interpretExternalResult
 import dev.openstream.tv.ui.components.toChipMessage
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Stream list fan-out (§4.1.5): every stream-declaring addon is queried in
@@ -65,7 +70,11 @@ class StreamListViewModel @Inject constructor(
     private val alternatives: StreamAlternatives,
     decoderCapabilities: DecoderCapabilities,
     playbackPrefs: PlaybackPrefs,
+    viewPrefs: ViewPrefs,
     savedStateHandle: SavedStateHandle,
+    private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
+    private val familyMemory: dev.openstream.tv.data.ReleaseFamilyMemory =
+        dev.openstream.tv.data.ReleaseFamilyMemory.NONE,
 ) : ViewModel() {
 
     val type: String = checkNotNull(savedStateHandle["type"])
@@ -79,6 +88,10 @@ class StreamListViewModel @Inject constructor(
     /** Meta id for progress rows; movies arrive without one — video id IS the meta id. */
     private val metaId: String = savedStateHandle.get<String>("metaId")?.ifBlank { null } ?: videoId
     private val poster: String? = savedStateHandle.get<String>("poster")?.ifBlank { null }
+
+    /** Declared runtime (minutes) from the Details meta; null = unknown. Rides
+     *  into PlaybackRequest for the player's junk-file length check. */
+    private val expectedRuntimeMin: Int? = savedStateHandle.get<String>("runtimeMin")?.toIntOrNull()
 
     /** Progress key for this video (§8.4): opaque, addon-kind for now. */
     private val mediaRef = MediaRef.addon(videoId)
@@ -108,6 +121,24 @@ class StreamListViewModel @Inject constructor(
          * real list appears so the person can choose — never a dead end).
          */
         val autoStarting: Boolean = false,
+        /**
+         * The raw stream rows may render at all: Expert mode AND its "Show
+         * streams" toggle (owner 2026-07-26 — "stream lists shouldn't be
+         * appearing at all without Expert on"). When false the screen only
+         * ever shows the calm starting state or a friendly failure card.
+         */
+        val showList: Boolean = false,
+        /** Auto-pick settled on nothing playable — with [showList] off, the
+         *  screen shows a plain error card instead of the raw list. */
+        val autoStartFailed: Boolean = false,
+        /**
+         * Release families that already burned an auto-pick for this series
+         * (ReleaseFamilyMemory) — every ranking on this screen sinks them
+         * below clean candidates. Loaded once from Room at init; Room answers
+         * in milliseconds while the addon fan-out takes seconds, so the set
+         * is in place well before the auto-pick settles.
+         */
+        val strickenFamilies: Set<String> = emptySet(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -121,7 +152,12 @@ class StreamListViewModel @Inject constructor(
     private val _launchExternal = MutableSharedFlow<Intent>(extraBufferCapacity = 1)
 
     /** Autoplay gave up (§7.1 step 4): replace this screen with the next episode's list. */
-    data class OpenStreams(val type: String, val videoId: String, val title: String, val metaId: String, val poster: String?)
+    data class OpenStreams(
+        val type: String, val videoId: String, val title: String, val metaId: String,
+        val poster: String?,
+        /** Same series, same typical episode length — the runtime rides along. */
+        val runtimeMin: Int? = null,
+    )
     val openStreams: SharedFlow<OpenStreams> get() = _openStreams
     private val _openStreams = MutableSharedFlow<OpenStreams>(extraBufferCapacity = 1)
 
@@ -158,7 +194,9 @@ class StreamListViewModel @Inject constructor(
      * Addon-fetched subtitles for THIS video (MASTER_PLAN §4.1 fan-out gap),
      * populated once by the init fan-out below; empty until it resolves (and
      * forever, if no installed addon declares `subtitles` for this id).
+     * Volatile: written from the IO fan-out, read on Main at stage() time.
      */
+    @Volatile
     private var addonSubtitles: List<SubtitleTrack> = emptyList()
 
     /**
@@ -166,7 +204,12 @@ class StreamListViewModel @Inject constructor(
      * sources v1 can't play (the UI shows those as notes, so this is
      * belt-and-braces).
      */
-    fun stage(addon: InstalledAddon, stream: Stream, startPositionMs: Long = 0): Boolean {
+    fun stage(
+        addon: InstalledAddon,
+        stream: Stream,
+        startPositionMs: Long = 0,
+        autoSelected: Boolean = false,
+    ): Boolean {
         val source = stream.toPlayableSource(title.ifBlank { stream.name ?: "Stream" })
             ?: return false
         currentPlayback.request = PlaybackRequest(
@@ -179,6 +222,8 @@ class StreamListViewModel @Inject constructor(
             metaType = type,
             poster = poster,
             addonSubtitles = addonSubtitles,
+            autoSelected = autoSelected,
+            expectedRuntimeMin = expectedRuntimeMin,
         )
         // Autoplay's tier-1/2 ranking context (§7.1) — which addon, which stream
         autoplayOrigin.origin = StreamCascade.CurrentStream(addon.manifestUrl, stream)
@@ -259,6 +304,7 @@ class StreamListViewModel @Inject constructor(
                     metaId = metaId,
                     mediaRef = pending.mediaRef,
                     origin = autoplayOrigin.origin,
+                    strickenFamilies = { familyMemory.strickenFamilies(metaId) },
                 )
             }
             // Generic players / cancelled launches tell us nothing — leave
@@ -305,35 +351,84 @@ class StreamListViewModel @Inject constructor(
     init {
         _uiState.update { it.copy(externalPlayers = externalLauncher.installedPlayers()) }
         viewModelScope.launch {
+            // Known-glitchy release families for this series (recorded by the
+            // player when an auto-pick failed on an earlier episode) — the
+            // rankings below sink them so a binge stops re-trying bad encodes.
+            _uiState.update { it.copy(strickenFamilies = familyMemory.strickenFamilies(metaId)) }
+        }
+        viewModelScope.launch {
             playbackPrefs.preferredPlayer.collect { pref ->
                 _uiState.update { it.copy(playerPref = pref) }
             }
         }
         viewModelScope.launch {
+            // Rows visible at all = Expert mode + its "Show streams" toggle.
+            combine(viewPrefs.expertMode, playbackPrefs.showStreamList) { e, s -> e && s }
+                .collect { show -> _uiState.update { it.copy(showList = show) } }
+        }
+        viewModelScope.launch {
             // Keep the shared "Try another server" list in step with the
             // fan-out — the player may need it while groups are still loading.
-            _uiState.collect { alternatives.list = orderedAlternatives(it.groups, hardwareCodecs) }
+            _uiState.collect {
+                alternatives.list = orderedAlternatives(it.groups, hardwareCodecs, it.strickenFamilies)
+            }
         }
         viewModelScope.launch {
             // Auto-play first stream (owner request 2026-07-06): wait until
             // the top of the list can no longer change, then launch it once.
-            if (!playbackPrefs.autoPlayFirstStream.first()) return@launch
+            // With the stream rows hidden (no Expert "Show streams"), auto-
+            // start is this screen's WHOLE job, so it runs regardless of the
+            // auto-play preference — there are no rows to fall back to.
+            val listVisible =
+                combine(viewPrefs.expertMode, playbackPrefs.showStreamList) { e, s -> e && s }.first()
+            if (listVisible && !playbackPrefs.autoPlayFirstStream.first()) return@launch
             // Hide the raw list behind a calm "Starting…" state until we either
             // launch or give up — no technical flash (owner 2026-07-06).
             _uiState.update { it.copy(autoStarting = true) }
             // Resume position first — Room answers long before the fan-out,
             // and auto-start must resume where the person left off.
             val resume = progressRepository.observeResumePosition(mediaRef).first()
-            val result = _uiState
-                .map { bestPlayableWhenSettled(it.initializing, it.groups, hardwareCodecs) }
+
+            suspend fun awaitAllSourcesSettled(): AutoStartResult = _uiState
+                .map {
+                    bestPlayableWhenSettled(
+                        it.initializing, it.groups, hardwareCodecs, it.strickenFamilies,
+                    )
+                }
                 .first { it !is AutoStartResult.Waiting }
+
+            // Waiting for EVERY source made the wait as long as the slowest
+            // one — with the Backup instance answering in 10s+, that's the
+            // "why does it sit there before playing" the owner asked about
+            // (2026-07-28). Now: give them all a budget to weigh in, then go
+            // with the best of whoever answered. Only if nobody has anything
+            // playable yet do we keep waiting — a short wait beats a wrong
+            // "no streams" card.
+            val result = withTimeoutOrNull(AUTO_START_SETTLE_BUDGET_MS) { awaitAllSourcesSettled() }
+                ?: bestPlayableAmongLoaded(
+                    _uiState.value.groups, hardwareCodecs, _uiState.value.strickenFamilies,
+                ).takeIf { it is AutoStartResult.Found }
+                ?: awaitAllSourcesSettled()
             val found = result as? AutoStartResult.Found
             if (found == null || playbackStarted) {
-                // Nothing auto-playable, or the user got there first: reveal the
-                // real list so they can pick — never leave them on a spinner.
-                _uiState.update { it.copy(autoStarting = false) }
+                // Nothing auto-playable, or the user got there first: reveal
+                // the real list (Expert) or a friendly failure card (rows
+                // hidden) — never leave anyone on a spinner.
+                if (found == null && !playbackStarted) {
+                    diagnostics.record("streams", "\"$title\": nothing auto-playable after all sources settled")
+                }
+                _uiState.update {
+                    it.copy(autoStarting = false, autoStartFailed = found == null && !playbackStarted)
+                }
                 return@launch
             }
+            val stillLoading = _uiState.value.groups.count { it is GroupState.Loading }
+            diagnostics.record(
+                "streams",
+                "\"$title\": auto-picked \"${found.stream.name ?: "unnamed"}\" " +
+                    "from ${alternatives.list.size} ranked streams" +
+                    if (stillLoading > 0) " (started without $stillLoading slow source(s))" else "",
+            )
             _autoStart.tryEmit(AutoStart(found.addon, found.stream, resume ?: 0))
         }
         viewModelScope.launch {
@@ -349,14 +444,16 @@ class StreamListViewModel @Inject constructor(
                     is AutoplayController.Command.Play ->
                         launchNextExternally(command.next, command.candidate)
                     is AutoplayController.Command.OpenStreamList -> _openStreams.tryEmit(
-                        OpenStreams(type, command.next.id, episodeTitle(command.next), metaId, poster)
+                        OpenStreams(type, command.next.id, episodeTitle(command.next), metaId, poster, expectedRuntimeMin)
                     )
                 }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             // Same fan-out shape as streams, queried in parallel with them —
             // a slow/broken subtitle addon must never delay the stream list.
+            // On IO, not Main: nothing awaits this and no UI state changes,
+            // so the whole fetch-and-store can stay off the Main queue.
             addonSubtitles = subtitleRepository.fetchAll(type, videoId).map { it.toSubtitleTrack() }
         }
         viewModelScope.launch {
@@ -385,5 +482,16 @@ class StreamListViewModel @Inject constructor(
 
     override fun onCleared() {
         autoplay.stop()
+    }
+
+    private companion object {
+        /**
+         * How long the auto-pick waits for EVERY stream source before settling
+         * for the best of the ones that answered. Sized off the owner's own
+         * numbers: his fast instances answer in well under a second while the
+         * fortheweebs Backup takes 10s+, so 3s collects the useful candidates
+         * without letting one sick host set the delay on every video.
+         */
+        const val AUTO_START_SETTLE_BUDGET_MS = 3_000L
     }
 }

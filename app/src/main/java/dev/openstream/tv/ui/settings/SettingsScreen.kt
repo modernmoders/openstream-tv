@@ -43,6 +43,9 @@ import dev.openstream.tv.data.PLAYER_ASK
 import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.player.ExternalPlayerPort
 import dev.openstream.tv.ui.components.CaretDownIcon
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.update.UpdateViewModel
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AmbientSection
@@ -66,6 +69,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onHomeRows: () -> Unit,
     onPosterSize: () -> Unit,
+    onSubtitles: () -> Unit,
     onAddons: () -> Unit,
     onAppLog: () -> Unit,
     onReset: () -> Unit,
@@ -81,9 +85,11 @@ fun SettingsScreen(
     val autoSkipIntros by viewModel.autoSkipIntros.collectAsStateWithLifecycle()
     val autoSkipCredits by viewModel.autoSkipCredits.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
+    val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val discoverHideWatched by viewModel.discoverHideWatched.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
+    val showStreams by viewModel.showStreamList.collectAsStateWithLifecycle()
     val profileName by viewModel.profileName.collectAsStateWithLifecycle()
     var pickingPlayer by remember { mutableStateOf(false) }
     var pickingNumbering by remember { mutableStateOf(false) }
@@ -151,6 +157,16 @@ fun SettingsScreen(
                     "shows each size before you pick",
                 onClick = onPosterSize,
             )
+            // Subtitles sit in HOW THINGS LOOK, not Expert (owner 2026-08-30):
+            // subtitles too small to read is an everyday problem, not a
+            // technical knob (§10 elder-friendly).
+            SettingEntry(
+                title = "Subtitles",
+                description = "${subtitleStyle.size.label} · ${subtitleStyle.color.label} · " +
+                    "${subtitleStyle.backdrop.label} — opens a picture that shows " +
+                    "each choice before you pick",
+                onClick = onSubtitles,
+            )
             SettingEntry(
                 title = "Hide watched shows in Discover",
                 description = if (discoverHideWatched) {
@@ -173,80 +189,9 @@ fun SettingsScreen(
             // "Search by talking" moved ONTO the Search screen (round 20 #7):
             // the toggle lives above the search bar, where flipping it visibly
             // swaps which side of the box the microphone sits on.
-            SectionCaption("PLAYBACK")
-            SettingEntry(
-                title = "Auto-play first stream",
-                badge = "RECOMMENDED ON",
-                badgeColor = Accent,
-                description = if (autoPlay) {
-                    "On — picking a movie or episode starts playing right away; " +
-                        "a broken stream quietly tries the next server"
-                } else {
-                    "Off — picking a movie or episode shows the list of streams"
-                },
-                onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
-            )
-            // --- Anime drawer (Round-16 #1): one collapsed group on a darker
-            // slab — OK opens it, the contents visibly belong together. Every
-            // profile sees it (the "no-anime" accounts still surface anime).
-            CollapsibleGroup(
-                title = "Anime",
-                summary = "Skip Intro and Next Episode buttons — they only " +
-                    "ever appear on anime episodes",
-                expanded = animeExpanded,
-                onToggle = { animeExpanded = !animeExpanded },
-            ) {
-                SettingEntry(
-                    title = "Skip buttons on anime",
-                    description = if (skipIntros) {
-                        "On — during an anime's opening, a “Skip Intro” button pops " +
-                            "up; during the ending it's “Next Episode”. One OK press. " +
-                            "Nothing appears on regular shows or movies"
-                    } else {
-                        "Off — anime openings and endings play in full, no buttons"
-                    },
-                    onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
-                )
-                if (skipIntros) {
-                    // "automatically" wording + BETA marks (round 20 #7): the
-                    // community skip timings aren't perfect yet — say so.
-                    SettingEntry(
-                        title = "Skip intros automatically",
-                        badge = "BETA",
-                        badgeColor = SeriesAmber,
-                        description = if (autoSkipIntros) {
-                            "On — the opening skips itself the moment it starts; " +
-                                "you never press anything. Still testing: it can " +
-                                "occasionally skip a beat too far"
-                        } else {
-                            "Off — the “Skip Intro” button waits for you to press OK"
-                        },
-                        onClick = { viewModel.setAutoSkipIntros(!autoSkipIntros) },
-                    )
-                    SettingEntry(
-                        title = "Play the next episode automatically",
-                        badge = "BETA",
-                        badgeColor = SeriesAmber,
-                        description = if (autoSkipCredits) {
-                            "On — a little after the ending song starts, a " +
-                                "countdown appears, then the next episode plays. " +
-                                "Press BACK during the countdown to keep watching. " +
-                                "Still testing: the countdown timing may be off " +
-                                "on some shows"
-                        } else {
-                            "Off — the “Next Episode” button waits for you to press OK"
-                        },
-                        onClick = { viewModel.setAutoSkipCredits(!autoSkipCredits) },
-                    )
-                }
-                SettingEntry(
-                    title = "Episode numbers",
-                    description = episodeNumberingLabel(numbering) +
-                        " — mostly matters for long anime, where seasons and " +
-                        "one big count disagree",
-                    onClick = { pickingNumbering = true },
-                )
-            }
+            // (The PLAYBACK section moved into EXPERT SETTINGS 2026-07-26:
+            // with the stream list hidden for everyone else, auto-play is
+            // simply how the app works — nothing left for a viewer to set.)
             SectionCaption("THIS TV")
             // Self-update (owner 2026-07-11): boxes that leave the house
             // update themselves. The row is its own tiny state machine —
@@ -295,19 +240,108 @@ fun SettingsScreen(
             SettingEntry(
                 title = "Expert mode",
                 description = if (expert) {
-                    "On — technical tools are shown (like the addon manager below)"
+                    "On — the Expert settings below are shown"
                 } else {
                     "Off — keeps things simple. Only for whoever looks after this TV"
                 },
                 onClick = { viewModel.setExpertMode(!expert) },
             )
             if (expert) {
+                // EXPERT SETTINGS (owner 2026-07-26: the Anime drawer and the
+                // stream list both moved in here — viewers never see either).
                 // Round 14/15 (owner): decoder + the external-player pick live
                 // in here — a viewer has no business flipping decoders or
                 // players; the in-player "Fix blocky video" / long-press
                 // cover the everyday cases. "Connect this TV" is GONE
                 // (Round-15 #10): "Reset this TV" below reaches the same
                 // name-setup screen without a confusing twin entry.
+                SectionCaption("EXPERT SETTINGS")
+                SettingEntry(
+                    title = "Show streams",
+                    description = if (showStreams) {
+                        "On — picking a video shows the technical list of " +
+                            "streams to choose from"
+                    } else {
+                        "Off — the app picks the best stream itself; the " +
+                            "technical list never appears"
+                    },
+                    onClick = { viewModel.setShowStreamList(!showStreams) },
+                )
+                if (showStreams) {
+                    SettingEntry(
+                        title = "Auto-play first stream",
+                        badge = "RECOMMENDED ON",
+                        badgeColor = Accent,
+                        description = if (autoPlay) {
+                            "On — picking a movie or episode starts playing right " +
+                                "away; a broken stream quietly tries the next server"
+                        } else {
+                            "Off — picking a movie or episode shows the list of streams"
+                        },
+                        onClick = { viewModel.setAutoPlayFirstStream(!autoPlay) },
+                    )
+                }
+                // --- Anime drawer (Round-16 #1, moved under Expert
+                // 2026-07-26): one collapsed group on a darker slab — OK
+                // opens it, the contents visibly belong together.
+                CollapsibleGroup(
+                    title = "Anime",
+                    summary = "Skip Intro and Next Episode buttons — they only " +
+                        "ever appear on anime episodes",
+                    expanded = animeExpanded,
+                    onToggle = { animeExpanded = !animeExpanded },
+                ) {
+                    SettingEntry(
+                        title = "Skip buttons on anime",
+                        description = if (skipIntros) {
+                            "On — during an anime's opening, a “Skip Intro” button pops " +
+                                "up; during the ending it's “Next Episode”. One OK press. " +
+                                "Nothing appears on regular shows or movies"
+                        } else {
+                            "Off — anime openings and endings play in full, no buttons"
+                        },
+                        onClick = { viewModel.setSkipIntrosEnabled(!skipIntros) },
+                    )
+                    if (skipIntros) {
+                        // "automatically" wording + BETA marks (round 20 #7): the
+                        // community skip timings aren't perfect yet — say so.
+                        SettingEntry(
+                            title = "Skip intros automatically",
+                            badge = "BETA",
+                            badgeColor = SeriesAmber,
+                            description = if (autoSkipIntros) {
+                                "On — the opening skips itself the moment it starts; " +
+                                    "you never press anything. Still testing: it can " +
+                                    "occasionally skip a beat too far"
+                            } else {
+                                "Off — the “Skip Intro” button waits for you to press OK"
+                            },
+                            onClick = { viewModel.setAutoSkipIntros(!autoSkipIntros) },
+                        )
+                        SettingEntry(
+                            title = "Play the next episode automatically",
+                            badge = "BETA",
+                            badgeColor = SeriesAmber,
+                            description = if (autoSkipCredits) {
+                                "On — a little after the ending song starts, a " +
+                                    "countdown appears, then the next episode plays. " +
+                                    "Press BACK during the countdown to keep watching. " +
+                                    "Still testing: the countdown timing may be off " +
+                                    "on some shows"
+                            } else {
+                                "Off — the “Next Episode” button waits for you to press OK"
+                            },
+                            onClick = { viewModel.setAutoSkipCredits(!autoSkipCredits) },
+                        )
+                    }
+                    SettingEntry(
+                        title = "Episode numbers",
+                        description = episodeNumberingLabel(numbering) +
+                            " — mostly matters for long anime, where seasons and " +
+                            "one big count disagree",
+                        onClick = { pickingNumbering = true },
+                    )
+                }
                 SettingEntry(
                     title = "Player",
                     description = "Pressing OK on a stream uses: " +
@@ -404,7 +438,7 @@ private fun ResetSettingsDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -420,11 +454,15 @@ private fun ResetSettingsDialog(
                 color = MutedText,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                // The SAFE way out is the emphasized one — a reset must be a
+                // deliberate walk off the highlighted path.
+                PanelButton(
+                    "Cancel",
                     onClick = onDismiss,
                     modifier = Modifier.focusRequester(cancelFocus),
-                ) { Text("Cancel") }
-                Button(onClick = onConfirm) { Text("Reset settings") }
+                    emphasized = true,
+                )
+                PanelButton("Reset settings", onClick = onConfirm)
             }
         }
     }
@@ -681,7 +719,7 @@ private fun PlayerPrefDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -734,7 +772,7 @@ private fun EpisodeNumberingDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -777,7 +815,7 @@ private fun ResetTvDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
                 .width(460.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -793,11 +831,15 @@ private fun ResetTvDialog(
                 color = MutedText,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                // Same rule as the settings reset: safe default carries the
+                // accent, the destructive action stays quiet.
+                PanelButton(
+                    "Cancel",
                     onClick = onDismiss,
                     modifier = Modifier.focusRequester(cancelFocus),
-                ) { Text("Cancel") }
-                Button(onClick = onConfirm) { Text("Reset to factory defaults") }
+                    emphasized = true,
+                )
+                PanelButton("Reset to factory defaults", onClick = onConfirm)
             }
         }
     }

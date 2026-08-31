@@ -35,6 +35,7 @@ import dev.openstream.tv.player.buildExternalLaunch
 import dev.openstream.tv.player.TrackKind
 import dev.openstream.tv.player.TrackOption
 import dev.openstream.tv.player.applyPreferredLanguages
+import dev.openstream.tv.player.isImplausiblyShort
 import dev.openstream.tv.player.rememberedLanguage
 import dev.openstream.tv.player.skip.AutoSkipAction
 import dev.openstream.tv.player.skip.SkipSegment
@@ -50,9 +51,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val PROGRESS_SAVE_INTERVAL_MS = 10_000L
@@ -64,11 +67,21 @@ private const val SKIP_POLL_INTERVAL_MS = 500L
 /** Consecutive broken streams auto-skipped before giving up with the panel. */
 private const val MAX_ERROR_SKIPS = 3
 
-/** Auto-advance on credits: quiet grace before the countdown even appears,
- *  then the countdown length (owner 2026-07-12: 10s later, count from 8).
- *  The countdown total is internal — the Up next card's ring drains against it. */
-private const val AUTO_ADVANCE_GRACE_MS = 10_000L
-internal const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 8
+/** No-English-audio streams auto-skipped per episode before we accept what's
+ *  playing (a title with no dub at all must not walk the whole list). */
+private const val MAX_LANGUAGE_SKIPS = 4
+
+/** Junk-length streams auto-skipped per episode before we accept what's
+ *  playing — a wrong declared runtime must not walk the whole list. */
+private const val MAX_JUNK_SKIPS = 4
+
+/** Auto-advance on credits: the countdown card appears the moment the
+ *  credits window opens and its timer runs the WHOLE wait (owner 2026-07-27:
+ *  "the autoskip timer should start as soon as the popup pops up" — the old
+ *  10s invisible grace + 8s visible count read as a stuck button). 18s keeps
+ *  the exact advance moment the owner tuned on 2026-07-12 (10 + 8); only the
+ *  visibility changed. */
+internal const val AUTO_ADVANCE_COUNTDOWN_SECONDS = 18
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -79,6 +92,7 @@ class PlayerViewModel @Inject constructor(
     private val autoplayOrigin: AutoplayOriginHolder,
     private val autoplayGateway: AutoplayGateway,
     private val playbackPrefs: PlaybackPrefs,
+    viewPrefs: dev.openstream.tv.data.ViewPrefs,
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
     private val skipTimes: SkipTimesRepository,
@@ -87,6 +101,8 @@ class PlayerViewModel @Inject constructor(
     private val uiSounds: UiSounds,
     private val savedState: SavedStateHandle,
     private val diagnostics: DiagnosticsSink = DiagnosticsSink.NONE,
+    private val familyMemory: dev.openstream.tv.data.ReleaseFamilyMemory =
+        dev.openstream.tv.data.ReleaseFamilyMemory.NONE,
 ) : ViewModel() {
 
     /** Installed external players (VLC/MX) for the "Play in another app"
@@ -100,6 +116,18 @@ class PlayerViewModel @Inject constructor(
      * The screen binds its PlayerView the moment this becomes non-null.
      */
     val engine: StateFlow<ExoPlayerEngine?> = playerHolder.engine
+
+    /**
+     * Subtitle look (owner 2026-08-30). The screen re-applies this to the
+     * PlayerView's subtitle view whenever it changes, so editing the style in
+     * Settings while something is paused shows up the moment you come back.
+     */
+    val subtitleStyle: StateFlow<dev.openstream.tv.data.SubtitleStyle> = viewPrefs.subtitleStyle
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            dev.openstream.tv.data.SubtitleStyle(),
+        )
 
     data class UiState(
         val title: String = "",
@@ -137,14 +165,6 @@ class PlayerViewModel @Inject constructor(
         /** Whether the CURRENT playback is using software decoding — the
          *  "Having trouble?" toggle reflects this ON/OFF (owner 2026-07-08). */
         val softwareDecoderOn: Boolean = false,
-        /**
-         * Non-null = there is saved progress and we haven't decided where to
-         * start yet: the player shows a "Resume from X / Start from the
-         * beginning" prompt over the loading animation while the stream is
-         * tested, and holds playback paused until answered (owner 2026-07-08).
-         * Cleared once answered — never shown twice in a session.
-         */
-        val resumePromptMs: Long? = null,
     )
 
     /** A neighbouring episode the player's prev/next buttons can open.
@@ -164,7 +184,12 @@ class PlayerViewModel @Inject constructor(
     val autoplayState: StateFlow<AutoplayStateMachine.State?> = autoplay.state
 
     /** Where to land when autoplay gives up: the next episode's stream list. */
-    data class OpenStreams(val type: String, val videoId: String, val title: String, val metaId: String, val poster: String?)
+    data class OpenStreams(
+        val type: String, val videoId: String, val title: String, val metaId: String,
+        val poster: String?,
+        /** Same series, same typical episode length — the runtime rides along. */
+        val runtimeMin: Int? = null,
+    )
     val openStreams: SharedFlow<OpenStreams> get() = _openStreams
     private val _openStreams = MutableSharedFlow<OpenStreams>(extraBufferCapacity = 1)
 
@@ -210,34 +235,15 @@ class PlayerViewModel @Inject constructor(
             // holder) is gone, but SavedStateHandle survives. If we stashed
             // what was playing, hand the screen a restore target — it re-opens
             // the video through the stream flow (fresh link, resume prompt).
-            val videoId = savedState.get<String>(KEY_RESTORE_VIDEO)
-            val restore = if (videoId != null) {
-                OpenStreams(
-                    type = savedState.get<String>(KEY_RESTORE_TYPE).orEmpty(),
-                    videoId = videoId,
-                    title = savedState.get<String>(KEY_RESTORE_TITLE).orEmpty(),
-                    metaId = savedState.get<String>(KEY_RESTORE_META).orEmpty(),
-                    poster = savedState.get<String>(KEY_RESTORE_POSTER),
-                )
-            } else {
-                null
-            }
-            _uiState.value = UiState(hasSource = false, restore = restore)
+            _uiState.value = UiState(hasSource = false, restore = restoreTarget())
         } else {
-            req.mediaRef?.let { ref ->
-                savedState[KEY_RESTORE_VIDEO] = ref.externalId
-                savedState[KEY_RESTORE_TYPE] = req.metaType
-                savedState[KEY_RESTORE_TITLE] = req.source.title
-                savedState[KEY_RESTORE_META] = req.metaId
-                savedState[KEY_RESTORE_POSTER] = req.poster
-            }
-            // A staged start position means there IS saved progress: ask where
-            // to start (over the loading animation) instead of silently jumping.
-            val resumeAt = req.source.startPositionMs.takeIf { it > 0 }
+            stashRestore(req)
+            // Saved progress = just resume there (owner 2026-07-26: no more
+            // "Resume from…?" prompt — the staged start position, which the
+            // progress store already caps at the watched line, simply plays).
             _uiState.value = UiState(
                 title = req.source.title,
                 canTryNext = alternatives.hasNext(),
-                resumePromptMs = resumeAt,
             )
             context.startService(Intent(context, PlaybackService::class.java))
             resolveEpisodeNav(req)
@@ -247,6 +253,21 @@ class PlayerViewModel @Inject constructor(
                 autoSkipIntros = playbackPrefs.autoSkipIntros.first()
                 autoSkipCredits = playbackPrefs.autoSkipCredits.first()
                 val engine = this@PlayerViewModel.engine.filterNotNull().first()
+                launch {
+                    // Android may kill the PlaybackService while we're in the
+                    // background: once playback pauses (Home press) the service
+                    // leaves the foreground and becomes fair game under memory
+                    // pressure. Its onDestroy detaches the engine, and coming
+                    // back to the app used to find this route with no engine —
+                    // a black screen only Back escaped (owner report
+                    // 2026-07-22). A vanished engine is the same situation as
+                    // process death, so recover the same way: re-enter the
+                    // video through the stream flow (fresh link, resume
+                    // prompt). Normal exits never get here — onCleared()
+                    // cancels this scope before it stops the service.
+                    this@PlayerViewModel.engine.first { it == null }
+                    _uiState.value = UiState(hasSource = false, restore = restoreTarget())
+                }
                 launch {
                     // The engine decides software-vs-hardware PER STREAM now
                     // (auto for codecs the box mangles) — the "Software video"
@@ -268,11 +289,6 @@ class PlayerViewModel @Inject constructor(
                 engine.exoPlayer.applyPreferredLanguages(languages.audio ?: "en", languages.subtitle)
                 engine.play(req.source)
                 pingWatchTracking()
-                // Resume prompt pending → buffer/test the stream but hold it
-                // paused (no surprise audio) until the viewer picks resume or
-                // start-over. play() prepared at the saved position already, so
-                // "resume" is just letting it go; "start over" seeks to 0 first.
-                if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
                 launch { collectPlayerEvents(engine) }
                 launch { collectAutoplayCommands(engine) }
                 launch {
@@ -302,6 +318,12 @@ class PlayerViewModel @Inject constructor(
                     errorSkips = 0
                     _uiState.value = _uiState.value.copy(switching = false)
                     autoplay.onPlaybackReady()
+                    // The opened file's ACTUAL duration and audio tracks are
+                    // readable now — ground truth the pre-open label guessing
+                    // can't give us. Length first: a junk placeholder's audio
+                    // language is irrelevant, and a switch makes the new
+                    // stream's own Ready re-run both checks.
+                    if (verifyPlausibleLength(engine)) verifyEnglishAudio(engine)
                 }
                 is PlayerEvent.Ended -> {
                     // Finished: record it as watched (position == duration) so
@@ -317,6 +339,7 @@ class PlayerViewModel @Inject constructor(
                         metaId = req.metaId,
                         mediaRef = req.mediaRef,
                         origin = autoplayOrigin.origin,
+                        strickenFamilies = { familyMemory.strickenFamilies(req.metaId) },
                     )
                 }
                 is PlayerEvent.Error -> {
@@ -337,6 +360,12 @@ class PlayerViewModel @Inject constructor(
                         // any stream-walking — the stream is usually fine, the
                         // box's decoder is what broke (MX-parity logic).
                         event.isDecodeError && retryCurrentInSoftware(engine) -> Unit
+                        // The host dropped mid-movie: wait a beat and re-open
+                        // the SAME stream where we were, like a human would,
+                        // before giving up on it (owner 2026-07-28 — "it
+                        // should pause and try to buffer sometimes when it
+                        // just instantly tries another stream").
+                        event.isNetworkError && reconnectCurrent(engine) -> Unit
                         // Auto-skip a broken stream to the next server (owner
                         // request 2026-07-06) — quietly, like a human would.
                         autoAdvanceOnError && errorSkips < MAX_ERROR_SKIPS && tryNextStream() ->
@@ -356,11 +385,42 @@ class PlayerViewModel @Inject constructor(
                 is AutoplayController.Command.OpenStreamList -> {
                     val req = request ?: return@collect
                     _openStreams.tryEmit(
-                        OpenStreams(req.metaType, command.next.id, episodeTitle(command.next), req.metaId, req.poster)
+                        OpenStreams(
+                            req.metaType, command.next.id, episodeTitle(command.next),
+                            req.metaId, req.poster, req.expectedRuntimeMin,
+                        )
                     )
                 }
             }
         }
+    }
+
+    /** Stash WHAT is playing so [restoreTarget] can rebuild it after process
+     *  death or a killed PlaybackService. Re-run on every episode advance —
+     *  restoring must land on the episode the viewer was actually in. */
+    private fun stashRestore(req: PlaybackRequest) {
+        req.mediaRef?.let { ref ->
+            savedState[KEY_RESTORE_VIDEO] = ref.externalId
+            savedState[KEY_RESTORE_TYPE] = req.metaType
+            savedState[KEY_RESTORE_TITLE] = req.source.title
+            savedState[KEY_RESTORE_META] = req.metaId
+            savedState[KEY_RESTORE_POSTER] = req.poster
+            savedState[KEY_RESTORE_RUNTIME] = req.expectedRuntimeMin
+        }
+    }
+
+    /** The stashed playback, as a stream-flow re-entry target; null = nothing
+     *  was stashed (no mediaRef) — the screen just pops back instead. */
+    private fun restoreTarget(): OpenStreams? {
+        val videoId = savedState.get<String>(KEY_RESTORE_VIDEO) ?: return null
+        return OpenStreams(
+            type = savedState.get<String>(KEY_RESTORE_TYPE).orEmpty(),
+            videoId = videoId,
+            title = savedState.get<String>(KEY_RESTORE_TITLE).orEmpty(),
+            metaId = savedState.get<String>(KEY_RESTORE_META).orEmpty(),
+            poster = savedState.get<String>(KEY_RESTORE_POSTER),
+            runtimeMin = savedState.get<Int>(KEY_RESTORE_RUNTIME),
+        )
     }
 
     private fun playNext(engine: ExoPlayerEngine, next: Video, candidate: StreamCascade.Candidate) {
@@ -377,9 +437,18 @@ class PlayerViewModel @Inject constructor(
             metaId = req.metaId,
             metaType = req.metaType,
             poster = req.poster,
+            autoSelected = true, // autoplay's pick, not a person's
+            expectedRuntimeMin = req.expectedRuntimeMin, // same series, same typical length
         )
+        // Fresh episode: the language/junk skip budgets and the once-per-file
+        // audio and length checks start over.
+        languageSkips = 0
+        audioCheckedUrl = null
+        junkSkips = 0
+        lengthCheckedUrl = null
         request = newRequest
         currentPlayback.request = newRequest
+        stashRestore(newRequest) // restore must land on THIS episode, not the binge's first
         autoplayOrigin.origin = StreamCascade.CurrentStream(candidate.addonUrl, candidate.stream)
         // The alternatives list belonged to the finished episode; the new
         // one's list is unknown until its own stream screen loads it.
@@ -480,14 +549,15 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** Auto-advance (owner 2026-07-12 timing): let the ending BREATHE for 10
-     *  seconds first, then "Next episode in 8…" one second per tick, then
-     *  advance. BACK cancels ([cancelNextEpisodeCountdown]); the window stays
-     *  auto-handled so the countdown doesn't respawn inside the credits. */
+    /** Auto-advance: the "Skipping to next episode" card + draining ring show
+     *  from the FIRST second of the credits window (owner 2026-07-27) — no
+     *  invisible grace, the viewer always sees how long they have. Total wait
+     *  is unchanged (18s, the 2026-07-12 tuning). BACK cancels
+     *  ([cancelNextEpisodeCountdown]); the window stays auto-handled so the
+     *  countdown doesn't respawn inside the credits. */
     private fun startNextEpisodeCountdown() {
         autoAdvanceJob?.cancel()
         autoAdvanceJob = viewModelScope.launch {
-            delay(AUTO_ADVANCE_GRACE_MS)
             for (remaining in AUTO_ADVANCE_COUNTDOWN_SECONDS downTo 1) {
                 _uiState.value = _uiState.value.copy(nextEpisodeCountdown = remaining)
                 delay(1_000)
@@ -519,26 +589,6 @@ class PlayerViewModel @Inject constructor(
         engine.value?.let { eng -> request?.let { req -> markWatched(eng, req) } }
         _uiState.value = _uiState.value.copy(skipSegment = null)
         goToNextEpisode()
-    }
-
-    /** Resume prompt → "Resume": drop the prompt and let the (already prepared
-     *  at the saved position) playback go. */
-    fun resumeFromSaved() {
-        if (_uiState.value.resumePromptMs == null) return
-        _uiState.value = _uiState.value.copy(resumePromptMs = null)
-        engine.value?.exoPlayer?.playWhenReady = true
-    }
-
-    /** Resume prompt → "Start from the beginning": seek to 0, drop the prompt,
-     *  play. The seek re-buffers, so the loading animation carries over until
-     *  the fresh position renders. */
-    fun startFromBeginning() {
-        if (_uiState.value.resumePromptMs == null) return
-        _uiState.value = _uiState.value.copy(resumePromptMs = null)
-        engine.value?.exoPlayer?.let {
-            it.seekTo(0)
-            it.playWhenReady = true
-        }
     }
 
     /** OK on the Skip button. Intro: jump past the window. Credits: this is
@@ -651,6 +701,15 @@ class PlayerViewModel @Inject constructor(
                     // tracks only, the addon pool doesn't depend on which one.
                     subtitles = mergeSubtitleTracks(source.subtitles, req.addonSubtitles),
                 ),
+                // A walked-to candidate is the APP's pick, whoever started the
+                // walk — eligible for the post-open English-audio check.
+                autoSelected = true,
+            )
+            diagnostics.record(
+                "streams",
+                "\"${req.source.title}\": switching to stream " +
+                    "${alternatives.currentIndex + 1} of ${alternatives.list.size} " +
+                    "(${alt.stream.name ?: "unnamed"})",
             )
             request = newRequest
             currentPlayback.request = newRequest
@@ -660,10 +719,6 @@ class PlayerViewModel @Inject constructor(
                 switching = true, canTryNext = alternatives.hasNext(),
             )
             engine.play(newRequest.source)
-            // Broke DURING the resume prompt (first link failed to test): keep
-            // the replacement held paused so the prompt still governs where the
-            // working stream starts, instead of blaring audio behind the prompt.
-            if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
             return true
         }
     }
@@ -672,6 +727,138 @@ class PlayerViewModel @Inject constructor(
         val se = if (next.season != null && next.episode != null) "Season ${next.season} · Episode ${next.episode}" else null
         return listOfNotNull(se, next.displayTitle.takeIf { it.isNotBlank() }).joinToString(" · ")
             .ifBlank { request?.source?.title.orEmpty() }
+    }
+
+    /** The stream URL already length-checked — Ready re-fires after every
+     *  seek/rebuffer and the check must run once per opened file. */
+    private var lengthCheckedUrl: String? = null
+
+    /** Junk-length skips used on the CURRENT episode (reset per episode). */
+    private var junkSkips = 0
+
+    /**
+     * Post-open junk-file check (owner 2026-08-09: the solid-color card that
+     * "skips to the end of the episode"). Placeholder files play fine but are
+     * seconds-to-minutes long — they used to end instantly, mark the episode
+     * watched, and fire the next-episode flow. Once ExoPlayer has opened the
+     * file its real duration is known: an AUTO-picked stream implausibly
+     * shorter than the metadata's runtime (see StreamLength.kt) is quietly
+     * skipped and its release family struck, exactly like the English-audio
+     * walk. Manual Expert picks are never second-guessed; live types are
+     * never judged by length (§8); after [MAX_JUNK_SKIPS] we accept what
+     * plays. Returns false when a switch was started — the caller must skip
+     * the audio check, the next stream's Ready re-runs everything.
+     */
+    private fun verifyPlausibleLength(engine: ExoPlayerEngine): Boolean {
+        val req = request ?: return true
+        if (!req.autoSelected) return true
+        if (req.metaType != "movie" && req.metaType != "series") return true
+        if (lengthCheckedUrl == req.source.url) return true
+        lengthCheckedUrl = req.source.url
+        val durationMs = engine.exoPlayer.duration
+        if (!isImplausiblyShort(durationMs, req.expectedRuntimeMin)) return true
+        val facts = "only ${durationMs / 60_000}m ${durationMs / 1000 % 60}s long" +
+            (req.expectedRuntimeMin?.let { " (expected ~${it} min)" } ?: "")
+        if (junkSkips >= MAX_JUNK_SKIPS) {
+            diagnostics.record(
+                "streams",
+                "\"${_uiState.value.title}\": opened file is $facts — " +
+                    "skip limit reached, keeping this stream",
+            )
+            return true
+        }
+        diagnostics.record(
+            "streams",
+            "\"${_uiState.value.title}\": opened file is $facts — " +
+                "junk placeholder, trying the next stream",
+        )
+        // Remember this encode for the SERIES: the same placeholder usually
+        // shows up under every episode's stream list.
+        autoplayOrigin.origin?.stream?.let {
+            familyMemory.recordStrikeAsync(req.metaId, it, "junk file ($facts)")
+        }
+        if (!tryNextStream()) return true // list exhausted: what plays, plays
+        junkSkips++
+        return false
+    }
+
+    /** The stream URL already language-checked — Ready re-fires after every
+     *  seek/rebuffer and the check must run once per opened file. */
+    private var audioCheckedUrl: String? = null
+
+    /** No-English skips used on the CURRENT episode (reset per episode). */
+    private var languageSkips = 0
+
+    /**
+     * Post-open English-audio check (owner 2026-07-26): the labels streams are
+     * ranked by can lie or say nothing, but once ExoPlayer has opened the file
+     * its real audio tracks are known. An AUTO-picked stream with tagged audio
+     * tracks and no English among them is quietly skipped to the next
+     * alternative — the walk the owner used to do by hand on Naruto. Manual
+     * Expert picks are never second-guessed, untagged tracks prove nothing,
+     * and after [MAX_LANGUAGE_SKIPS] we accept what plays (no dub may exist).
+     */
+    private fun verifyEnglishAudio(engine: ExoPlayerEngine) {
+        val req = request ?: return
+        if (!req.autoSelected) return
+        if (audioCheckedUrl == req.source.url) return
+        audioCheckedUrl = req.source.url
+        val groups = engine.exoPlayer.currentTracks.groups
+        val audioGroups = groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+
+        // SILENT FILE (owner 2026-08-31: "some have no audio"). A file that
+        // reports tracks but not ONE audio track plays as a silent picture —
+        // that is broken, not a language question, so it never gets the
+        // benefit of the doubt the untagged case below gets. Guarded on
+        // groups.isNotEmpty(): a Ready with NO groups at all just means the
+        // tracks aren't published yet, which proves nothing either way.
+        if (groups.isNotEmpty() && audioGroups.isEmpty()) {
+            if (languageSkips >= MAX_LANGUAGE_SKIPS) {
+                diagnostics.record(
+                    "streams",
+                    "\"${_uiState.value.title}\": stream has no audio track at all — " +
+                        "skip limit reached, keeping this stream",
+                )
+                return
+            }
+            diagnostics.record(
+                "streams",
+                "\"${_uiState.value.title}\": opened stream has NO audio track — " +
+                    "trying the next stream",
+            )
+            autoplayOrigin.origin?.stream?.let {
+                familyMemory.recordStrikeAsync(req.metaId, it, "no audio track")
+            }
+            if (tryNextStream()) languageSkips++
+            return
+        }
+
+        val tags = audioGroups
+            .flatMap { group -> (0 until group.length).map { group.getTrackFormat(it).language } }
+            .filterNotNull()
+            .filterNot { it.equals("und", ignoreCase = true) } // "undetermined"
+        if (tags.isEmpty()) return // has audio, just untagged: nothing provable
+        // "en"/"eng"/"en-US" all mean English.
+        if (tags.any { it.lowercase().startsWith("en") }) return
+        if (languageSkips >= MAX_LANGUAGE_SKIPS) {
+            diagnostics.record(
+                "streams",
+                "\"${_uiState.value.title}\": audio is [${tags.joinToString()}], no English — " +
+                    "skip limit reached, keeping this stream",
+            )
+            return
+        }
+        diagnostics.record(
+            "streams",
+            "\"${_uiState.value.title}\": opened stream's audio is [${tags.joinToString()}], " +
+                "no English track — trying the next stream",
+        )
+        // Remember this encode for the SERIES: episode 5 shouldn't have to
+        // re-discover what episode 4 already proved had no English audio.
+        autoplayOrigin.origin?.stream?.let {
+            familyMemory.recordStrikeAsync(req.metaId, it, "no English audio")
+        }
+        if (tryNextStream()) languageSkips++
     }
 
     private fun Video.toEpisodeTarget() = EpisodeTarget(
@@ -730,9 +917,20 @@ class PlayerViewModel @Inject constructor(
                 positionMs = duration,
                 durationMs = duration,
                 updatedAt = System.currentTimeMillis(),
+                creditsStartMs = creditsStartMarker(),
             )
         )
     }
+
+    /**
+     * This episode's credits-start (ms) from the anime skip windows, or null.
+     * Rides along on every progress save so ProgressRepository can start
+     * "watched" at the credits instead of the blanket 90% line — see
+     * [ProgressRepository.watchedLineMs]. Extending: if a non-anime credits
+     * source ever appears (chapter markers, addon data), feed it here.
+     */
+    private fun creditsStartMarker(): Long? =
+        skipSegments.firstOrNull { it.type == SkipType.CREDITS }?.startMs
 
     /**
      * Snapshot the player position into the progress table. Main-thread only
@@ -756,6 +954,7 @@ class PlayerViewModel @Inject constructor(
                 positionMs = position,
                 durationMs = duration,
                 updatedAt = System.currentTimeMillis(),
+                creditsStartMs = creditsStartMarker(),
             )
         )
     }
@@ -769,6 +968,17 @@ class PlayerViewModel @Inject constructor(
      * to go, never a dead/hidden button.
      */
     fun tryAnotherStream() {
+        // Walking away from a FAILED auto-pick is the strike signal for the
+        // release-family memory: this encode burned us, remember it for the
+        // series' other episodes. Manual Expert picks (autoSelected=false)
+        // and walks from a WORKING stream (error==null, e.g. quality taste)
+        // never strike — only proven failures teach the memory.
+        val req = request
+        if (req?.autoSelected == true && _uiState.value.error != null) {
+            autoplayOrigin.origin?.stream?.let {
+                familyMemory.recordStrikeAsync(req.metaId, it, "failed to play")
+            }
+        }
         if (!tryNextStream(preferDifferent = true)) openCurrentStreamList()
     }
 
@@ -798,6 +1008,49 @@ class PlayerViewModel @Inject constructor(
         return true
     }
 
+    /** Same-stream reconnects already spent, keyed by stream URL — a stream
+     *  that keeps dropping must eventually give way to a different one. */
+    private var reconnectsUrl: String? = null
+    private var reconnectsUsed = 0
+
+    /**
+     * Transport failure on a stream that was PLAYING: pause, wait, and re-open
+     * the same URL at the same position — the "let it buffer" move a person
+     * would make — instead of jumping to another stream mid-scene.
+     *
+     * Bounded by [MAX_RECONNECTS] per stream URL, and skipped entirely when
+     * the stream never got going (position 0 = it isn't a stall, it's a
+     * stream that can't open — walking on is right there). False = the caller
+     * falls through to the auto-skip / error panel exactly as before.
+     */
+    private fun reconnectCurrent(engine: ExoPlayerEngine): Boolean {
+        val req = request ?: return false
+        val position = engine.exoPlayer.currentPosition
+        if (position <= 0) return false
+        if (reconnectsUrl != req.source.url) {
+            reconnectsUrl = req.source.url
+            reconnectsUsed = 0
+        }
+        if (reconnectsUsed >= MAX_RECONNECTS) return false
+        reconnectsUsed++
+        diagnostics.record(
+            "player",
+            "connection dropped — waiting ${RECONNECT_DELAY_MS}ms and rejoining " +
+                "\"${req.source.title}\" at ${position / 1000}s " +
+                "(attempt $reconnectsUsed of $MAX_RECONNECTS)",
+        )
+        // Buffering face, not an error card: nothing is broken yet.
+        _uiState.value = _uiState.value.copy(error = null, switching = true)
+        viewModelScope.launch {
+            delay(RECONNECT_DELAY_MS)
+            // The viewer may have backed out or the engine may have gone away
+            // during the wait — replayCurrent's own guards handle a null
+            // request, but re-check the engine we captured is still the live one.
+            if (this@PlayerViewModel.engine.value === engine) replayCurrent(engine)
+        }
+        return true
+    }
+
     /** Re-open the current source in place, keeping the playback position. */
     private fun replayCurrent(engine: ExoPlayerEngine) {
         val req = request ?: return
@@ -808,9 +1061,6 @@ class PlayerViewModel @Inject constructor(
         currentPlayback.request = newRequest
         _uiState.value = _uiState.value.copy(error = null, ended = false, switching = true)
         engine.play(newRequest.source)
-        // Mid-resume-prompt: keep the reloaded stream held paused so the
-        // prompt still governs where playback starts.
-        if (_uiState.value.resumePromptMs != null) engine.exoPlayer.playWhenReady = false
     }
 
     /**
@@ -862,11 +1112,21 @@ class PlayerViewModel @Inject constructor(
     }
 
     private companion object {
+        /** Same-stream reconnect attempts before walking to another stream.
+         *  Two × [RECONNECT_DELAY_MS] plus ExoPlayer's own load retries buys
+         *  a stuttering host well over half a minute to come back. */
+        const val MAX_RECONNECTS = 2
+
+        /** The "let it buffer" pause before rejoining. Long enough for a
+         *  blip to clear, short enough that a real outage isn't a hang. */
+        const val RECONNECT_DELAY_MS = 2_500L
+
         // SavedStateHandle keys for the process-death restore target.
         const val KEY_RESTORE_VIDEO = "restore.videoId"
         const val KEY_RESTORE_TYPE = "restore.type"
         const val KEY_RESTORE_TITLE = "restore.title"
         const val KEY_RESTORE_META = "restore.metaId"
         const val KEY_RESTORE_POSTER = "restore.poster"
+        const val KEY_RESTORE_RUNTIME = "restore.runtimeMin"
     }
 }

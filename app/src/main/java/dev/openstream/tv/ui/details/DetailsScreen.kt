@@ -1,7 +1,5 @@
 package dev.openstream.tv.ui.details
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +55,7 @@ import dev.openstream.tv.addon.Video
 import dev.openstream.tv.data.EpisodeNumbering
 import dev.openstream.tv.data.ProgressRepository
 import dev.openstream.tv.domain.WatchProgress
+import dev.openstream.tv.player.parseRuntimeMinutes
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
 import dev.openstream.tv.ui.components.ProgressRing
@@ -79,7 +78,10 @@ import dev.openstream.tv.ui.theme.MutedText
 @Composable
 fun DetailsScreen(
     onBack: () -> Unit,
-    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit,
+    onOpenStreams: (
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int?,
+    ) -> Unit,
     viewModel: DetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -147,6 +149,7 @@ fun DetailsScreen(
                     onOpenStreams(
                         viewModel.type, viewModel.id, state.meta!!.name,
                         viewModel.id, state.meta!!.poster,
+                        parseRuntimeMinutes(state.meta!!.runtime),
                     )
                 },
                 onPlayEpisode = { video ->
@@ -154,6 +157,9 @@ fun DetailsScreen(
                     onOpenStreams(
                         viewModel.type, video.id, video.displayTitle,
                         viewModel.id, state.meta!!.poster,
+                        // Metas carry no per-episode runtime; the series-level
+                        // one (typical episode length) feeds the length check.
+                        parseRuntimeMinutes(state.meta!!.runtime),
                     )
                 },
             )
@@ -183,6 +189,9 @@ private fun DetailsContent(
     onPlayEpisode: (Video) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    // Set when no app on this box could open the trailer link — the button
+    // then says so in plain words instead of silently doing nothing.
+    var trailerLaunchFailed by remember { mutableStateOf(false) }
     // Entry focus. For a resume, scroll the target episode into existence first
     // (a LazyColumn hasn't composed off-screen rows, so its FocusRequester would
     // otherwise throw) then focus it; otherwise focus the default anchor. Runs
@@ -296,24 +305,34 @@ private fun DetailsContent(
                             }
                         )
                     }
-                    val trailer = meta.trailers.firstOrNull()
-                    if (trailer != null) {
-                        val context = LocalContext.current
-                        OutlinedButton(onClick = {
-                            // External, not embedded: a broken/uninstalled
-                            // YouTube app must not dead-end this screen.
-                            runCatching {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(trailer.youtubeUrl))
-                                )
-                            }
-                        }) { Text("Watch trailer") }
-                    }
+                    // Always offered (owner 2026-07-28). With a trailer id in
+                    // the meta it opens that video; without one — the common
+                    // case, Cinemeta sends none — it opens a YouTube search
+                    // for the title, which beats hiding the button entirely.
+                    val context = LocalContext.current
+                    val trailerUrl = meta.trailers.firstOrNull()?.source
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { TrailerLauncher.watchUrl(it) }
+                        ?: TrailerLauncher.searchUrl(meta.name, meta.releaseInfo)
+                    OutlinedButton(onClick = {
+                        // External, not embedded: playing YouTube in-app isn't
+                        // something we can do legitimately, and a missing
+                        // handler must not dead-end this screen.
+                        trailerLaunchFailed = !TrailerLauncher.open(context, trailerUrl)
+                    }) { Text("▶  Trailer") }
                 }
                 if (movieResumable) {
                     ProgressBar(
                         fraction = movieWatch!!.fractionWatched,
                         modifier = Modifier.fillMaxWidth(0.35f),
+                    )
+                }
+                if (trailerLaunchFailed) {
+                    Text(
+                        text = "No app on this box can play the trailer. " +
+                            "Install SmartTube or YouTube and it will work.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedText,
                     )
                 }
                 }

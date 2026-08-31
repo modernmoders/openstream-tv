@@ -61,7 +61,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import dev.openstream.tv.data.SUBTITLE_EDGE_ARGB
+import dev.openstream.tv.data.SUBTITLE_TRANSPARENT
+import dev.openstream.tv.data.SubtitleEdge
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -74,6 +78,9 @@ import androidx.compose.foundation.shape.CircleShape
 import dev.openstream.tv.ui.components.ChevronsRightIcon
 import dev.openstream.tv.ui.components.LoadingAnimation
 import dev.openstream.tv.ui.components.NextEpisodeCard
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.components.PlayerGlyph
 import dev.openstream.tv.ui.components.PlayerGlyphKind
 import dev.openstream.tv.ui.components.SurfacePill
@@ -108,13 +115,17 @@ private const val REBUFFER_RING_DELAY_MS = 400L
 @Composable
 fun PlayerScreen(
     onExit: () -> Unit,
-    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
-        { _, _, _, _, _ -> },
+    onOpenStreams: (
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int?,
+    ) -> Unit =
+        { _, _, _, _, _, _ -> },
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val engineOrNull by viewModel.engine.collectAsStateWithLifecycle()
     val autoplay by viewModel.autoplayState.collectAsStateWithLifecycle()
+    val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.hasSource) {
         if (!state.hasSource) {
@@ -124,14 +135,14 @@ fun PlayerScreen(
             // the viewer out of it (Round 14: "stays where you were").
             val restore = state.restore
             if (restore != null) {
-                onOpenStreams(restore.type, restore.videoId, restore.title, restore.metaId, restore.poster)
+                onOpenStreams(restore.type, restore.videoId, restore.title, restore.metaId, restore.poster, restore.runtimeMin)
             } else {
                 onExit()
             }
         }
     }
     LaunchedEffect(Unit) {
-        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
+        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster, it.runtimeMin) }
     }
     // Remote BACK: during the Up Next countdown, cancel it and stay; otherwise
     // leave the player the SAME way the on-screen exits do (onExit) — in easy
@@ -286,17 +297,16 @@ fun PlayerScreen(
             showRebuffer = false
         }
     }
-    // The load/test phase: spinner (and, if there's saved progress, the resume
-    // prompt) covers the black/debrid-placeholder until the first real frame
-    // paints. While a resume prompt is pending, playback is held paused by the
-    // ViewModel, so `loading` stays true until the viewer answers.
+    // The load/test phase: spinner covers the black/debrid-placeholder until
+    // the first real frame paints. (Resume is automatic now — owner
+    // 2026-07-26 — so there's no prompt to hold the spinner up.)
     //
     // ONLY the initial load. A mid-playback re-buffer — every seek causes one —
     // must not throw a blocking scrim over the video: it swallowed the keys so
     // held scrubbing was impossible, and it flashed the spinner on each skipped
     // section (owner 2026-07-09).
     val loading = state.error == null && !state.ended && autoplay == null &&
-        (state.resumePromptMs != null || (!startedOnce && playbackState != Player.STATE_READY))
+        !startedOnce && playbackState != Player.STATE_READY
 
     // The Skip Intro pill's 20s fade (owner mockup): expiry is per-window —
     // a new segment (or re-entering one by scrubbing) restarts the clock.
@@ -394,7 +404,34 @@ fun PlayerScreen(
     ) {
         AndroidView(
             factory = { context -> PlayerView(context).apply { useController = false } },
-            update = { view -> view.player = engine.exoPlayer },
+            update = { view ->
+                view.player = engine.exoPlayer
+                // Owner's subtitle look (2026-08-30). Re-applied on every
+                // recomposition of this block, so changing the style in
+                // Settings takes effect on the video already on screen.
+                view.subtitleView?.apply {
+                    // OUR size and colours win over whatever the subtitle file
+                    // asks for. Without this, a styled .ass track (common on
+                    // anime) ignores the whole screen the owner just used.
+                    setApplyEmbeddedStyles(false)
+                    setApplyEmbeddedFontSizes(false)
+                    setFractionalTextSize(subtitleStyle.size.fractionOfHeight)
+                    setStyle(
+                        CaptionStyleCompat(
+                            subtitleStyle.color.argb,
+                            subtitleStyle.backdrop.backgroundArgb,
+                            SUBTITLE_TRANSPARENT, // window: never a full-width bar
+                            when (subtitleStyle.backdrop.edge) {
+                                SubtitleEdge.OUTLINE -> CaptionStyleCompat.EDGE_TYPE_OUTLINE
+                                SubtitleEdge.DROP_SHADOW -> CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW
+                                SubtitleEdge.NONE -> CaptionStyleCompat.EDGE_TYPE_NONE
+                            },
+                            SUBTITLE_EDGE_ARGB,
+                            null, // system default typeface — no font shipped
+                        ),
+                    )
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -410,13 +447,6 @@ fun PlayerScreen(
                     verticalArrangement = Arrangement.spacedBy(32.dp),
                 ) {
                     LoadingAnimation()
-                    state.resumePromptMs?.let { resumeMs ->
-                        ResumePrompt(
-                            resumeMs = resumeMs,
-                            onResume = viewModel::resumeFromSaved,
-                            onStartOver = viewModel::startFromBeginning,
-                        )
-                    }
                 }
             }
         }
@@ -580,12 +610,18 @@ fun PlayerScreen(
             ) {
                 val countdown = state.nextEpisodeCountdown
                 when {
+                    // With auto-advance on, the countdown is non-null from the
+                    // credits window's first second — this card IS the "Next
+                    // Episode" surface then (owner 2026-07-27: popup + running
+                    // timer together, never a button that secretly waits).
                     countdown != null -> NextEpisodeCard(
                         episodeLabel = upNextLabel(state.nextEpisode),
                         thumbnail = state.nextEpisode?.thumbnail,
                         secondsLeft = countdown,
                         totalSeconds = AUTO_ADVANCE_COUNTDOWN_SECONDS,
+                        eyebrow = "Skipping to next episode",
                     )
+                    // Auto-advance OFF: the manual pill, unchanged.
                     skipSeg.type == SkipType.CREDITS -> SkipPill("Next Episode")
                     else -> AnimatedVisibility(
                         visible = !introHintExpired,
@@ -657,7 +693,7 @@ fun PlayerScreen(
             UpNextOverlay(autoplay)
         } else if (state.ended) {
             CenterPanel("All done") {
-                Button(onClick = onExit) { Text("Back") }
+                PanelButton("Back", onClick = onExit, emphasized = true)
             }
         }
 
@@ -673,14 +709,18 @@ fun PlayerScreen(
             CenterPanel("Hmm, that one won't play.\n$message") {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (viewModel.externalPlayers.isNotEmpty()) {
-                        Button(onClick = ::onPlayInAnotherApp) { Text("Play in another app") }
+                        PanelButton("Play in another app", onClick = ::onPlayInAnotherApp)
                     }
-                    Button(onClick = viewModel::retry) { Text("Try again") }
-                    Button(
+                    PanelButton("Try again", onClick = viewModel::retry)
+                    // Emphasized = the recommended way out, and it holds
+                    // initial focus — the two cues always travel together.
+                    PanelButton(
+                        "Try a different stream",
                         onClick = { viewModel.tryAnotherStream() },
                         modifier = Modifier.focusRequester(tryAnotherFocus),
-                    ) { Text("Try a different stream") }
-                    Button(onClick = onExit) { Text("Back") }
+                        emphasized = true,
+                    )
+                    PanelButton("Back", onClick = onExit)
                 }
             }
         }
@@ -860,7 +900,7 @@ private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) 
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text("If something's not right", style = MaterialTheme.typography.titleLarge, color = Color.White)
@@ -869,7 +909,12 @@ private fun LearnMoreDialog(hasExternalPlayers: Boolean, onDismiss: () -> Unit) 
                 HelpLine("Play in another app", "Hands the video to VLC or MX Player. Try this when the picture plays but there's no sound, or the audio is the wrong language.")
             }
             HelpLine("Software video (ON/OFF)", "The app now picks this automatically for videos this TV can't show cleanly. If the picture still looks blocky or scrambled, turn it ON — the video reloads right where you are. Turn OFF to go back to the faster hardware video.")
-            Button(onClick = onDismiss, modifier = Modifier.focusRequester(okFocus)) { Text("Got it") }
+            PanelButton(
+                "Got it",
+                onClick = onDismiss,
+                modifier = Modifier.focusRequester(okFocus),
+                emphasized = true,
+            )
         }
     }
 }
@@ -895,7 +940,7 @@ private fun AnotherAppDialog(
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp),
         ) {
             Text(
@@ -915,47 +960,16 @@ private fun AnotherAppDialog(
     }
 }
 
-/**
- * "Resume from X / Start from the beginning" shown over the loading spinner
- * while the stream is tested (owner 2026-07-08). Same content survives whatever
- * stream/link is picked because progress is keyed by the video, not the URL
- * (MediaRef, §8.4). Resume holds initial focus so a single OK continues — the
- * common case for someone getting back to a show they were partway through.
- */
-@Composable
-private fun ResumePrompt(
-    resumeMs: Long,
-    onResume: () -> Unit,
-    onStartOver: () -> Unit,
-) {
-    val resumeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { resumeFocus.requestFocus() } }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            "You've watched part of this",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onResume, modifier = Modifier.focusRequester(resumeFocus)) {
-                Text("Resume from ${resumeMs.asClock()}")
-            }
-            Button(onClick = onStartOver) { Text("Start from the beginning") }
-        }
-    }
-}
-
 @Composable
 private fun CenterPanel(message: String, actions: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
+            // The one shared popup face (AppDialog.kt) — the error/finished
+            // panels must read as siblings of every other dialog.
             modifier = Modifier
-                .background(Color(0xD0101018), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(32.dp),
         ) {
             Text(message, style = MaterialTheme.typography.titleLarge, color = Color.White)

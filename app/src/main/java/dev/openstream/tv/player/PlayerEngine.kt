@@ -25,11 +25,13 @@ sealed interface PlayerEvent {
      *  [detail] carries the raw code/cause for the diagnostics log only —
      *  it must never reach the screen. [isDecodeError] marks decoder-class
      *  failures, which get one same-stream software-decoder retry before the
-     *  usual try-the-next-stream walk. */
+     *  usual try-the-next-stream walk; [isNetworkError] marks the ones a
+     *  wait-and-reconnect on the SAME stream can cure. */
     data class Error(
         val message: String,
         val detail: String = "",
         val isDecodeError: Boolean = false,
+        val isNetworkError: Boolean = false,
     ) : PlayerEvent
 }
 
@@ -45,6 +47,25 @@ fun isDecodeErrorCode(errorCode: Int): Boolean = when (errorCode) {
     androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED,
     androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
     androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+    -> true
+    else -> false
+}
+
+/**
+ * Transport-class error codes: the connection to the debrid/CDN host dropped,
+ * timed out, or the host hiccuped — the FILE is presumably fine. The owner
+ * (2026-07-28) noticed a mid-movie stall jumping straight to a different
+ * stream when "the stream should pause and try to buffer" first, and these are
+ * exactly the codes where re-opening the same URL at the same position is the
+ * right first move. A 4xx (BAD_HTTP_STATUS) is deliberately NOT here: a dead
+ * link stays dead, so those still walk to the next stream immediately.
+ * Pure so it's table-testable without a device.
+ */
+fun isNetworkErrorCode(errorCode: Int): Boolean = when (errorCode) {
+    androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+    androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+    androidx.media3.common.PlaybackException.ERROR_CODE_TIMEOUT,
     -> true
     else -> false
 }

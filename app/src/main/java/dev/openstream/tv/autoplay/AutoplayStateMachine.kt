@@ -18,6 +18,9 @@ import dev.openstream.tv.autoplay.StreamCascade.CurrentStream
 class AutoplayStateMachine(
     private val current: CurrentStream,
     private val countdownSeconds: Int = DEFAULT_COUNTDOWN_SECONDS,
+    /** Release families already struck for this series (ReleaseFamilyMemory)
+     *  — [StreamCascade.rank] sinks them so the binge stops re-trying them. */
+    private val strickenFamilies: Set<String> = emptySet(),
 ) {
 
     sealed interface State {
@@ -111,7 +114,7 @@ class AutoplayStateMachine(
 
         is Event.AddonResponded -> {
             val updated = state.copy(groups = state.groups + event.group)
-            val ranked = StreamCascade.rank(current, updated.groups)
+            val ranked = StreamCascade.rank(current, updated.groups, strickenFamilies)
             val bingeMatch = current.stream.behaviorHints.bingeGroup != null &&
                 ranked.firstOrNull()?.stream?.behaviorHints?.bingeGroup == current.stream.behaviorHints.bingeGroup
             when {
@@ -129,7 +132,7 @@ class AutoplayStateMachine(
             if (updated.elapsedSeconds < PATIENCE_SECONDS) Transition(updated)
             else {
                 // Patience ceiling: play whatever the stragglers left us, else manual list
-                val ranked = StreamCascade.rank(current, updated.groups)
+                val ranked = StreamCascade.rank(current, updated.groups, strickenFamilies)
                 if (ranked.isEmpty()) manual(updated.next) else attempt(updated.next, ranked)
             }
         }

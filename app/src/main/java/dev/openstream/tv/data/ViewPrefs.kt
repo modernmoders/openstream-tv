@@ -61,6 +61,12 @@ interface ViewPrefs {
     /** Episode numbering style for series/anime episode lists (default seasonal). */
     val episodeNumbering: Flow<EpisodeNumbering>
 
+    /**
+     * How subtitles are drawn (owner 2026-08-30). Defaults reproduce media3's
+     * own look, so a box that never opens the screen is unaffected.
+     */
+    val subtitleStyle: Flow<SubtitleStyle>
+
     /** Subtle focus/select sounds (owner round 10). Default on. */
     val uiSounds: Flow<Boolean>
 
@@ -79,6 +85,9 @@ interface ViewPrefs {
     suspend fun setEpisodeNumbering(mode: EpisodeNumbering)
     suspend fun setUiSounds(enabled: Boolean)
     suspend fun setVoiceFirstSearch(enabled: Boolean)
+    suspend fun setSubtitleTextSize(size: SubtitleTextSize)
+    suspend fun setSubtitleTextColor(color: SubtitleTextColor)
+    suspend fun setSubtitleBackdrop(backdrop: SubtitleBackdrop)
 
     /**
      * "Reset settings to default" (owner Round-15 #10): wipe every view
@@ -152,6 +161,36 @@ class DataStoreViewPrefs @Inject constructor(
         context.viewPrefsStore.edit { it[EPISODE_NUMBERING] = mode.name }
     }
 
+    override val subtitleStyle: Flow<SubtitleStyle> =
+        context.viewPrefsStore.data.map { prefs ->
+            // Same defensive read as the other enums: a value written by a
+            // newer build (or a renamed entry) falls back to the default
+            // rather than crashing the player.
+            SubtitleStyle(
+                size = prefs[SUBTITLE_SIZE]
+                    ?.let { raw -> SubtitleTextSize.entries.firstOrNull { it.name == raw } }
+                    ?: SubtitleTextSize.NORMAL,
+                color = prefs[SUBTITLE_COLOR]
+                    ?.let { raw -> SubtitleTextColor.entries.firstOrNull { it.name == raw } }
+                    ?: SubtitleTextColor.WHITE,
+                backdrop = prefs[SUBTITLE_BACKDROP]
+                    ?.let { raw -> SubtitleBackdrop.entries.firstOrNull { it.name == raw } }
+                    ?: SubtitleBackdrop.OUTLINE,
+            )
+        }
+
+    override suspend fun setSubtitleTextSize(size: SubtitleTextSize) {
+        context.viewPrefsStore.edit { it[SUBTITLE_SIZE] = size.name }
+    }
+
+    override suspend fun setSubtitleTextColor(color: SubtitleTextColor) {
+        context.viewPrefsStore.edit { it[SUBTITLE_COLOR] = color.name }
+    }
+
+    override suspend fun setSubtitleBackdrop(backdrop: SubtitleBackdrop) {
+        context.viewPrefsStore.edit { it[SUBTITLE_BACKDROP] = backdrop.name }
+    }
+
     override val uiSounds: Flow<Boolean> =
         context.viewPrefsStore.data.map { prefs -> prefs[UI_SOUNDS] ?: true }
 
@@ -181,5 +220,8 @@ class DataStoreViewPrefs @Inject constructor(
         val EPISODE_NUMBERING = stringPreferencesKey("episode_numbering")
         val UI_SOUNDS = booleanPreferencesKey("ui_sounds")
         val VOICE_FIRST_SEARCH = booleanPreferencesKey("voice_first_search")
+        val SUBTITLE_SIZE = stringPreferencesKey("subtitle_size")
+        val SUBTITLE_COLOR = stringPreferencesKey("subtitle_color")
+        val SUBTITLE_BACKDROP = stringPreferencesKey("subtitle_backdrop")
     }
 }

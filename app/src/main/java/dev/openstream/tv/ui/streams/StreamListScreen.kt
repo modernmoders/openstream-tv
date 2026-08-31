@@ -55,10 +55,12 @@ import dev.openstream.tv.player.PlayerDecision
 import dev.openstream.tv.player.resolvePreferredPlayer
 import dev.openstream.tv.ui.components.BackButton
 import dev.openstream.tv.ui.components.LoadingMessage
+import dev.openstream.tv.ui.components.PanelButton
+import dev.openstream.tv.ui.components.PanelFill
+import dev.openstream.tv.ui.components.PanelShape
 import dev.openstream.tv.ui.components.RowMessage
 import dev.openstream.tv.ui.components.SurfaceRow
 import dev.openstream.tv.ui.components.UpNextOverlay
-import dev.openstream.tv.ui.components.asClock
 import dev.openstream.tv.ui.streams.StreamListViewModel.GroupState
 import dev.openstream.tv.ui.theme.Accent
 import dev.openstream.tv.ui.theme.AppBackground
@@ -78,8 +80,11 @@ import dev.openstream.tv.ui.theme.MutedText
 fun StreamListScreen(
     onBack: () -> Unit = {},
     onPlay: () -> Unit = {},
-    onOpenStreams: (type: String, videoId: String, title: String, metaId: String, poster: String?) -> Unit =
-        { _, _, _, _, _ -> },
+    onOpenStreams: (
+        type: String, videoId: String, title: String, metaId: String, poster: String?,
+        runtimeMin: Int?,
+    ) -> Unit =
+        { _, _, _, _, _, _ -> },
     viewModel: StreamListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,6 +92,10 @@ fun StreamListScreen(
 
     /** Stream chosen but not yet launched: resume/start-over and/or player choice pending. */
     var pendingPlay by remember { mutableStateOf<PendingPlay?>(null) }
+    /** "Show streams anyway" pressed on the failure card (owner 2026-07-26):
+     *  one-time escape hatch that reveals the hidden list for THIS screen
+     *  only — no dead ends, and no Settings trip to rescue one video. */
+    var revealOverride by remember { mutableStateOf(false) }
     /** True while [pendingPlay] shows the "Play with…" list, false = resume dialog. */
     var choosingPlayer by remember { mutableStateOf(false) }
 
@@ -109,7 +118,7 @@ fun StreamListScreen(
     fun launch(play: PendingPlay, startPositionMs: Long) {
         val external = play.external
         if (external == null) {
-            if (viewModel.stage(play.addon, play.stream, startPositionMs)) onPlay()
+            if (viewModel.stage(play.addon, play.stream, startPositionMs, play.autoSelected)) onPlay()
         } else {
             viewModel.externalIntent(play.addon, play.stream, external, startPositionMs)
                 ?.let(::fireExternal)
@@ -117,25 +126,15 @@ fun StreamListScreen(
     }
 
     /**
-     * Player decided. The INTERNAL player now asks "resume / start over" itself,
-     * over its loading animation (owner 2026-07-08), so we just launch it at the
-     * saved position (resume by default) and let it prompt. An EXTERNAL player
-     * (VLC/MX) can't host our prompt, so it still gets the pre-launch dialog.
+     * Player decided. Resume is automatic now (owner 2026-07-26): internal or
+     * external, playback just starts from the saved position — the progress
+     * store already refuses to offer a position past the watched line, so a
+     * finished episode starts from the beginning on its own.
      */
     fun onPlayerDecided(play: PendingPlay) {
         choosingPlayer = false
-        val resume = state.resumePositionMs
-        when {
-            play.external == null -> {
-                pendingPlay = null
-                launch(play, resume ?: 0)
-            }
-            resume != null -> pendingPlay = play // external: ask before leaving the app
-            else -> {
-                pendingPlay = null
-                launch(play, 0)
-            }
-        }
+        pendingPlay = null
+        launch(play, state.resumePositionMs ?: 0)
     }
 
     // Auto-play first stream: launch hands-free, resuming automatically.
@@ -146,14 +145,14 @@ fun StreamListScreen(
             val s = viewModel.uiState.value
             val external = (resolvePreferredPlayer(s.playerPref, s.externalPlayers)
                 as? PlayerDecision.External)?.choice
-            launch(PendingPlay(auto.addon, auto.stream, external), auto.startPositionMs)
+            launch(PendingPlay(auto.addon, auto.stream, external, autoSelected = true), auto.startPositionMs)
         }
     }
     // §7.1.6 chain: the next episode plays in the same external player
     LaunchedEffect(Unit) { viewModel.launchExternal.collect(::fireExternal) }
     LaunchedEffect(Unit) {
         // Autoplay gave up → next episode's manual stream list replaces this one
-        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster) }
+        viewModel.openStreams.collect { onOpenStreams(it.type, it.videoId, it.title, it.metaId, it.poster, it.runtimeMin) }
     }
     // Back cancels the Up Next flow instead of leaving the screen (§7.1 step 4a)
     BackHandler(enabled = autoplay.isCancellable()) { viewModel.backPressed() }
@@ -167,12 +166,13 @@ fun StreamListScreen(
     // (owner 2026-07-09) instead of per-addon blocks. The dedupe collapses the
     // same release returned by all three AIOStreams instances.
     val loadedGroups = state.groups.filterIsInstance<GroupState.Loaded>()
-    val mergedStreams = remember(state.groups) {
+    val mergedStreams = remember(state.groups, state.strickenFamilies) {
         StreamCascade.mergeForDisplay(
             loadedGroups.mapIndexed { i, g ->
                 StreamCascade.AddonStreams(g.addon.manifestUrl, i, g.streams)
             },
             viewModel.hardwareCodecs,
+            state.strickenFamilies,
         )
     }
     val addonByUrl = remember(state.groups) {
@@ -219,16 +219,61 @@ fun StreamListScreen(
             )
         }
 
-        if (state.autoStarting) {
-            // Auto mode: a calm "Starting…" fills the screen so the technical
-            // stream list never flashes by (owner 2026-07-06). If auto-play
-            // gives up, autoStarting flips false and the real list appears.
+        if (state.autoStarting || (!state.showList && !revealOverride)) {
+            // Calm state instead of the technical stream list: while auto-play
+            // is picking (everyone), and PERMANENTLY when the rows are hidden
+            // (owner 2026-07-26 — no Expert "Show streams", no list, ever).
+            // A failed auto-pick shows a plain-words card, never raw rows.
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LoadingMessage(
-                    text = "Starting your show…",
-                    horizontalPadding = 0.dp,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
+                if (state.autoStartFailed) {
+                    // Descriptive but plain-words (owner 2026-07-26): say WHICH
+                    // kind of failure happened, never raw addon errors — those
+                    // are in the Expert App log.
+                    val failed = state.groups.count { it is GroupState.Failed }
+                    val loaded = state.groups.count { it is GroupState.Loaded }
+                    val detail = when {
+                        state.groups.isEmpty() ->
+                            "No stream sources are set up on this TV yet."
+                        loaded == 0 ->
+                            "None of this TV's $failed stream source(s) could be " +
+                                "reached — the internet connection may be down."
+                        else ->
+                            "The stream sources answered, but none of them had a " +
+                                "playable video for this one." +
+                                (if (failed > 0) " ($failed source(s) also couldn't be reached.)" else "")
+                    }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth(0.7f),
+                    ) {
+                        Text(
+                            text = "This video isn't starting right now",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = "$detail\nBacking out and trying again usually fixes a temporary problem.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MutedText,
+                            textAlign = TextAlign.Center,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PanelButton("Go back", onClick = onBack, emphasized = true)
+                            // Escape hatch (owner 2026-07-26): reveal the raw
+                            // list for this one video — playback is never a
+                            // dead end even with streams hidden.
+                            PanelButton("Show streams anyway", onClick = { revealOverride = true })
+                        }
+                    }
+                } else {
+                    LoadingMessage(
+                        text = "Starting your show…",
+                        horizontalPadding = 0.dp,
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
             }
         } else {
         if (!state.initializing && state.groups.isEmpty()) {
@@ -325,19 +370,6 @@ fun StreamListScreen(
                 onPick = { choice -> onPlayerDecided(play.copy(external = choice)) },
                 onDismiss = { pendingPlay = null; choosingPlayer = false },
             )
-        } else {
-            ResumeDialog(
-                resumePositionMs = state.resumePositionMs ?: 0,
-                onResume = {
-                    pendingPlay = null
-                    launch(play, state.resumePositionMs ?: 0)
-                },
-                onStartOver = {
-                    pendingPlay = null
-                    launch(play, 0)
-                },
-                onDismiss = { pendingPlay = null },
-            )
         }
     }
 
@@ -350,6 +382,9 @@ private data class PendingPlay(
     val addon: InstalledAddon,
     val stream: Stream,
     val external: ExternalPlayerPort.Choice?,
+    /** True when auto-play picked this stream (nobody tapped a row) — lets the
+     *  player auto-skip it if it turns out to have no English audio track. */
+    val autoSelected: Boolean = false,
 )
 
 /**
@@ -378,7 +413,7 @@ private fun PlayWithDialog(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(360.dp)
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
+                .background(PanelFill, PanelShape)
                 .padding(28.dp)
                 .onPreviewKeyEvent { event ->
                     val select = when (event.key.nativeKeyCode) {
@@ -406,56 +441,19 @@ private fun PlayWithDialog(
             )
             // Full-width buttons: ragged wrap-content widths read as broken
             // on a 10-foot UI (§5 visual polish)
-            Button(
+            PanelButton(
+                "Internal player",
                 onClick = { onPick(null) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(firstFocus),
-            ) { Text("Internal player") }
+            )
             externalPlayers.forEach { choice ->
-                Button(
+                PanelButton(
+                    choice.player.label,
                     onClick = { onPick(choice) },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(choice.player.label) }
-            }
-        }
-    }
-}
-
-/**
- * "Resume from X / Start over" (§10 Phase 2). A real Dialog window so D-pad
- * focus is trapped inside and Back dismisses — the list behind must not be
- * reachable while it's up (§5.4 focus predictability).
- */
-@Composable
-private fun ResumeDialog(
-    resumePositionMs: Long,
-    onResume: () -> Unit,
-    onStartOver: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val resumeFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { resumeFocus.requestFocus() }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(16.dp))
-                .padding(32.dp),
-        ) {
-            Text(
-                text = "You've watched part of this",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = onResume,
-                    modifier = Modifier.focusRequester(resumeFocus),
-                ) { Text("Resume from ${resumePositionMs.asClock()}") }
-                Button(onClick = onStartOver) { Text("Start over") }
+                )
             }
         }
     }
@@ -490,20 +488,19 @@ private fun StreamRow(
                 )
             }
             Column(Modifier.weight(1f)) {
+                // Full release info, wrapped — never truncated (owner
+                // 2026-07-26: "the titles are all truncated"). This list is
+                // Expert-only now, so the detail is exactly what's wanted.
                 Text(
                     text = stream.name ?: "Stream",
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 if (stream.displayDescription.isNotBlank()) {
                     Text(
                         text = stream.displayDescription,
                         style = MaterialTheme.typography.bodySmall,
                         color = MutedText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

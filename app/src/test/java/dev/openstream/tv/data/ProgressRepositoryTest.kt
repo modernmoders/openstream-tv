@@ -57,7 +57,7 @@ class ProgressRepositoryTest {
     }
 
     @Test
-    fun `past 95 percent counts as watched`() {
+    fun `past the watched line counts as watched`() {
         assertFalse(
             ProgressRepository.isResumable(
                 progress(positionMs = 1_150_000, durationMs = 1_200_000)
@@ -89,7 +89,7 @@ class ProgressRepositoryTest {
     }
 
     @Test
-    fun `watched and resumable are exclusive at the 95 percent line`() {
+    fun `watched and resumable are exclusive at the watched line`() {
         // The same WATCHED_FRACTION splits "keep watching" from "watched" — a
         // row is never both, so a row shows a bar OR a ✓, never both.
         val near = progress(positionMs = 1_150_000, durationMs = 1_200_000)
@@ -128,6 +128,56 @@ class ProgressRepositoryTest {
 
         // one series tile (its newest episode) + the movie, newest-first
         assertEquals(listOf("s:1:3", "mov"), row.map { it.ref.externalId })
+    }
+
+    // --- anime credits-start watched line (owner backlog 2026-07-26) ---
+
+    @Test
+    fun `credits marker before the 90 line moves the watched line earlier`() {
+        // 20-min episode; credits start at 80% (long ED + preview). Stopping
+        // inside the credits must read watched, not resumable.
+        val duringCredits = progress(
+            positionMs = 1_000_000, durationMs = 1_200_000,
+        ).copy(creditsStartMs = 960_000)
+        assertTrue(ProgressRepository.isWatched(duringCredits))
+        assertFalse(ProgressRepository.isResumable(duringCredits))
+    }
+
+    @Test
+    fun `before the credits marker is still resumable`() {
+        val beforeCredits = progress(
+            positionMs = 900_000, durationMs = 1_200_000,
+        ).copy(creditsStartMs = 960_000)
+        assertFalse(ProgressRepository.isWatched(beforeCredits))
+        assertTrue(ProgressRepository.isResumable(beforeCredits))
+    }
+
+    @Test
+    fun `credits marker never moves the watched line later than 90 percent`() {
+        // Marker at 95% (credits genuinely late): the 90% line still rules —
+        // the marker may only pull the line EARLIER, never push it later.
+        val past90 = progress(
+            positionMs = 1_100_000, durationMs = 1_200_000,
+        ).copy(creditsStartMs = 1_140_000)
+        assertTrue(ProgressRepository.isWatched(past90))
+    }
+
+    @Test
+    fun `bogus early credits marker is ignored`() {
+        // A marker in the FRONT half (mis-timed data / recap tagged as
+        // credits) must not mark a half-watched episode as finished.
+        val midway = progress(
+            positionMs = 700_000, durationMs = 1_200_000,
+        ).copy(creditsStartMs = 300_000)
+        assertFalse(ProgressRepository.isWatched(midway))
+        assertTrue(ProgressRepository.isResumable(midway))
+    }
+
+    @Test
+    fun `no credits marker keeps the plain 90 percent behavior`() {
+        val p = progress(positionMs = 1_070_000, durationMs = 1_200_000)
+        assertFalse(ProgressRepository.isWatched(p)) // 89.2% — not yet
+        assertTrue(ProgressRepository.isWatched(p.copy(positionMs = 1_080_000)))
     }
 
     // --- poster tile indicators (owner round 14 #5) ---

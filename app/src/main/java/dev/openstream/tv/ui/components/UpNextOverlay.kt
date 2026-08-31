@@ -67,8 +67,10 @@ private fun UpNextCard(headline: String, detail: String) {
     Box(Modifier.fillMaxSize().padding(48.dp), contentAlignment = Alignment.BottomEnd) {
         Column(
             verticalArrangement = Arrangement.spacedBy(6.dp),
+            // The shared popup face (AppDialog.kt) — this card must read as a
+            // sibling of the countdown card and every dialog.
             modifier = Modifier
-                .background(Color(0xF0181822), RoundedCornerShape(12.dp))
+                .background(PanelFill, PanelShape)
                 .padding(horizontal = 28.dp, vertical = 20.dp),
         ) {
             Text(headline, style = MaterialTheme.typography.titleLarge, color = Color.White)

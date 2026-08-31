@@ -1,4 +1,690 @@
-# STATE — updated 2026-07-19 by session 38
+# STATE — updated 2026-08-31 by session 45 (cont. 2)
+
+## ⚠️ SESSION 45 cont. 2 (2026-08-31) — ANIME METADATA FIXED LIVE (`providers.anime` imdb→tvdb) + Stremio reorder DONE + silent-stream skip BUILT + Trakt recs diagnosed
+
+**Owner approved: "safe half" of the anime fix + the surgical Stremio reorder;
+he asked to HOLD the OTA until the no-audio ask was in.**
+
+**1. ANIME METADATA — FIXED LIVE on adam's AIOMetadata Discover.** The owner's
+`providers.anime` was `imdb` (the addon's OWN default is `mal`). I A/B-probed
+all four values live against Naruto before committing — this matters, because
+the obvious choice was the WRONG one:
+
+| `providers.anime` | `series/tt0409591` (the path his box uses) | `anime/mal:20` |
+|---|---|---|
+| `imdb` (was) | 227 eps, **0 desc**, metahub art | 220 eps, 220 desc, kitsu |
+| `mal` (addon default) | **130 eps ✗**, 51 desc, tmdb | **130 eps ✗**, 51 desc |
+| **`tvdb` (CHOSEN)** | **230 eps, 228 desc**, thetvdb art | 220 eps, 220 desc, kitsu, 1 season |
+| `tmdb` | 222 eps, 222 desc, tmdb art | 222 eps, 222 desc |
+
+`mal` — the addon's own default and the intuitive pick — **LOSES 90 episodes**
+of a 220-episode show. `tvdb` is the only value that gives a complete episode
+list AND near-complete descriptions on the tt path while preserving the rich
+single-season Kitsu view on the mal path. **Never assume the default is right
+here; re-probe per-title before changing this on anyone else.**
+FINAL: `{anime: tvdb, movie: tmdb, series: tvdb, anime_id_provider: imdb,
+forceAnimeForDetectedImdb: true}` — `anime_id_provider` deliberately UNTOUCHED
+(owner chose the safe half; IMDb ids keep AIOStreams stream-matching strong).
+Sanity-checked Breaking Bad after: 80 eps / 80 desc, unchanged — no collateral
+damage to non-anime. Backup: `config_backups/2026-08-31/aiometadata-adam-savoy-
+discover.pre-animeprovider.json`. **His STREAMING AIOMetadata still 401s on
+both stored passwords** (the known session-35 gap, still unfixed) — only
+Discover was changed, and Discover wins meta anyway (it sits above Streaming).
+
+**2. STREMIO ADDON ORDER — REORDERED LIVE, read-back verified.** Surgical
+same-8 reorder (NOT `push_stremio_bundle.py`, which would have dropped his
+Local Files): Cinemeta → Local Files → AIO Movies&Series → AIO Anime&Streaming
+→ AIOStreams → [BAK]AIOStreams → ANOtherOne → **AIOLists LAST**. Local Files
+deliberately left at #2 (Stremio manages that built-in itself). Backup:
+`config_backups/2026-08-31/stremio-addons-adam-savoy.pre-reorder.json`.
+
+**3. SILENT-STREAM SKIP — BUILT (DECISIONS #73, commit 4e53574).** Owner ask.
+Real bug found in session 41's post-open check: `if (tags.isEmpty()) return
+// untagged file: nothing provable` also swallowed files with ZERO audio
+tracks, so the one unambiguously-broken case was the one kept. Now audio track
+GROUPS are counted before language tags — zero groups (guarded on
+`groups.isNotEmpty()` so an unpublished-tracks Ready can't false-positive) =
+silent = skip + strike the release family. Gates green, 422 tests, 0 failures.
+
+**4. SETTINGS SURVIVE UPDATES — CONFIRMED, nothing to do.** `AppUpdater` uses
+`PackageInstaller` `MODE_FULL_INSTALL`, which is an in-place APK replace (the
+name means "full APK, not a split", NOT "wipe data"). Same package + same
+signing key ⇒ the DataStore files in app-private storage persist. Only an
+uninstall, an Android "Clear data", or a signing-key change wipes them — which
+is exactly why the Play-Store rekey warning in [[ota-updater-and-signing]]
+matters. No `allowBackup`/`dataExtractionRules` overrides in the manifest.
+
+**5. TRAKT — CONNECTED AND WORKING; recommendations are empty AT THE SOURCE.**
+`apiKeys.trakt` + `traktTokenId` set, `traktWatchTracking: true`. Live-probed
+his Discover instance: `Trending` and `Trakt's Popular` return **50 metas
+each**, while all three "Recommended for Adam" rows return **0**. Not a merge
+bug — the underlying `trakt.recommendations.movies` / `.shows` **also serve 0**
+when hit directly (HTTP 200, `metas: []`). The split is diagnostic: the rows
+that work are Trakt's PUBLIC endpoints (client-id only); the empty one is the
+only PERSONALIZED endpoint enabled (needs a valid user OAuth token). So either
+(a) his Trakt OAuth token has gone stale — personalized calls then return empty
+while public ones keep working, and his scrobbling would ALSO be silently
+failing — or (b) Trakt genuinely has nothing to recommend (it builds these from
+RATED titles and excludes anything already watched/collected/watchlisted).
+**Owner can settle it in 30s: open trakt.tv → Recommendations. Populated there
+= the addon's token is stale (reconnect Trakt in AIOMetadata). Empty there =
+Trakt needs him to rate some titles.** No other personalized Trakt catalog is
+enabled, so there was no way to A/B the token from this end.
+
+⏳ **NEXT ACTION (cont. 2):** (a) Owner: check trakt.tv → Recommendations to
+settle the token-vs-no-data question above. (b) Owner: confirm Naruto now shows
+episode pictures + descriptions on his box (metadata is live NOW — boxes pick
+it up on next launch, no app update needed), then say go and I cut the alpha
+(subtitle editor + silent-stream skip + everything unpublished since alpha.63).
+(c) Open owner question from cont. 1 still unanswered: CAM/TS hard block vs the
+v3.13 soft rank-down. (d) Roll `providers.anime` → `tvdb` out to the other 9
+users once adam confirms — **re-probe per user, do NOT assume `mal`**. Also the
+Tamtaro v3.13 AIOStreams rollout for those 9. (e) Owner asked whether SETTINGS
+could sync to accounts (cloud/passport) — answered as a design question this
+session, not built; if he wants it, it is a real feature (profile sync is
+currently one-way, hosted-profile → box).
+
+**The earlier hypothesis in this session's first entry was WRONG and is
+superseded: the owner confirmed both anime toggles were already ON.** The real
+cause is one AIOMetadata setting, and it plausibly explains ALL of the anime
+complaints at once (blank episode art, blank episode descriptions, dead Skip
+Intro, dead auto-next-episode).
+
+**ROOT CAUSE (live-verified against adam's AIOMetadata Discover config, read
+via `POST {host}/api/config/load/{uuid}` — the v2.8 endpoints in
+[[aiometadata-live-config-api]] STILL WORK on v2.15.0; earlier 404s this
+session were my wrong URL shapes, not a moved API):**
+```
+providers = { "anime": "imdb", "movie": "tmdb", "series": "tvdb",
+              "anime_id_provider": "imdb", "forceAnimeForDetectedImdb": true }
+mal       = { "useImdbIdForCatalogAndSearch": true, ... }
+```
+Anime metadata AND anime ids both come from IMDb. Probed his live Discover
+instance on Naruto, three ways:
+| request | episodes | with description | artwork host | seasons |
+|---|---|---|---|---|
+| `series/tt0409591` | 227 | **0** | episodes.metahub.space | 0–5 |
+| `anime/tt0409591`  | — | **returns null meta** | — | — |
+| `anime/mal:20`     | 220 | **220** | media.kitsu.app | **1 (absolute)** |
+
+Plain Cinemeta returns byte-identical data to the `series/tt` row (0
+descriptions, metahub art) — so AIOMetadata is just passing IMDb through, and
+**the good anime data exists ONLY behind `anime` + `mal:` ids**, which his
+config never requests. Note the `anime/mal:` row is also literally the
+"anime as ONE season, straight through" view the owner remembered wanting —
+it is a metadata path, not just the app's relabel toggle (DECISIONS #36).
+
+**Why this also kills Skip Intro + auto-next-episode:** `OkHttpAniSkip`
+resolves `mal:`/`kitsu:`/`anilist:` directly, `tt…` through the bundled
+IMDb→MAL bridge, and **everything else → `else -> null`**
+(OkHttpAniSkip.kt:86). Auto-next-episode rides the AniSkip CREDITS window, so
+no MAL resolution = no skip button AND no countdown = both features silently
+dead with their toggles ON. A `mal:` id would resolve instantly and exactly.
+**Box log settles it in one line:** `malId(<id> …) → unresolved (scheme=…)`.
+
+**THE TRADE-OFF — owner's call, NOT changed:** `useImdbIdForCatalogAndSearch`
+exists because IMDb ids are the universal key for torrent/debrid stream
+matching. Switching anime to `mal:` ids should fix art + descriptions + both
+skip features, but MAY reduce anime stream availability from AIOStreams. Safer
+staging: flip `providers.anime` (metadata source) first and leave the id
+provider alone; if that alone doesn't help, the id provider is the real lever.
+
+**STREMIO ADDON ORDER — confirmed off (owner's screenshots), separate issue.**
+Pulled his live account: Cinemeta, Local Files, **AIOLists(3)**, ANOtherOne
+(=nightly), AIO-Movies&Series, AIO-Anime&Streaming, AIOStreams(primary),
+[BAK]AIOStreams. Canonical (DECISIONS #65) is Cinemeta → AIOMeta ×2 →
+AIOStreams ×3 → **AIOLists LAST**. AIOLists declares `meta` for `tt`+`tmdb:`
+and sits ABOVE both AIOMetadata addons, so it intercepts meta for any `tmdb:`
+id. NOT reordered — a live-account write, and `push_stremio_bundle.py` would
+also DROP his Local Files (not in the passport bundle); a surgical same-8
+reorder is the safe tool. **Caveat: this is his STREMIO account; the
+OpenStream app takes its order from the hosted profile, not from Stremio — so
+the reorder helps Stremio-on-other-boxes, not necessarily his box.** Either
+way Cinemeta is #1 in both and wins every `tt` id (MetaRepository.kt:29 walks
+addon order, first declarer wins).
+
+**BUILT + SHIPPED THIS SESSION: subtitle look editor (DECISIONS #72,
+commit 77ed0dc).** Owner ask: "a subtitle size and background/color editor".
+Settings → HOW THINGS LOOK → **Subtitles** (deliberately NOT behind Expert —
+§10 elder-friendly) opens its own screen mirroring `PosterSizeScreen`: options
+left, live sample frame right, preview follows FOCUS so each choice is visible
+before OK commits. Size (Small/Normal/Large/Extra large, as a fraction of
+screen height like media3), Colour (White/Yellow/Cyan/Green), Behind the words
+(Black outline / Soft shadow / Dark box / Solid black box / Nothing). New
+`data/SubtitleStyle.kt` is framework-free (plain ARGB ints + a `SubtitleEdge`
+enum) so it unit-tests on the JVM; only `PlayerScreen` maps it to media3's
+`CaptionStyleCompat`. `setApplyEmbeddedStyles(false)` on purpose — a styled
+`.ass` track would otherwise ignore the whole screen (cost: anime sign
+typesetting renders plain; accepted). Defaults reproduce media3's look
+bit-for-bit, so an untouched box is unchanged. **Gates green: assembleDebug +
+testDebugUnitTest, 422 tests (6 new), 0 failures.** NOT emulator-verified,
+NOT OTA-published.
+
+⏳ **NEXT ACTION (cont.):** (a) Owner decides the anime metadata question —
+flip `providers.anime` off `imdb` (and possibly `anime_id_provider`) on both
+AIOMetadata instances, accepting the possible anime stream-matching cost. I do
+NOT change it unasked. (b) Owner says go/no-go on the surgical Stremio addon
+reorder (AIOLists → last, AIOMetadata above AIOStreams, Local Files kept).
+(c) Owner: during a Naruto episode pull the box App log and grep `malId(` —
+that one line proves or kills the AniSkip diagnosis. (d) Cut an alpha to ship
+the subtitle editor when the owner wants it (nothing published yet).
+(e) Items (b)/(d)/(e) from the first session-45 entry still stand (CAM/TS hard
+block vs rank-down; Tamtaro v3.13 rollout to the other 9 users).
+
+# (previous entry — superseded on the toggles point, kept for the audit trail)
+# STATE — updated 2026-08-30 by session 45
+
+## ⚠️ SESSION 45 (2026-08-30) — Owner incident report triaged: untracked Aug 25-27 Tamtaro v3.13 rollout discovered + 4 symptoms diagnosed (no fixes applied yet, owner input needed)
+
+**Context:** ~3-week gap since the last checkpoint (session 44, 2026-08-11).
+Owner opened this session confused/frustrated: manually clicked an AIOStreams
+"Update Template" prompt by accident on fortheweebs (backup) and elfhosted
+(nightly), thought elfhosted had lost his addons, asked (in an UNTRACKED
+session — not this repo's Claude Code, no STATE.md entry, no shell history)
+to "revert it to the last save." Also reported: Preferred Stream Types
+missing "debrid" (confused whether that's a bug), Naruto episodes that are
+glitchy/silent still outranking good English ones despite an earlier
+exclusion, the anime season-numbering toggle seemingly missing, and BOTH
+skip-intro/credits and auto-next-episode "not working."
+
+**Untracked rollout found (Aug 25-27, no prior record of it anywhere in this
+repo):** StremioSurfer gained 3 new tools — `apply_tamtaro_v313.py`,
+`personalize_tamtaro313.py`, `restore_config.py` (the last one is exactly
+the "restore a live config from a backup JSON" tool the "revert elfhosted"
+ask needed — see its docstring caveat: a manual AIOStreams-UI edit is only
+undoable if a TOOL-triggered snapshot happens to predate it). Backups show
+adam-savoy primary+backup got `apply_tamtaro_v313.py` on 2026-08-26; nightly
+already matched the new template shape by 2026-08-25 (most likely the
+owner's own accidental in-UI "Update Template" click, since no
+nightly.pre-tamtaro313 backup exists — only a nightly.pre-cutrank one from
+the same day, meaning rank_down_cuts.py was re-run right after to reinstate
+the director's-cut rule the template update had wiped). jacob-savoy got all
+3 slots on 2026-08-27. **The other 9 users are NOT yet migrated** — this is
+the long-pending "Tamtaro SEL 2.6.1 → 3.0.2" rollout from session 43's
+backlog, finally actually starting, under different/newer tooling than what
+was originally planned.
+
+**Live-checked all 3 of adam's instances just now (2026-08-30) — currently
+IDENTICAL and internally consistent, nothing corrupted right now:**
+- `preferredStreamTypes` = `[http, live, p2p]` on all 3. **There is no
+  "debrid" stream-type value in this schema** — debrid/cached streams get
+  priority through `sortCriteria.global` = `[{cached, desc}]`, which sorts
+  ALL cached (debrid-ready) streams above uncached ones before quality/
+  resolution is even considered. Nothing missing; owner's config is correct
+  as-is.
+- `rankedStreamExpressions` carries 4 entries on all 3: the session-44
+  "#Theatrical first" director's-cut rank-down (INTACT, score -20000) +
+  3 new entries syncing a community "Vidhin05/Releases-Regex" English SEL
+  pack (part of the v3.13 template). `presets`: 10, all enabled, identical
+  across instances; the standalone "Debridio Watchtower" preset from
+  session 44's NXDOMAIN saga is GONE — consolidated into one "Debridio"
+  preset in the new template, so that whole outage story is moot on these 3
+  now (assuming the new preset resolves cleanly, not re-verified this
+  session).
+- **Regression vs. the owner's explicit ask (DECISIONS #44/45):**
+  `excludedQualities` is now EMPTY on all 3 — CAM/TS/SCR/TC are no longer
+  hard-blocked, just placed last inside `preferredQualities` (soft rank-down
+  instead, a side effect of the v3.13 template). Not yet reverted; owner
+  hasn't been asked whether the softer behavior is acceptable or whether he
+  wants the hard block restored.
+
+**App-side code audit (Explore agents, this session) — no code regressions
+found in the last ~15 commits for any of the 3 app complaints:**
+- **AniSkip skip-intro/credits:** fully intact (`player/skip/*`,
+  `SkipModule`, `PlayerViewModel.loadSkipSegments`), toggle
+  `PlaybackPrefs.skipIntrosEnabled` default **ON** ("Skip buttons on anime",
+  Settings > Expert mode > Anime).
+- **Auto-next-episode:** `PlaybackPrefs.autoSkipCredits` ("Play the next
+  episode automatically", BETA badge) is OPT-IN, default **OFF** by original
+  design (DECISIONS #62) — NOT a regression. Its Settings row is nested
+  inside the Anime drawer and only rendered when "Skip buttons on anime" is
+  ON. **Likely unifying explanation for "both stopped working":** if the
+  owner (or something) flipped the parent "Skip buttons on anime" toggle
+  off, both features would appear broken/missing at once. Owner needs to
+  check Settings > Expert mode > Anime himself; no server-side state to
+  inspect for this one.
+- **Anime episode-numbering toggle:** confirmed it still exists — Settings >
+  Expert mode > Anime > "Episode numbers" (By season / Straight through).
+  It only RELABELS episode numbers; it does not merge season art or fix
+  metadata, so it will NOT fix Naruto's blank episode thumbnails/
+  descriptions — that looks like a separate metadata gap (needs its own
+  look, not investigated this session).
+- **Naruto glitchy/silent streams outranking good ones — leading theory, not
+  yet confirmed:** the alpha.63 junk-file-skip (`5c9bb38`) reads
+  `expectedRuntimeMin` off the SAME `PlayerEvent.Ready` hook as the
+  release-family-strike system (session 42). If that runtime value was ever
+  wrong/missing for a Naruto episode, a perfectly good auto-picked stream
+  could get wrongly judged "implausibly short," silently skipped, AND have
+  its release family permanently struck — sinking the good English release
+  below worse ones for every future episode of that series. This needs the
+  box's own App log ("release family struck" / "junk placeholder" / "skip"
+  tag lines) to confirm; not checked this session (no box access).
+
+⏳ **NEXT ACTION:** (a) Owner checks Settings > Expert mode > Anime on his
+box(es): is "Skip buttons on anime" ON? Is "Play the next episode
+automatically" (BETA) ON underneath it? Report back what he finds — this
+likely explains both the skip-intro and auto-next-episode complaints in one
+shot. (b) Owner decides: keep the new template's soft rank-down for CAM/TS/
+SCR/TC, or have it reverted to a hard `excludedQualities` block like before
+— nothing changed yet, pending his call. (c) If Naruto is still bad after
+(a): pull the box's App log during a Naruto episode and grep for "release
+family struck" / "junk placeholder" to confirm/deny the false-positive-
+strike theory — a confirmed bad strike may need a manual DB clear (no tool
+for that yet). (d) Complete the Tamtaro v3.13 rollout to the other 9 users
+(Anna/Jay, Myles Manuel/Mobile/Dad, Jody, Mike, Clarence, Toby, Nadine) via
+`apply_tamtaro_v313.py` + `personalize_tamtaro313.py`, Rachael excluded as
+always — once adam+jacob are confirmed good. (e) Process note: this gap
+happened because a non-Claude-Code session (or one outside this repo) did
+real work without following the CLAUDE.md checkpoint protocol — if that
+happens again, check `~/Documents/Claude/StremioSurfer/config_backups/`
+file timestamps directly rather than trusting STATE.md alone to be current.
+
+# (previous head follows)
+# STATE — updated 2026-08-09 by session 44 (cont.)
+
+## ⚠️ SESSION 44 cont. (2026-08-09) — alpha.63 PUBLISHED OTA + director's-cut rank-down rollout (partial, auto-retrying)
+
+- **alpha.63 (versionCode 63) PUBLISHED OTA** (owner believed he was
+  "on 63" — it hadn't been cut; published so it's true): assembleRelease
+  → tools/publish_update.sh, version.json offers 63, readback verified,
+  sstreams-latest.apk refreshed, hosted sha256 == local. Carries the
+  junk-file skip (DECISIONS #71). Boxes self-offer on next launch
+  (LEFT then OK).
+- **DIRECTOR'S-CUT RANK-DOWN (owner: "take them down") — built + partly
+  live.** New tool `StremioSurfer/rank_down_cuts.py` appends a
+  rankedStreamExpressions entry (marker `/*#Theatrical first*/`,
+  score -20000, keywords: directors cut / extended / ultimate cut /
+  final cut / unrated / uncut / special edition / redux on
+  filename,folderName) to every non-Rachael AIOStreams config.
+  Idempotent; `--remove` undoes; pre-write backups in
+  config_backups/2026-08-09/*.pre-cutrank.json. VERIFIED on Kingdom of
+  Heaven tt0320661: unedited primary auto-picked the Extended 1080p #1;
+  edited nightly ranks theatrical first, Director's Cut near bottom.
+  Limitation (accepted): score sorts after resolution/quality in the
+  Tamtaro sortCriteria, so a 4K-only DC still beats a 1080p theatrical.
+- **ROLLOUT STATUS at checkpoint: all 10 backups DONE (fortheweebs),
+  adam nightly DONE, Mike + Clarence primary DONE. The rest are BLOCKED
+  by a Debridio Watchtower outage** — AIOStreams re-validates every
+  enabled preset on save and refuses ANY write while Watchtower's
+  manifest won't fetch (intermittent per instance). Also hit removed-
+  preset save-blockers: 'USA TV' AND 'TorBox' ("<name> has been
+  removed") — the tool drops the named preset and retries (toggle_rd
+  pattern). A background retry loop is re-running `rank_down_cuts.py
+  --all` every 10 min (max 12 passes) on this Mac. Check status any
+  time: `python3 ~/Documents/Claude/StremioSurfer/rank_down_cuts.py
+  --all --dry-run` (todo slots print WOULD write).
+
+- **ROLLOUT COMPLETE 2026-08-11: 33/33 slots verified DONE** (11 users
+  × 3 instances, Rachael excluded). Root cause of the save-blocker
+  found: **Debridio Watchtower's domain wt-addon.debridio.com is
+  NXDOMAIN** (~40h observed; debridio.com still sells WatchTower) —
+  AIOStreams re-validates every enabled preset on save, so the dead
+  domain vetoed all writes AND its stream fan-outs were failing anyway.
+  Fix: rank_down_cuts.py `--disable-dead-watchtower` DISABLES (never
+  drops — key kept) the preset when it blocks a save. **Watchtower now
+  disabled on 20/33 slots; 13 saved earlier still have it enabled**
+  (their next config save will hit the same wall — use the flag).
+  Dead 'USA TV' + 'TorBox' presets (instance-removed types) were
+  dropped from several configs by the standard self-heal. Live-verified
+  post-rollout: adam primary tt0320661 top-8 = theatrical only (was
+  Extended #1 / Directors Cut #2); a "DC"-abbreviated file can still
+  appear mid-list ('dc' keyword deliberately skipped — DC Comics).
+⏳ **NEXT ACTION (cont.):** (a) Owner: both boxes take alpha.63 (LEFT
+then OK) — junk placeholder files then self-skip (App log: "junk
+placeholder"). (b) If Debridio revives Watchtower
+(wt-addon.debridio.com resolves again): re-enable the preset on the 20
+disabled slots (flip enabled=true; list via rank_down_cuts.py-style
+GET sweep). (c) Session-43 leftovers stand (Tamtaro 3.0.2 template
+re-export; fortheweebs Backup retirement question).
+
+# (previous head follows)
+# STATE — updated 2026-08-09 by session 44
+
+## ⚠️ SESSION 44 (2026-08-09) — Junk-file skip built (solid-color placeholder streams)
+
+- **Owner Q answered:** buffer-before-switching IS live — shipped in
+  alpha.62 (session 43, commit e250ec9). If his box still jumps streams
+  on a mere buffer, the box hasn't taken 62 (LEFT then OK).
+- **JUNK-FILE SKIP BUILT (owner: "a screen that's a solid color… it'll
+  skip to the end of the episode"), commit 5c9bb38, DECISIONS #71.**
+  Those are placeholder files seconds-to-minutes long; they used to end
+  instantly, mark the episode watched, and fire next-episode. Now on
+  PlayerEvent.Ready (same hook as the English-audio ground truth) an
+  AUTO-picked file implausibly short — under 3 min absolute, or under
+  HALF the meta's declared runtime — is quietly skipped to the next
+  ranked stream and its release family struck. Manual Expert picks
+  exempt; MAX_JUNK_SKIPS=4 per episode then accept; live types never
+  judged (§8). New StreamLength.kt (parseRuntimeMinutes +
+  isImplausiblyShort); runtime plumbed Details → streams route
+  (`runtimeMin` nav arg) → PlaybackRequest.expectedRuntimeMin →
+  episode advances/restores. App log: "[streams] … junk placeholder,
+  trying the next stream".
+- **Gates green: assembleDebug + testDebugUnitTest, 416 tests
+  (10 new StreamLengthTest), 0 failures.** NOT emulator-verified (no
+  junk file to reproduce on demand); NOT OTA-published — rides the next
+  alpha on owner's word. Box logs will show the [streams] junk lines in
+  real watching.
+- **Also this session (advisory, nothing changed):** director's-cut
+  avoidance question — recommended AIOStreams ranked/preferred stream
+  expressions (rank down "directors cut"/"extended"/etc.) over hard
+  Excluded Keywords; owner hasn't picked a direction yet.
+- Owner's untracked app/Logo Options-selection.png left untracked on
+  purpose (his file, not this session's work).
+
+⏳ **NEXT ACTION:** (a) On owner's word: cut alpha.63 (versionCode 63)
+via assembleRelease → tools/publish_update.sh (carries the junk-file
+skip). (b) Owner: confirm both boxes are on alpha.62+ (buffer fix);
+after 63, junk placeholders should self-skip — check App log for
+"junk placeholder" lines if one slips through. (c) Owner: answer the
+director's-cut question (rank down vs block — then I edit the live
+AIOStreams configs, Rachael excluded). (d) Session-43 leftovers stand:
+Tamtaro 3.0.2 template re-export + push_aiostreams rollout; consider
+retiring the fortheweebs Backup instance.
+
+# (previous head follows)
+# STATE — updated 2026-07-28 by session 43
+
+## ⚠️ SESSION 43 (2026-07-28) — Subscription/password links LIVE + 4 owner app asks built
+
+- **SUBSCRIPTION PORTAL LINKS FIXED AND LIVE (the owner's "claude cowork
+  tried, it was all confused" job).** Root cause found: the 07-27 run
+  uploaded the pages to savoy.click/subs/ with dir `drwx------` and files
+  `-rw-------`, so EVERY link 403'd; and it generated them from the STALE
+  repo snapshot (docs/reference/StremioSurfer/users.json) instead of the
+  live passport file, which is why "Manuel Momma" still had a page (she's
+  been Nadine since session 40) and Rachael's token didn't match.
+- **generate_portal.py rewritten** (lives in ~/Documents/Claude/
+  StremioSurfer; backup generate_portal.py.bak-pre-s43). Now shows, in
+  plain language: the Stremio email + password with Copy buttons, a live
+  RD countdown, an amber **"Adam already owes you 6 more months"** card
+  driven by `billing.owe_half_year` (Myles Manuel, Jody Miller, Rachael)
+  with the extended through-date, and a calm "nothing to renew" card for
+  `billing.rd_not_needed` (Myles Mobile) instead of a red EXPIRED pill.
+  `--upload` now scps AND chmods (dir 755 / files 644) and installs an
+  `Options -Indexes` .htaccess; pages carry robots noindex.
+- **All 12 live and verified 200; the directory listing verified 403.**
+  Stale portal-jamie-* and portal-manuel-momma-* deleted from the server.
+  Rachael's `subscription.portal_token` was seeded to r8wqe in the live
+  users.json so her already-hosted page kept its URL — that is a passport
+  write on a live user, additive metadata only, no account touched.
+  Pre-write backup: config_backups/2026-07-28/users.json.pre-portal-s43.
+- **alpha.62 (versionCode 62) PUBLISHED OTA** on the owner's word ("push to
+  box pls"): assembleRelease -> tools/publish_update.sh. Hosted version.json
+  offers 62, readback verified, sstreams-latest.apk (savoy.click/app)
+  refreshed, hosted sha256 == local. Carries session 42's countdown redesign
+  AND this round. Boxes self-offer on next app launch (install screen: LEFT
+  then OK). NOT emulator-verified first — owner chose to ship.
+- **4 APP ASKS BUILT (DECISIONS #70), gates green (406 tests, 0 fails),
+  commit e250ce9:**
+  · **Info screen on every click** — Expert mode no longer skips movies
+    past Details into the (hidden-by-default) stream list.
+  · **Trailer button always offered**, aimed at SmartTube → SmartTube
+    Beta → YouTube TV → YouTube (manifest <queries> added); no trailer
+    in the meta falls back to a YouTube search for the title.
+  · **Auto-start settle budget 3s** — the pre-play wait no longer equals
+    the slowest addon (the fortheweebs Backup answers in 10s+). Past the
+    budget: best of whoever answered; still waits if nothing playable has
+    arrived. App log says "(started without N slow source(s))".
+  · **Buffer before switching streams** — ExoPlayer load retries 3→5,
+    plus a 2.5s wait-and-rejoin of the SAME stream (×2) on transport
+    errors before the try-next-stream walk. 4xx/malformed still walk now.
+- **Owner's config-update question answered** (AIOStreams "Template
+  Updates Available", Tamtaro SEL 2.6.1 → 3.0.2): the propagation path is
+  already built — apply the update in YOUR account, Export Template, drop
+  it in StremioSurfer/templates/<instance>.json, then
+  `push_aiostreams.py --instance <primary|backup|nightly> --all --strict`
+  per instance (it substitutes each person's own keys for
+  `<template_placeholder>`). CAVEAT: templates/ is stale (2026-07-07) and
+  backup.json / nightly.json are 0 bytes — they must be re-exported.
+
+⏳ **NEXT ACTION:** (a) Owner: send the portal links (list in the session
+reply / rerun `python3 generate_portal.py --users users.json --all
+--links-only`). (b) Owner: take alpha.62 on BOTH boxes — the app offers it
+on next launch; on Android's install screen press LEFT then OK (his box was
+still on alpha.59, so this jump is direct). Then eyeball: a movie click
+lands on the Info screen, Trailer opens SmartTube, playback starts sooner,
+a stall rebuffers instead of jumping streams. (c) Template rollout: owner
+applies the Tamtaro SEL 3.0.2 update in his OWN AIOStreams account, exports
+the 3 templates (templates/ is stale 2026-07-07; backup.json and
+nightly.json are 0 bytes), then push_aiostreams.py --all --strict per
+instance. (d) Consider retiring the fortheweebs Backup instance — the 3s
+budget hides its latency but it still burns every fan-out.
+
+# (previous head follows)
+# STATE — updated 2026-07-27 by session 42 (cont.)
+
+## ⚠️ SESSION 42 cont. (2026-07-27) — Credits countdown visible from second one + owner's mid-play switch DIAGNOSED
+- **CREDITS COUNTDOWN REDESIGN (owner ask):** with auto-advance on, the
+  "Skipping to next episode" card (the Round-17 countdown card, new
+  eyebrow) now replaces the Next Episode pill from the credits window's
+  FIRST second, ring draining across the whole 18s — no more silent 10s
+  grace that read as a stuck button. Advance moment unchanged (18s
+  total = the 2026-07-12 tuning). Auto-advance off keeps the manual
+  pill. Gates green (400 tests). NOT yet OTA-published — rides the next
+  cut (alpha.62) on owner's word.
+- **OWNER'S "trying another stream partway through" DIAGNOSED from the
+  uploaded box logs (savoy.click/setup/logs/):** his box is still on
+  **alpha.59** — today's alpha.61 update attempt failed with
+  INSTALL_FAILED_ABORTED "User rejected permissions" (Android's install
+  screen focuses Cancel; LEFT-then-OK coaching applies). The 07-26
+  Naruto s4 session shows the playing stream's server dying mid-episode
+  → alpha.59's quiet try-next-server kicked in → landed once on a
+  broken encode (PARSING_CONTAINER_UNSUPPORTED, the same family the
+  emulator hit). Root contributors, seen on TOBY'S box too (so host-
+  side, not adam's wifi): AIOStreams Primary had an outage window
+  07-26, and Backup (fortheweebs) chronically answers in 10s+ (probed
+  10.5s from this Mac today) → constant fan-out timeouts. Everything
+  that softens this (verified ranking, family strikes, plain errors)
+  is IN alpha.61 — the box just needs to take the update.
+⏳ **NEXT ACTION addition:** (a) Owner: retake the update on the box —
+when Android's screen appears press LEFT then OK (today's attempt hit
+Cancel). (b) On owner's word: cut alpha.62 (versionCode 62) to ship the
+countdown redesign. (c) Consider retiring/replacing the fortheweebs
+Backup instance if its 10s+ answers persist — it burns every fan-out.
+
+# (previous head follows)
+# STATE — updated 2026-07-27 by session 42
+
+## ⚠️ SESSION 42 (2026-07-27) — Session-41 round EMULATOR-VERIFIED + pass-2 backlog built + **alpha.61 PUBLISHED OTA**
+- **PASS 1 VERIFIED on the emulator (alpha.60 debug, adam's live profile
+  via the in-app Connect flow after a factory reset):** Naruto S1E1 →
+  stream list stays hidden ("Starting your show…"), auto-picked the
+  confirmed-EN "480P Dvdrip ★★★★★" from 11 ranked (later the 1080P
+  Bluray from 19); **English audio proven by ground truth** — probed the
+  playing MKV's headers: track languages [und(video), eng, jpn, eng,
+  eng]; post-open check ran with zero language skips. Back from the
+  player lands on the DETAILS episode list (never a stream screen);
+  resume is silent (picked up at 13:02/23:37, no prompt); no-sources
+  case shows the plain failure card + "Show streams anyway"; App log
+  carries the whole [streams] trail (auto-picked from N ranked /
+  switching to stream i of N / addresses sanitized) + [skip] windows.
+  EXPERT SETTINGS section renders as designed (Show streams default
+  OFF, Anime drawer inside).
+- **PASS 2 BUILT (the session-41 owner backlog), 4 commits, gates green
+  (400 unit tests):**
+  · **Release-family memory** (Room v4 `release_family_strikes`,
+    DECISIONS #69): auto-pick failures + no-English skips strike the
+    encode's episode-number-stripped family PER SERIES; every ranking
+    sinks struck families (demoted, never hidden). Manual picks exempt.
+  · **Anime credits watched line** (Room v3 `creditsStartMs`): watched
+    = min(90%, AniSkip credits start, back-half-only guard) — stopping
+    in a long ED now counts as finished; non-anime unchanged.
+  · **One popup language** (`AppDialog.kt` PanelFill/PanelShape/
+    PanelButton): all dialogs + player panels + failure card + Up Next
+    cards + track picker share one face and pill buttons (accent ring
+    focus, accent fill on the recommended action; confirms emphasize
+    the SAFE choice). Verified visually on the emulator.
+  · **Plain-words fallback** for unmapped player errors (no more
+    "(PARSING_CONTAINER_UNSUPPORTED)" on screen; code stays in the log).
+- **alpha.61 (versionCode 61) PUBLISHED OTA** via assembleRelease →
+  tools/publish_update.sh: hosted version.json offers 61, readback
+  verified, sstreams-latest.apk (savoy.click/app) refreshed. Includes
+  the session-40 rebrand + black-screen fix + session-41 round + this
+  round. Boxes self-offer on next launch (install screen: LEFT then OK).
+- **Notes for the owner (not bugs fixed this round):** (a) on the 1080P
+  Bluray the auto-picked SUBTITLE track was French ("FEU" on screen) —
+  the subtitle-preference picker can still mismatch (§4.1 fan-out
+  helps; a language-pin like the audio check may be worth a round);
+  (b) in-app brand text still says "Streams" ("Welcome to Streams",
+  home header, Settings subtitle) while the launcher label is
+  OpenStream — owner's call whether to sweep it; (c) NOT emulator-
+  verified end-to-end: a real strike write→next-episode demotion and a
+  real credits-line restart (both unit-tested; verify on the box during
+  normal watching via App log "release family struck" lines).
+- **Emulator gotchas for future sessions:** do NOT pass -gpu flags
+  (crashes/hangs; AVD has gpu disabled in config); a default_boot
+  snapshot restore can roll the DEVICE CLOCK back — debrid TLS then
+  fails "Chain validation failed" (certs not yet valid); fix:
+  `adb shell cmd network_time_update_service force_refresh`. The
+  snapshot also rolled back the app DB/APK once (reinstall + reconnect
+  profile via the name screen — "adam" — takes ~1 min).
+⏳ **NEXT ACTION:** (a) Owner: take the alpha.61 update on the 2 boxes
+(LEFT then OK), binge an anime series and eyeball: no repeated bad
+encodes across episodes (App log shows "release family struck" when one
+is remembered), stopping during credits restarts the episode next time,
+popups all wear the same style. (b) If the French-subtitle mismatch
+annoys: next round = subtitle-language pin (English-first subtitle
+auto-pick, mirroring the audio check). (c) Owner decides on the in-app
+"Streams" → OpenStream text sweep. (d) Session-40 items (b)-(d)
+unchanged (repo visibility, "manuel" alias, 9s bias knob, #16 skins,
+autoplay-chain subtitle fan-out, guide-APK fresh-install test).
+
+# (previous head follows)
+# STATE — updated 2026-07-26 by session 41
+
+## ⚠️ SESSION 41 (2026-07-26) — English-first streams + Expert-only stream list + auto-resume (owner round, Cowork session)
+- **ENGLISH-AUDIO RANKING FIXED (owner: Naruto picked Japanese until the
+  3rd manual "Try a different stream", every episode).** Root cause:
+  hasEnglishAudio defaulted unreadable labels to English, so an
+  unlabeled JA-only 1080p beat a confirmed-EN 720p on resolution.
+  StreamCascade.mergeForDisplay now ranks confirmed-EN > unknown >
+  confirmed-foreign (englishAudioRank), still below cached. PLUS
+  ground-truth backstop: on Ready the player reads the opened file's
+  REAL audio tracks; an auto-picked stream with no English track
+  auto-advances (≤4 skips/episode; manual Expert picks never touched).
+  PlaybackRequest.autoSelected marks app picks. DECISIONS #68.
+- **STREAM LIST IS EXPERT-ONLY (owner directive):** new pref
+  showStreamList (default OFF, Expert settings → "Show streams"); rows
+  render only when Expert + toggle both on. Rows hidden → auto-start
+  runs regardless of the auto-play pref; failure = plain-words card.
+  Anime drawer + auto-play toggle moved INTO Expert settings (new
+  "EXPERT SETTINGS" caption); PLAYBACK section removed.
+- **BACK-STACK PILEUP FIXED (owner: backing out showed stream selection,
+  sometimes twice):** player→next-episode now pops player + outgoing
+  stream list together (popUpTo STREAMS inclusive); pop-through on
+  player exit keys off streamListVisible (expert && showStreams), not
+  expertMode.
+- **AUTO-RESUME (owner):** Resume-from prompts REMOVED (player overlay +
+  external-player dialog); playback starts at the saved position.
+  WATCHED_FRACTION 0.95 → 0.90 (past 90% = watched = restart from top).
+- **Stream titles wrap (no truncation) in the Expert list; stream picks/
+  skips/advances all logged to the Expert App log ([streams] tag).**
+- Gates green on this Mac: assembleDebug + testDebugUnitTest (391/391;
+  one HomeViewModelTest real-HTTP flake failed once, passed on re-run).
+  NOT emulator-verified yet; NOT OTA-published.
+- **Owner backlog added this round (not yet built):** one consistent UI
+  style across next-episode popup / Next Episode button / all dialogs;
+  per-series release-family memory (skip known-glitchy encodes across
+  episodes — needs a small Room table); anime credits-marker-based
+  restart threshold (deferred, 90% line covers standard EDs).
+⏳ **NEXT ACTION:** (a) Emulator-verify the round: Naruto-style episode →
+auto-pick lands English (or auto-advances to it), Back never shows a
+stream list with Show streams off, resume is silent, Settings shows
+EXPERT SETTINGS with Anime inside. (b) Then cut OTA versionCode 61
+(includes session-40 rebrand + black-screen fix + this round) via
+assembleRelease → tools/publish_update.sh. (c) Session-40 items (b)-(d)
+unchanged (repo visibility, "manuel" alias, 9s bias knob, #16 skins,
+autoplay-chain subtitle fan-out, guide-APK fresh-install test).
+
+
+## ⚠️ SESSION 40 (2026-07-22) — Black-screen fix (killed service) + Nadine rename job LIVE + owner Qs answered
+- **BLACK SCREEN ON REOPEN FIXED (owner report: app opens black after
+  backing out mid-watch/paused until Back is pressed).** Root cause:
+  paused-in-background PlaybackService is no longer foreground → Android
+  kills it → engine detaches → player route rendered a permanent black
+  Box (engine==null, hasSource still true; only the BackHandler above the
+  early return worked). Fix in PlayerViewModel: engine-null-after-start
+  is treated like process death — uiState flips to hasSource=false +
+  restore, screen re-enters via stream flow (fresh link + resume prompt).
+  Bonus: restore stash now refreshed on autoplay advances (was stale in
+  the process-death path too — restored the binge's FIRST episode).
+  DECISIONS #67. Gates green. EMULATOR-VERIFIED: play (Local Test addon)
+  → HOME → am stopservice → reopen = resume prompt, "Resume from 0:27"
+  plays. NOT yet OTA-published (rides with the next alpha; branch
+  feat/openstream-rebrand, next OTA cut needs versionCode 61 — 60 is
+  consumed by the session-39 guide build).
+- **NADINE RENAME JOB DONE, LIVE-VERIFIED** (owner renamed Manuel Momma →
+  Nadine in the passport; asked for logins Nadine / Sean (Patrick) /
+  Richardson('s) + rows "Recommended for Nadine"): (1) make_hosting_bundle
+  .py now supports passport `aka` lists (DECISIONS #67); users.schema.json
+  documents it; live users.json got aka ["Sean Patrick","Richardson",
+  "Richardsons"]. (2) profiles.config.json links key renamed to "Nadine"
+  — profile FILENAME kept (manuel-momma-hSWmfGr0T_Q.json, boxes' URLs
+  stable). (3) Regenerated profiles (diff = ONLY her file, only the name
+  field → "Nadine") + index.php; both scp'd to savoy.click/setup (atomic,
+  644). LIVE lookups verified: nadine/sean/sean patrick/sean p/richardson/
+  richardsons/richardson's → FOUND Nadine; "manuel" no longer matches
+  (old name gone — tools now use --user "Nadine"). (4) Her AIOMetadata
+  Discover rec rows renamed "Recommended for YOU"→"for Nadine" ×3 via
+  live API (pre-write backup config_backups/2026-07-22/), re-load + public
+  manifest verified; her Stremio picks the names up automatically (rows
+  come from the manifest). (5) make_user_configs.py: manuel-momma
+  overrides dropped (default first word now correct); "nadine": None kept
+  in ADDON_DISPLAY_NAME (addonName stays "AIO - Discover").
+- **Owner Qs answered:** "myles" typed alone → the 3-way chooser (Myles
+  Manuel / Myles Mobile / Myles Dad; "myles m" still a 2-way chooser —
+  live-verified). Updates: publish_update.sh → every box self-offers on
+  next app launch; ONE tap path (our dialog focuses Update; Android's
+  installer screen: LEFT then OK); version jumps are direct (full APK,
+  versionCode > installed — no stepping through intermediates). GitHub
+  repo (openstream-tv) is currently PUBLIC; making it private breaks
+  NOTHING (OTA + profiles live on Dreamhost, GitHub is never contacted
+  by boxes) — owner's call, not flipped.
+⏳ **NEXT ACTION:** (a) On owner's word: cut the next OTA (bump to
+versionCode 61 on this branch — includes rebrand + subtitles fan-out +
+black-screen fix) via assembleRelease → tools/publish_update.sh; consider
+merging feat/openstream-rebrand → main first. (b) Owner decides repo
+visibility (public vs private — see Qs above). (c) If owner wants "manuel"
+to still find Nadine, add "Manuel Momma" to her aka list + regen/scp
+index.php (one command). (d) Session-38/39 backlog unchanged (9s bias
+knob, #16 skins, adam's streaming-config 401 cosmetic, autoplay-chain
+subtitle fan-out, guide-APK fresh-install test).
+
+## ⚠️ SESSION 39 (2026-07-19) — Guide APK refreshed: OpenStream alpha.60 live at savoy.click/OpenStreams.apk (NOT OTA-published)
+- **Owner asked to update the guide's APK.** Facts established: the picture
+  guide at savoy.click/index.html installs via Downloader short code
+  **5603325** → https://savoy.click/OpenStreams.apk (note the S — owner
+  says "OpenStream.apk" but the hosted file/code use OpenStreams.apk).
+  That file was a byte-copy of pre-rebrand sstreams-59.apk.
+- **Built alpha.60 (versionCode 60) from feat/openstream-rebrand** (bump
+  committed — the rebranded build must outrank installed alpha.59). Gates
+  green (assembleDebug + testDebugUnitTest), assembleRelease, badging
+  verified: dev.openstream.tv / 60 / 0.3.0-alpha.60 / label "OpenStream".
+  scp'd atomically (.tmp → mv) to savoy.click/OpenStreams.apk, chmod 644,
+  hosted sha256 == local, HTTPS 200. Dreamhost key auth works from this
+  Mac (no password needed — owner pasted one in chat; unused).
+- **OTA channel deliberately NOT touched:** setup/app/version.json still
+  offers alpha.59, sstreams-latest.apk (savoy.click/app) still = 59. The
+  2 live boxes have not been offered the rebrand — publishing alpha.60
+  OTA (tools/publish_update.sh after this branch's release build) is the
+  owner-blessed next step, not assumed. versionCode 60 is now CONSUMED
+  by this build; any future OTA alpha.60 must be built from this same
+  branch state or bump to 61.
+- **Owner Qs answered from live users.json:** Myles Dad logs in as
+  mylesdad@savoy.solutions (personal gmail on file:
+  triparishelectrical@gmail.com); Manuel Momma = manuelmomma@gmail.com.
+  Passport rename question: NO button propagates a name change (Save Now
+  only writes users.json); index.php name→file map + profile slugs + tool
+  lookups depend on the name — rename = its own job (session-34 answer
+  stands). Their TV-visible rec rows already say "YOU", unaffected.
+⏳ **NEXT ACTION:** (a) Owner: test a fresh install via the guide (code
+5603325) — should land "OpenStream" 0.3.0-alpha.60. (b) On owner's word:
+publish alpha.60 OTA (assembleRelease already done on this branch →
+tools/publish_update.sh) so the 2 boxes + savoy.click/app get the rebrand;
+consider merging feat/openstream-rebrand → main first. (c) If owner
+renames Myles Dad / Manuel Momma in the passport: run the rename job
+(index.php map + keep hosted profile filenames stable). (d) Session-38
+backlog unchanged.
 
 ## ⚠️ SESSION 38 (2026-07-19) — Subtitles fan-out built (§4.1 gap closed for the main video)
 - **Owner noticed the auto-picked subtitle track sometimes doesn't match**

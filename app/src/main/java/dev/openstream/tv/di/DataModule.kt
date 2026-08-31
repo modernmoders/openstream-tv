@@ -39,6 +39,39 @@ private val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/**
+ * v2 → v3: watch_progress gains the nullable credits-start marker so anime
+ * with community-timed credits can move the "watched" line off the blanket
+ * 90% (owner backlog 2026-07-26). Old rows keep NULL = old behavior exactly.
+ */
+private val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `watch_progress` ADD COLUMN `creditsStartMs` INTEGER")
+    }
+}
+
+/**
+ * v3 → v4: release_family_strikes — per-series memory of release families
+ * (episode-number-stripped token sets) whose auto-picked streams failed, so
+ * the same glitchy encode isn't re-tried on every episode of a binge (owner
+ * backlog 2026-07-26). A handful of rows per series ever.
+ */
+private val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `release_family_strikes` (
+                `seriesKey` TEXT NOT NULL,
+                `familyKey` TEXT NOT NULL,
+                `strikes` INTEGER NOT NULL,
+                `lastStrikeAt` INTEGER NOT NULL,
+                PRIMARY KEY(`seriesKey`, `familyKey`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
@@ -47,7 +80,7 @@ object DataModule {
     @Singleton
     fun database(@ApplicationContext context: Context): OpenStreamDatabase =
         Room.databaseBuilder(context, OpenStreamDatabase::class.java, "openstream.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides
@@ -55,6 +88,16 @@ object DataModule {
 
     @Provides
     fun watchProgressDao(db: OpenStreamDatabase): WatchProgressDao = db.watchProgressDao()
+
+    @Provides
+    fun releaseFamilyStrikeDao(db: OpenStreamDatabase): dev.openstream.tv.data.db.ReleaseFamilyStrikeDao =
+        db.releaseFamilyStrikeDao()
+
+    @Provides
+    @Singleton
+    fun releaseFamilyMemory(
+        impl: dev.openstream.tv.data.RoomReleaseFamilyMemory,
+    ): dev.openstream.tv.data.ReleaseFamilyMemory = impl
 
     @Provides
     @Singleton

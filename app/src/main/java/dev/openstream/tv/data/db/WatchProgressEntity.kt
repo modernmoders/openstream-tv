@@ -19,6 +19,9 @@ data class WatchProgressEntity(
     val positionMs: Long,
     val durationMs: Long,
     val updatedAt: Long,
+    /** Credits-start marker (ms) from the anime skip data; null = not anime /
+     *  not timed. See [WatchProgress.creditsStartMs] for why it's stored. */
+    val creditsStartMs: Long? = null,
 )
 
 fun WatchProgressEntity.toDomain() = WatchProgress(
@@ -30,6 +33,7 @@ fun WatchProgressEntity.toDomain() = WatchProgress(
     positionMs = positionMs,
     durationMs = durationMs,
     updatedAt = updatedAt,
+    creditsStartMs = creditsStartMs,
 )
 
 fun WatchProgress.toEntity() = WatchProgressEntity(
@@ -42,4 +46,5 @@ fun WatchProgress.toEntity() = WatchProgressEntity(
     positionMs = positionMs,
     durationMs = durationMs,
     updatedAt = updatedAt,
+    creditsStartMs = creditsStartMs,
 )

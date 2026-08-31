@@ -45,14 +45,18 @@ fun NextEpisodeCard(
     secondsLeft: Int,
     totalSeconds: Int,
     modifier: Modifier = Modifier,
+    /** The small line above the episode name. The in-player credits countdown
+     *  says what's HAPPENING ("Skipping to next episode" — owner 2026-07-27);
+     *  the between-episodes flow keeps the plain "Up next". */
+    eyebrow: String = "Up next",
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = modifier
-            // Translucent enough that the credits read underneath, opaque
-            // enough that the card stays legible over bright frames.
-            .background(Color(0xE014171C), RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0x2EFFFFFF), RoundedCornerShape(16.dp))
+            // The shared popup face (AppDialog.kt); the hairline border stays
+            // because this card floats over moving video, not a scrim.
+            .background(PanelFill, PanelShape)
+            .border(1.dp, Color(0x2EFFFFFF), PanelShape)
             .padding(16.dp),
     ) {
         Row(
@@ -73,7 +77,7 @@ fun NextEpisodeCard(
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Up next", style = MaterialTheme.typography.labelMedium, color = MutedText)
+                Text(eyebrow, style = MaterialTheme.typography.labelMedium, color = MutedText)
                 Text(
                     text = episodeLabel,
                     style = MaterialTheme.typography.titleMedium,

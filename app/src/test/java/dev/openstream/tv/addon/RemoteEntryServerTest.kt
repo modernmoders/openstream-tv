@@ -98,17 +98,31 @@ class RemoteEntryServerTest {
         assertEquals(404, code)
     }
 
+    /** Bind [port] for the test, or null if something on this machine already
+     *  holds it — an externally-held port is exactly as "taken" as one we
+     *  squat ourselves. Shared CI runners DO squat ports in our range
+     *  (BindException in test setup failed the 2026-07-28 PR run). */
+    private fun squat(port: Int): ServerSocket? =
+        try { ServerSocket(port) } catch (e: java.net.BindException) { null }
+
     @Test
-    fun `binds the next port in range when the first is taken`() {
-        ServerSocket(RemoteEntryServer.PORTS.first).use {
+    fun `binds a later port in range when the first is taken`() {
+        val first = squat(RemoteEntryServer.PORTS.first)
+        try {
             val port = server.start(scope) { RemoteEntryServer.Outcome.Accepted }!!
-            assertEquals(RemoteEntryServer.PORTS.first + 1, port)
+            // Not "first + 1" exactly: on a busy machine other ports in the
+            // range may be taken too — the contract is "skips taken ports,
+            // stays in range", not which free port it lands on.
+            assertTrue(port in RemoteEntryServer.PORTS)
+            assertTrue(port != RemoteEntryServer.PORTS.first)
+        } finally {
+            first?.close()
         }
     }
 
     @Test
     fun `returns null when every port in range is taken`() {
-        val squatters = RemoteEntryServer.PORTS.map { ServerSocket(it) }
+        val squatters = RemoteEntryServer.PORTS.mapNotNull { squat(it) }
         try {
             assertNull(server.start(scope) { RemoteEntryServer.Outcome.Accepted })
         } finally {

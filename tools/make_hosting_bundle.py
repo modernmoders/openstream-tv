@@ -170,7 +170,14 @@ open <b>__BRAND__</b> and type your name when it asks. That's the whole thing.</
 
 
 def people_map(users, links, skip):
-    """One lookup row per alias: 'Anna/Jay' answers to both anna and jay."""
+    """One lookup row per alias: 'Anna/Jay' answers to both anna and jay.
+
+    A user entry may also carry "aka": ["Sean Patrick", "Richardson"] —
+    extra names the person goes by. Each becomes a lookup row matching on
+    its FIRST word only (initial left blank, so any typed second word still
+    matches: "sean", "sean p", even "sean r" all land). The row's display
+    name stays the passport name, so the TV greets them consistently.
+    """
     rows = []
     for user in users:
         name = user.get("name", "")
@@ -187,6 +194,16 @@ def people_map(users, links, skip):
                 "full": display,
                 "first": first,
                 "initial": rest[0] if rest else "",
+                "file": filename,
+            })
+        for aka in user.get("aka", []):
+            words = [w for w in re.split(r"[^A-Za-z]+", aka.lower()) if w]
+            if not words or words[0] in {r["first"] for r in rows if r["file"] == filename}:
+                continue  # empty, or already answered by an existing row
+            rows.append({
+                "full": display,
+                "first": words[0],
+                "initial": "",
                 "file": filename,
             })
     return rows
