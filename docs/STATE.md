@@ -1,3 +1,95 @@
+# STATE — updated 2026-08-31 by session 45 (cont.)
+
+## ⚠️ SESSION 45 cont. (2026-08-31) — ANIME ROOT CAUSE FOUND (`providers.anime = imdb`) + subtitle look editor BUILT
+
+**The earlier hypothesis in this session's first entry was WRONG and is
+superseded: the owner confirmed both anime toggles were already ON.** The real
+cause is one AIOMetadata setting, and it plausibly explains ALL of the anime
+complaints at once (blank episode art, blank episode descriptions, dead Skip
+Intro, dead auto-next-episode).
+
+**ROOT CAUSE (live-verified against adam's AIOMetadata Discover config, read
+via `POST {host}/api/config/load/{uuid}` — the v2.8 endpoints in
+[[aiometadata-live-config-api]] STILL WORK on v2.15.0; earlier 404s this
+session were my wrong URL shapes, not a moved API):**
+```
+providers = { "anime": "imdb", "movie": "tmdb", "series": "tvdb",
+              "anime_id_provider": "imdb", "forceAnimeForDetectedImdb": true }
+mal       = { "useImdbIdForCatalogAndSearch": true, ... }
+```
+Anime metadata AND anime ids both come from IMDb. Probed his live Discover
+instance on Naruto, three ways:
+| request | episodes | with description | artwork host | seasons |
+|---|---|---|---|---|
+| `series/tt0409591` | 227 | **0** | episodes.metahub.space | 0–5 |
+| `anime/tt0409591`  | — | **returns null meta** | — | — |
+| `anime/mal:20`     | 220 | **220** | media.kitsu.app | **1 (absolute)** |
+
+Plain Cinemeta returns byte-identical data to the `series/tt` row (0
+descriptions, metahub art) — so AIOMetadata is just passing IMDb through, and
+**the good anime data exists ONLY behind `anime` + `mal:` ids**, which his
+config never requests. Note the `anime/mal:` row is also literally the
+"anime as ONE season, straight through" view the owner remembered wanting —
+it is a metadata path, not just the app's relabel toggle (DECISIONS #36).
+
+**Why this also kills Skip Intro + auto-next-episode:** `OkHttpAniSkip`
+resolves `mal:`/`kitsu:`/`anilist:` directly, `tt…` through the bundled
+IMDb→MAL bridge, and **everything else → `else -> null`**
+(OkHttpAniSkip.kt:86). Auto-next-episode rides the AniSkip CREDITS window, so
+no MAL resolution = no skip button AND no countdown = both features silently
+dead with their toggles ON. A `mal:` id would resolve instantly and exactly.
+**Box log settles it in one line:** `malId(<id> …) → unresolved (scheme=…)`.
+
+**THE TRADE-OFF — owner's call, NOT changed:** `useImdbIdForCatalogAndSearch`
+exists because IMDb ids are the universal key for torrent/debrid stream
+matching. Switching anime to `mal:` ids should fix art + descriptions + both
+skip features, but MAY reduce anime stream availability from AIOStreams. Safer
+staging: flip `providers.anime` (metadata source) first and leave the id
+provider alone; if that alone doesn't help, the id provider is the real lever.
+
+**STREMIO ADDON ORDER — confirmed off (owner's screenshots), separate issue.**
+Pulled his live account: Cinemeta, Local Files, **AIOLists(3)**, ANOtherOne
+(=nightly), AIO-Movies&Series, AIO-Anime&Streaming, AIOStreams(primary),
+[BAK]AIOStreams. Canonical (DECISIONS #65) is Cinemeta → AIOMeta ×2 →
+AIOStreams ×3 → **AIOLists LAST**. AIOLists declares `meta` for `tt`+`tmdb:`
+and sits ABOVE both AIOMetadata addons, so it intercepts meta for any `tmdb:`
+id. NOT reordered — a live-account write, and `push_stremio_bundle.py` would
+also DROP his Local Files (not in the passport bundle); a surgical same-8
+reorder is the safe tool. **Caveat: this is his STREMIO account; the
+OpenStream app takes its order from the hosted profile, not from Stremio — so
+the reorder helps Stremio-on-other-boxes, not necessarily his box.** Either
+way Cinemeta is #1 in both and wins every `tt` id (MetaRepository.kt:29 walks
+addon order, first declarer wins).
+
+**BUILT + SHIPPED THIS SESSION: subtitle look editor (DECISIONS #72,
+commit 77ed0dc).** Owner ask: "a subtitle size and background/color editor".
+Settings → HOW THINGS LOOK → **Subtitles** (deliberately NOT behind Expert —
+§10 elder-friendly) opens its own screen mirroring `PosterSizeScreen`: options
+left, live sample frame right, preview follows FOCUS so each choice is visible
+before OK commits. Size (Small/Normal/Large/Extra large, as a fraction of
+screen height like media3), Colour (White/Yellow/Cyan/Green), Behind the words
+(Black outline / Soft shadow / Dark box / Solid black box / Nothing). New
+`data/SubtitleStyle.kt` is framework-free (plain ARGB ints + a `SubtitleEdge`
+enum) so it unit-tests on the JVM; only `PlayerScreen` maps it to media3's
+`CaptionStyleCompat`. `setApplyEmbeddedStyles(false)` on purpose — a styled
+`.ass` track would otherwise ignore the whole screen (cost: anime sign
+typesetting renders plain; accepted). Defaults reproduce media3's look
+bit-for-bit, so an untouched box is unchanged. **Gates green: assembleDebug +
+testDebugUnitTest, 422 tests (6 new), 0 failures.** NOT emulator-verified,
+NOT OTA-published.
+
+⏳ **NEXT ACTION (cont.):** (a) Owner decides the anime metadata question —
+flip `providers.anime` off `imdb` (and possibly `anime_id_provider`) on both
+AIOMetadata instances, accepting the possible anime stream-matching cost. I do
+NOT change it unasked. (b) Owner says go/no-go on the surgical Stremio addon
+reorder (AIOLists → last, AIOMetadata above AIOStreams, Local Files kept).
+(c) Owner: during a Naruto episode pull the box App log and grep `malId(` —
+that one line proves or kills the AniSkip diagnosis. (d) Cut an alpha to ship
+the subtitle editor when the owner wants it (nothing published yet).
+(e) Items (b)/(d)/(e) from the first session-45 entry still stand (CAM/TS hard
+block vs rank-down; Tamtaro v3.13 rollout to the other 9 users).
+
+# (previous entry — superseded on the toggles point, kept for the audit trail)
 # STATE — updated 2026-08-30 by session 45
 
 ## ⚠️ SESSION 45 (2026-08-30) — Owner incident report triaged: untracked Aug 25-27 Tamtaro v3.13 rollout discovered + 4 symptoms diagnosed (no fixes applied yet, owner input needed)
