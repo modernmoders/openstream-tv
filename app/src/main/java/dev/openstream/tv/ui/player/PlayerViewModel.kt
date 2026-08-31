@@ -803,12 +803,41 @@ class PlayerViewModel @Inject constructor(
         if (!req.autoSelected) return
         if (audioCheckedUrl == req.source.url) return
         audioCheckedUrl = req.source.url
-        val tags = engine.exoPlayer.currentTracks.groups
-            .filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+        val groups = engine.exoPlayer.currentTracks.groups
+        val audioGroups = groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+
+        // SILENT FILE (owner 2026-08-31: "some have no audio"). A file that
+        // reports tracks but not ONE audio track plays as a silent picture —
+        // that is broken, not a language question, so it never gets the
+        // benefit of the doubt the untagged case below gets. Guarded on
+        // groups.isNotEmpty(): a Ready with NO groups at all just means the
+        // tracks aren't published yet, which proves nothing either way.
+        if (groups.isNotEmpty() && audioGroups.isEmpty()) {
+            if (languageSkips >= MAX_LANGUAGE_SKIPS) {
+                diagnostics.record(
+                    "streams",
+                    "\"${_uiState.value.title}\": stream has no audio track at all — " +
+                        "skip limit reached, keeping this stream",
+                )
+                return
+            }
+            diagnostics.record(
+                "streams",
+                "\"${_uiState.value.title}\": opened stream has NO audio track — " +
+                    "trying the next stream",
+            )
+            autoplayOrigin.origin?.stream?.let {
+                familyMemory.recordStrikeAsync(req.metaId, it, "no audio track")
+            }
+            if (tryNextStream()) languageSkips++
+            return
+        }
+
+        val tags = audioGroups
             .flatMap { group -> (0 until group.length).map { group.getTrackFormat(it).language } }
             .filterNotNull()
             .filterNot { it.equals("und", ignoreCase = true) } // "undetermined"
-        if (tags.isEmpty()) return // untagged file: nothing provable, keep it
+        if (tags.isEmpty()) return // has audio, just untagged: nothing provable
         // "en"/"eng"/"en-US" all mean English.
         if (tags.any { it.lowercase().startsWith("en") }) return
         if (languageSkips >= MAX_LANGUAGE_SKIPS) {

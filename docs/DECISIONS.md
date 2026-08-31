@@ -2310,3 +2310,35 @@ is paused takes effect on the video already on screen. Stored in `ViewPrefs`
 (appearance), so "Reset settings to default" already covers it. Gates green:
 assembleDebug + testDebugUnitTest, 422 tests (6 new `SubtitleStyleTest`), 0
 failures. NOT emulator-verified and NOT OTA-published — rides the next alpha.
+
+## 73. 2026-08-31 (session 45 cont.) — Silent streams (no audio track) auto-skip
+
+Owner: "I want to be sure the app skips any streams without any audio track."
+
+Session 41's post-open English check (#68) read the opened file's REAL audio
+tracks and skipped an auto-pick with tagged tracks and no English. But its very
+first guard was `if (tags.isEmpty()) return  // untagged file: nothing
+provable` — and a file with **zero audio tracks** produces an empty tag list
+too. So the one case that is unambiguously broken, a silent video, was the case
+that got the benefit of the doubt and was kept. That is the owner's "some have
+no audio".
+
+Now `verifyEnglishAudio` separates the two: it counts audio track GROUPS before
+it looks at language tags. Zero audio groups = a silent picture = skip to the
+next stream and strike the release family (same treatment as no-English, same
+`MAX_LANGUAGE_SKIPS` budget, manual Expert picks still exempt). Audio groups
+present but untagged still proves nothing and is still kept.
+
+**Guarded on `groups.isNotEmpty()`.** A `Ready` event with NO track groups of
+any kind means the tracks simply aren't published yet, not that the file is
+silent — skipping on that would false-positive on every slow-to-parse stream.
+Requiring at least one group (in practice the video track) before declaring a
+file silent makes the check evidence-based rather than timing-dependent.
+
+Rejected: a separate skip budget (the existing one already bounds the walk, and
+mixing budgets makes the ceiling unpredictable); pre-filtering by stream label
+(labels lie — that is the whole reason this check reads the opened file).
+
+Gates green: assembleDebug + testDebugUnitTest, 422 tests, 0 failures. NOT
+emulator-verified (needs a genuinely silent stream to reproduce on demand); the
+box log will show "opened stream has NO audio track — trying the next stream".
