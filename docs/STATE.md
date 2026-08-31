@@ -1,6 +1,88 @@
-# STATE — updated 2026-08-31 by session 45 (cont.)
+# STATE — updated 2026-08-31 by session 45 (cont. 2)
 
-## ⚠️ SESSION 45 cont. (2026-08-31) — ANIME ROOT CAUSE FOUND (`providers.anime = imdb`) + subtitle look editor BUILT
+## ⚠️ SESSION 45 cont. 2 (2026-08-31) — ANIME METADATA FIXED LIVE (`providers.anime` imdb→tvdb) + Stremio reorder DONE + silent-stream skip BUILT + Trakt recs diagnosed
+
+**Owner approved: "safe half" of the anime fix + the surgical Stremio reorder;
+he asked to HOLD the OTA until the no-audio ask was in.**
+
+**1. ANIME METADATA — FIXED LIVE on adam's AIOMetadata Discover.** The owner's
+`providers.anime` was `imdb` (the addon's OWN default is `mal`). I A/B-probed
+all four values live against Naruto before committing — this matters, because
+the obvious choice was the WRONG one:
+
+| `providers.anime` | `series/tt0409591` (the path his box uses) | `anime/mal:20` |
+|---|---|---|
+| `imdb` (was) | 227 eps, **0 desc**, metahub art | 220 eps, 220 desc, kitsu |
+| `mal` (addon default) | **130 eps ✗**, 51 desc, tmdb | **130 eps ✗**, 51 desc |
+| **`tvdb` (CHOSEN)** | **230 eps, 228 desc**, thetvdb art | 220 eps, 220 desc, kitsu, 1 season |
+| `tmdb` | 222 eps, 222 desc, tmdb art | 222 eps, 222 desc |
+
+`mal` — the addon's own default and the intuitive pick — **LOSES 90 episodes**
+of a 220-episode show. `tvdb` is the only value that gives a complete episode
+list AND near-complete descriptions on the tt path while preserving the rich
+single-season Kitsu view on the mal path. **Never assume the default is right
+here; re-probe per-title before changing this on anyone else.**
+FINAL: `{anime: tvdb, movie: tmdb, series: tvdb, anime_id_provider: imdb,
+forceAnimeForDetectedImdb: true}` — `anime_id_provider` deliberately UNTOUCHED
+(owner chose the safe half; IMDb ids keep AIOStreams stream-matching strong).
+Sanity-checked Breaking Bad after: 80 eps / 80 desc, unchanged — no collateral
+damage to non-anime. Backup: `config_backups/2026-08-31/aiometadata-adam-savoy-
+discover.pre-animeprovider.json`. **His STREAMING AIOMetadata still 401s on
+both stored passwords** (the known session-35 gap, still unfixed) — only
+Discover was changed, and Discover wins meta anyway (it sits above Streaming).
+
+**2. STREMIO ADDON ORDER — REORDERED LIVE, read-back verified.** Surgical
+same-8 reorder (NOT `push_stremio_bundle.py`, which would have dropped his
+Local Files): Cinemeta → Local Files → AIO Movies&Series → AIO Anime&Streaming
+→ AIOStreams → [BAK]AIOStreams → ANOtherOne → **AIOLists LAST**. Local Files
+deliberately left at #2 (Stremio manages that built-in itself). Backup:
+`config_backups/2026-08-31/stremio-addons-adam-savoy.pre-reorder.json`.
+
+**3. SILENT-STREAM SKIP — BUILT (DECISIONS #73, commit 4e53574).** Owner ask.
+Real bug found in session 41's post-open check: `if (tags.isEmpty()) return
+// untagged file: nothing provable` also swallowed files with ZERO audio
+tracks, so the one unambiguously-broken case was the one kept. Now audio track
+GROUPS are counted before language tags — zero groups (guarded on
+`groups.isNotEmpty()` so an unpublished-tracks Ready can't false-positive) =
+silent = skip + strike the release family. Gates green, 422 tests, 0 failures.
+
+**4. SETTINGS SURVIVE UPDATES — CONFIRMED, nothing to do.** `AppUpdater` uses
+`PackageInstaller` `MODE_FULL_INSTALL`, which is an in-place APK replace (the
+name means "full APK, not a split", NOT "wipe data"). Same package + same
+signing key ⇒ the DataStore files in app-private storage persist. Only an
+uninstall, an Android "Clear data", or a signing-key change wipes them — which
+is exactly why the Play-Store rekey warning in [[ota-updater-and-signing]]
+matters. No `allowBackup`/`dataExtractionRules` overrides in the manifest.
+
+**5. TRAKT — CONNECTED AND WORKING; recommendations are empty AT THE SOURCE.**
+`apiKeys.trakt` + `traktTokenId` set, `traktWatchTracking: true`. Live-probed
+his Discover instance: `Trending` and `Trakt's Popular` return **50 metas
+each**, while all three "Recommended for Adam" rows return **0**. Not a merge
+bug — the underlying `trakt.recommendations.movies` / `.shows` **also serve 0**
+when hit directly (HTTP 200, `metas: []`). The split is diagnostic: the rows
+that work are Trakt's PUBLIC endpoints (client-id only); the empty one is the
+only PERSONALIZED endpoint enabled (needs a valid user OAuth token). So either
+(a) his Trakt OAuth token has gone stale — personalized calls then return empty
+while public ones keep working, and his scrobbling would ALSO be silently
+failing — or (b) Trakt genuinely has nothing to recommend (it builds these from
+RATED titles and excludes anything already watched/collected/watchlisted).
+**Owner can settle it in 30s: open trakt.tv → Recommendations. Populated there
+= the addon's token is stale (reconnect Trakt in AIOMetadata). Empty there =
+Trakt needs him to rate some titles.** No other personalized Trakt catalog is
+enabled, so there was no way to A/B the token from this end.
+
+⏳ **NEXT ACTION (cont. 2):** (a) Owner: check trakt.tv → Recommendations to
+settle the token-vs-no-data question above. (b) Owner: confirm Naruto now shows
+episode pictures + descriptions on his box (metadata is live NOW — boxes pick
+it up on next launch, no app update needed), then say go and I cut the alpha
+(subtitle editor + silent-stream skip + everything unpublished since alpha.63).
+(c) Open owner question from cont. 1 still unanswered: CAM/TS hard block vs the
+v3.13 soft rank-down. (d) Roll `providers.anime` → `tvdb` out to the other 9
+users once adam confirms — **re-probe per user, do NOT assume `mal`**. Also the
+Tamtaro v3.13 AIOStreams rollout for those 9. (e) Owner asked whether SETTINGS
+could sync to accounts (cloud/passport) — answered as a design question this
+session, not built; if he wants it, it is a real feature (profile sync is
+currently one-way, hosted-profile → box).
 
 **The earlier hypothesis in this session's first entry was WRONG and is
 superseded: the owner confirmed both anime toggles were already ON.** The real
