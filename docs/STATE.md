@@ -1,3 +1,111 @@
+# STATE — updated 2026-08-30 by session 45
+
+## ⚠️ SESSION 45 (2026-08-30) — Owner incident report triaged: untracked Aug 25-27 Tamtaro v3.13 rollout discovered + 4 symptoms diagnosed (no fixes applied yet, owner input needed)
+
+**Context:** ~3-week gap since the last checkpoint (session 44, 2026-08-11).
+Owner opened this session confused/frustrated: manually clicked an AIOStreams
+"Update Template" prompt by accident on fortheweebs (backup) and elfhosted
+(nightly), thought elfhosted had lost his addons, asked (in an UNTRACKED
+session — not this repo's Claude Code, no STATE.md entry, no shell history)
+to "revert it to the last save." Also reported: Preferred Stream Types
+missing "debrid" (confused whether that's a bug), Naruto episodes that are
+glitchy/silent still outranking good English ones despite an earlier
+exclusion, the anime season-numbering toggle seemingly missing, and BOTH
+skip-intro/credits and auto-next-episode "not working."
+
+**Untracked rollout found (Aug 25-27, no prior record of it anywhere in this
+repo):** StremioSurfer gained 3 new tools — `apply_tamtaro_v313.py`,
+`personalize_tamtaro313.py`, `restore_config.py` (the last one is exactly
+the "restore a live config from a backup JSON" tool the "revert elfhosted"
+ask needed — see its docstring caveat: a manual AIOStreams-UI edit is only
+undoable if a TOOL-triggered snapshot happens to predate it). Backups show
+adam-savoy primary+backup got `apply_tamtaro_v313.py` on 2026-08-26; nightly
+already matched the new template shape by 2026-08-25 (most likely the
+owner's own accidental in-UI "Update Template" click, since no
+nightly.pre-tamtaro313 backup exists — only a nightly.pre-cutrank one from
+the same day, meaning rank_down_cuts.py was re-run right after to reinstate
+the director's-cut rule the template update had wiped). jacob-savoy got all
+3 slots on 2026-08-27. **The other 9 users are NOT yet migrated** — this is
+the long-pending "Tamtaro SEL 2.6.1 → 3.0.2" rollout from session 43's
+backlog, finally actually starting, under different/newer tooling than what
+was originally planned.
+
+**Live-checked all 3 of adam's instances just now (2026-08-30) — currently
+IDENTICAL and internally consistent, nothing corrupted right now:**
+- `preferredStreamTypes` = `[http, live, p2p]` on all 3. **There is no
+  "debrid" stream-type value in this schema** — debrid/cached streams get
+  priority through `sortCriteria.global` = `[{cached, desc}]`, which sorts
+  ALL cached (debrid-ready) streams above uncached ones before quality/
+  resolution is even considered. Nothing missing; owner's config is correct
+  as-is.
+- `rankedStreamExpressions` carries 4 entries on all 3: the session-44
+  "#Theatrical first" director's-cut rank-down (INTACT, score -20000) +
+  3 new entries syncing a community "Vidhin05/Releases-Regex" English SEL
+  pack (part of the v3.13 template). `presets`: 10, all enabled, identical
+  across instances; the standalone "Debridio Watchtower" preset from
+  session 44's NXDOMAIN saga is GONE — consolidated into one "Debridio"
+  preset in the new template, so that whole outage story is moot on these 3
+  now (assuming the new preset resolves cleanly, not re-verified this
+  session).
+- **Regression vs. the owner's explicit ask (DECISIONS #44/45):**
+  `excludedQualities` is now EMPTY on all 3 — CAM/TS/SCR/TC are no longer
+  hard-blocked, just placed last inside `preferredQualities` (soft rank-down
+  instead, a side effect of the v3.13 template). Not yet reverted; owner
+  hasn't been asked whether the softer behavior is acceptable or whether he
+  wants the hard block restored.
+
+**App-side code audit (Explore agents, this session) — no code regressions
+found in the last ~15 commits for any of the 3 app complaints:**
+- **AniSkip skip-intro/credits:** fully intact (`player/skip/*`,
+  `SkipModule`, `PlayerViewModel.loadSkipSegments`), toggle
+  `PlaybackPrefs.skipIntrosEnabled` default **ON** ("Skip buttons on anime",
+  Settings > Expert mode > Anime).
+- **Auto-next-episode:** `PlaybackPrefs.autoSkipCredits` ("Play the next
+  episode automatically", BETA badge) is OPT-IN, default **OFF** by original
+  design (DECISIONS #62) — NOT a regression. Its Settings row is nested
+  inside the Anime drawer and only rendered when "Skip buttons on anime" is
+  ON. **Likely unifying explanation for "both stopped working":** if the
+  owner (or something) flipped the parent "Skip buttons on anime" toggle
+  off, both features would appear broken/missing at once. Owner needs to
+  check Settings > Expert mode > Anime himself; no server-side state to
+  inspect for this one.
+- **Anime episode-numbering toggle:** confirmed it still exists — Settings >
+  Expert mode > Anime > "Episode numbers" (By season / Straight through).
+  It only RELABELS episode numbers; it does not merge season art or fix
+  metadata, so it will NOT fix Naruto's blank episode thumbnails/
+  descriptions — that looks like a separate metadata gap (needs its own
+  look, not investigated this session).
+- **Naruto glitchy/silent streams outranking good ones — leading theory, not
+  yet confirmed:** the alpha.63 junk-file-skip (`5c9bb38`) reads
+  `expectedRuntimeMin` off the SAME `PlayerEvent.Ready` hook as the
+  release-family-strike system (session 42). If that runtime value was ever
+  wrong/missing for a Naruto episode, a perfectly good auto-picked stream
+  could get wrongly judged "implausibly short," silently skipped, AND have
+  its release family permanently struck — sinking the good English release
+  below worse ones for every future episode of that series. This needs the
+  box's own App log ("release family struck" / "junk placeholder" / "skip"
+  tag lines) to confirm; not checked this session (no box access).
+
+⏳ **NEXT ACTION:** (a) Owner checks Settings > Expert mode > Anime on his
+box(es): is "Skip buttons on anime" ON? Is "Play the next episode
+automatically" (BETA) ON underneath it? Report back what he finds — this
+likely explains both the skip-intro and auto-next-episode complaints in one
+shot. (b) Owner decides: keep the new template's soft rank-down for CAM/TS/
+SCR/TC, or have it reverted to a hard `excludedQualities` block like before
+— nothing changed yet, pending his call. (c) If Naruto is still bad after
+(a): pull the box's App log during a Naruto episode and grep for "release
+family struck" / "junk placeholder" to confirm/deny the false-positive-
+strike theory — a confirmed bad strike may need a manual DB clear (no tool
+for that yet). (d) Complete the Tamtaro v3.13 rollout to the other 9 users
+(Anna/Jay, Myles Manuel/Mobile/Dad, Jody, Mike, Clarence, Toby, Nadine) via
+`apply_tamtaro_v313.py` + `personalize_tamtaro313.py`, Rachael excluded as
+always — once adam+jacob are confirmed good. (e) Process note: this gap
+happened because a non-Claude-Code session (or one outside this repo) did
+real work without following the CLAUDE.md checkpoint protocol — if that
+happens again, check `~/Documents/Claude/StremioSurfer/config_backups/`
+file timestamps directly rather than trusting STATE.md alone to be current.
+
+# (previous head follows)
 # STATE — updated 2026-08-09 by session 44 (cont.)
 
 ## ⚠️ SESSION 44 cont. (2026-08-09) — alpha.63 PUBLISHED OTA + director's-cut rank-down rollout (partial, auto-retrying)
