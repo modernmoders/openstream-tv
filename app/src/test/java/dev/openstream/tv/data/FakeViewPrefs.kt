@@ -12,6 +12,7 @@ class FakeViewPrefs : ViewPrefs {
     private val numberingState = MutableStateFlow(EpisodeNumbering.SEASONAL)
     private val uiSoundsState = MutableStateFlow(true)
     private val voiceFirstState = MutableStateFlow(true)
+    private val subtitleState = MutableStateFlow(SubtitleStyle())
 
     override val discover: Flow<DiscoverViewPrefs> = state
     override val posterColumns: Flow<Int> = columnsState
@@ -19,6 +20,7 @@ class FakeViewPrefs : ViewPrefs {
     override val episodeNumbering: Flow<EpisodeNumbering> = numberingState
     override val uiSounds: Flow<Boolean> = uiSoundsState
     override val voiceFirstSearch: Flow<Boolean> = voiceFirstState
+    override val subtitleStyle: Flow<SubtitleStyle> = subtitleState
 
     override suspend fun setDiscoverColumns(columns: Int) {
         state.update { it.copy(columns = columns) }
@@ -52,6 +54,18 @@ class FakeViewPrefs : ViewPrefs {
         voiceFirstState.value = enabled
     }
 
+    override suspend fun setSubtitleTextSize(size: SubtitleTextSize) {
+        subtitleState.update { it.copy(size = size) }
+    }
+
+    override suspend fun setSubtitleTextColor(color: SubtitleTextColor) {
+        subtitleState.update { it.copy(color = color) }
+    }
+
+    override suspend fun setSubtitleBackdrop(backdrop: SubtitleBackdrop) {
+        subtitleState.update { it.copy(backdrop = backdrop) }
+    }
+
     override suspend fun resetToDefaults() {
         state.value = DiscoverViewPrefs()
         columnsState.value = DEFAULT_POSTER_COLUMNS
@@ -59,5 +73,6 @@ class FakeViewPrefs : ViewPrefs {
         numberingState.value = EpisodeNumbering.SEASONAL
         uiSoundsState.value = true
         voiceFirstState.value = true
+        subtitleState.value = SubtitleStyle()
     }
 }

@@ -51,9 +51,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val PROGRESS_SAVE_INTERVAL_MS = 10_000L
@@ -90,6 +92,7 @@ class PlayerViewModel @Inject constructor(
     private val autoplayOrigin: AutoplayOriginHolder,
     private val autoplayGateway: AutoplayGateway,
     private val playbackPrefs: PlaybackPrefs,
+    viewPrefs: dev.openstream.tv.data.ViewPrefs,
     private val alternatives: StreamAlternatives,
     private val externalLauncher: ExternalPlayerPort,
     private val skipTimes: SkipTimesRepository,
@@ -113,6 +116,18 @@ class PlayerViewModel @Inject constructor(
      * The screen binds its PlayerView the moment this becomes non-null.
      */
     val engine: StateFlow<ExoPlayerEngine?> = playerHolder.engine
+
+    /**
+     * Subtitle look (owner 2026-08-30). The screen re-applies this to the
+     * PlayerView's subtitle view whenever it changes, so editing the style in
+     * Settings while something is paused shows up the moment you come back.
+     */
+    val subtitleStyle: StateFlow<dev.openstream.tv.data.SubtitleStyle> = viewPrefs.subtitleStyle
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            dev.openstream.tv.data.SubtitleStyle(),
+        )
 
     data class UiState(
         val title: String = "",

@@ -10,6 +10,10 @@ import dev.openstream.tv.data.PLAYER_INTERNAL
 import dev.openstream.tv.data.PlaybackPrefs
 import dev.openstream.tv.data.ProfileSyncPrefs
 import dev.openstream.tv.data.SetupConfig
+import dev.openstream.tv.data.SubtitleBackdrop
+import dev.openstream.tv.data.SubtitleStyle
+import dev.openstream.tv.data.SubtitleTextColor
+import dev.openstream.tv.data.SubtitleTextSize
 import dev.openstream.tv.data.ViewPrefs
 import dev.openstream.tv.player.ExternalPlayer
 import dev.openstream.tv.player.ExternalPlayerPort
@@ -59,6 +63,22 @@ class SettingsViewModel @Inject constructor(
     /** Seasonal vs absolute episode numbers (owner request: anime numbering). */
     val episodeNumbering: StateFlow<EpisodeNumbering> = viewPrefs.episodeNumbering
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EpisodeNumbering.SEASONAL)
+
+    /** Subtitle size/colour/backdrop (owner 2026-08-30). */
+    val subtitleStyle: StateFlow<SubtitleStyle> = viewPrefs.subtitleStyle
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubtitleStyle())
+
+    fun setSubtitleTextSize(size: SubtitleTextSize) {
+        viewModelScope.launch { viewPrefs.setSubtitleTextSize(size) }
+    }
+
+    fun setSubtitleTextColor(color: SubtitleTextColor) {
+        viewModelScope.launch { viewPrefs.setSubtitleTextColor(color) }
+    }
+
+    fun setSubtitleBackdrop(backdrop: SubtitleBackdrop) {
+        viewModelScope.launch { viewPrefs.setSubtitleBackdrop(backdrop) }
+    }
 
     val playerPref: StateFlow<String> = playbackPrefs.preferredPlayer
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PLAYER_INTERNAL)

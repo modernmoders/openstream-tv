@@ -2260,3 +2260,53 @@ absorbs specials and cut differences. Unknown runtime degrades to the
 absolute floor only. Live types (channel/tv) are never judged by
 length (§8) — and their durations are unset anyway, which
 `isImplausiblyShort` already treats as proof of nothing.
+
+## 72. 2026-08-30 (session 45) — Subtitle look editor (size / colour / backdrop)
+
+Owner ask: "incorporate a subtitle size and background/color editor/changer too."
+
+**Where it lives.** Settings → **HOW THINGS LOOK → Subtitles**, NOT behind
+Expert mode. Subtitles too small to read is an everyday accessibility problem
+for exactly the viewers these boxes are for (§10 elder-friendly) — it is not a
+technical knob like the decoder or the stream list. It opens its own screen
+(`SubtitleStyleScreen`) rather than three dialogs, mirroring `PosterSizeScreen`
+(round 20 #7, "confusing settings get a screen WITH a picture"): size, colour
+and backdrop can only be judged together against one sample frame, and the
+owner has already learned that screen's shape. The preview follows FOCUS, so
+moving over an option shows it before OK commits.
+
+**Three axes, plain words.** Size (Small/Normal/Large/Extra large), Colour
+(White/Yellow/Cyan/Green — the broadcast-caption set a cable box offers), and
+"Behind the words" (Black outline / Soft shadow / Dark box / Solid black box /
+Nothing). Rejected a free colour picker and an opacity slider: a d-pad has no
+good gesture for either, and five backdrops already span readable-over-busy-
+video to minimal-obstruction.
+
+**Sizes are a fraction of screen height, not sp.** media3's
+`SubtitleView.setFractionalTextSize` uses that unit, a TV is watched from
+across the room, and Android's system caption settings don't exist on most of
+these boxes. NORMAL is exactly media3's own `DEFAULT_TEXT_SIZE_FRACTION`
+(0.0533) and the defaults overall (white, normal, outline) reproduce the
+previous look bit-for-bit — a box whose owner never opens the screen sees no
+change. A unit test pins that fraction so it can't drift silently.
+
+**`setApplyEmbeddedStyles(false)` — the deliberate trade.** A styled `.ass`
+track (common on anime fansubs) otherwise overrides everything the owner just
+picked, making the screen look broken. Our style therefore wins. Cost: fancy
+sign/karaoke typesetting renders as plain text. Accepted — legibility for the
+household beats typesetting fidelity for one genre, and the owner asked for
+this control specifically.
+
+**Framework-free data model.** `data/SubtitleStyle.kt` holds plain values (a
+height fraction, ARGB ints, a `SubtitleEdge` enum); only `PlayerScreen` maps
+them onto media3's `CaptionStyleCompat`. Keeps the options unit-testable on the
+JVM with no Android types and no Robolectric. Note `SUBTITLE_TRANSPARENT` is
+top-level, not in `SubtitleBackdrop`'s companion — an enum entry cannot read its
+own companion while the entries are still constructing (this failed to compile
+first try).
+
+Applied in the `AndroidView` update block, so editing the style while something
+is paused takes effect on the video already on screen. Stored in `ViewPrefs`
+(appearance), so "Reset settings to default" already covers it. Gates green:
+assembleDebug + testDebugUnitTest, 422 tests (6 new `SubtitleStyleTest`), 0
+failures. NOT emulator-verified and NOT OTA-published — rides the next alpha.

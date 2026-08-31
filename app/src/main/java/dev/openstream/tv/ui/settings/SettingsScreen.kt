@@ -69,6 +69,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onHomeRows: () -> Unit,
     onPosterSize: () -> Unit,
+    onSubtitles: () -> Unit,
     onAddons: () -> Unit,
     onAppLog: () -> Unit,
     onReset: () -> Unit,
@@ -84,6 +85,7 @@ fun SettingsScreen(
     val autoSkipIntros by viewModel.autoSkipIntros.collectAsStateWithLifecycle()
     val autoSkipCredits by viewModel.autoSkipCredits.collectAsStateWithLifecycle()
     val numbering by viewModel.episodeNumbering.collectAsStateWithLifecycle()
+    val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
     val sounds by viewModel.uiSounds.collectAsStateWithLifecycle()
     val discoverHideWatched by viewModel.discoverHideWatched.collectAsStateWithLifecycle()
     val expert by viewModel.expertMode.collectAsStateWithLifecycle()
@@ -154,6 +156,16 @@ fun SettingsScreen(
                 description = "$columns posters per row — opens a picture that " +
                     "shows each size before you pick",
                 onClick = onPosterSize,
+            )
+            // Subtitles sit in HOW THINGS LOOK, not Expert (owner 2026-08-30):
+            // subtitles too small to read is an everyday problem, not a
+            // technical knob (§10 elder-friendly).
+            SettingEntry(
+                title = "Subtitles",
+                description = "${subtitleStyle.size.label} · ${subtitleStyle.color.label} · " +
+                    "${subtitleStyle.backdrop.label} — opens a picture that shows " +
+                    "each choice before you pick",
+                onClick = onSubtitles,
             )
             SettingEntry(
                 title = "Hide watched shows in Discover",

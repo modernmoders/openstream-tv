@@ -61,7 +61,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import dev.openstream.tv.data.SUBTITLE_EDGE_ARGB
+import dev.openstream.tv.data.SUBTITLE_TRANSPARENT
+import dev.openstream.tv.data.SubtitleEdge
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -121,6 +125,7 @@ fun PlayerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val engineOrNull by viewModel.engine.collectAsStateWithLifecycle()
     val autoplay by viewModel.autoplayState.collectAsStateWithLifecycle()
+    val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.hasSource) {
         if (!state.hasSource) {
@@ -399,7 +404,34 @@ fun PlayerScreen(
     ) {
         AndroidView(
             factory = { context -> PlayerView(context).apply { useController = false } },
-            update = { view -> view.player = engine.exoPlayer },
+            update = { view ->
+                view.player = engine.exoPlayer
+                // Owner's subtitle look (2026-08-30). Re-applied on every
+                // recomposition of this block, so changing the style in
+                // Settings takes effect on the video already on screen.
+                view.subtitleView?.apply {
+                    // OUR size and colours win over whatever the subtitle file
+                    // asks for. Without this, a styled .ass track (common on
+                    // anime) ignores the whole screen the owner just used.
+                    setApplyEmbeddedStyles(false)
+                    setApplyEmbeddedFontSizes(false)
+                    setFractionalTextSize(subtitleStyle.size.fractionOfHeight)
+                    setStyle(
+                        CaptionStyleCompat(
+                            subtitleStyle.color.argb,
+                            subtitleStyle.backdrop.backgroundArgb,
+                            SUBTITLE_TRANSPARENT, // window: never a full-width bar
+                            when (subtitleStyle.backdrop.edge) {
+                                SubtitleEdge.OUTLINE -> CaptionStyleCompat.EDGE_TYPE_OUTLINE
+                                SubtitleEdge.DROP_SHADOW -> CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW
+                                SubtitleEdge.NONE -> CaptionStyleCompat.EDGE_TYPE_NONE
+                            },
+                            SUBTITLE_EDGE_ARGB,
+                            null, // system default typeface — no font shipped
+                        ),
+                    )
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
